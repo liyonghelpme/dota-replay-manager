@@ -761,6 +761,54 @@ String& String::rreplace(char const* re, char const* with)
 {
   return (*this) = RegExp(re).replace(buf, with);
 }
+int String::split(Array<String>& res, char sep, bool quotes)
+{
+  res.clear();
+  int prev = 0;
+  bool quote = false;
+  for (int i = 0; i <= length(); i++)
+  {
+    if ((buf[i] == sep && !quote) || buf[i] == 0)
+    {
+      res.push(substring(prev, i));
+      prev = i + 1;
+    }
+    else if (buf[i] == '"')
+    {
+      if (!quote && quotes && i == prev)
+        quote = true;
+      else
+        quote = false;
+    }
+  }
+  return res.length();
+}
+int String::split(Array<String>& res, char const* seplist, bool quotes)
+{
+  static bool issep[256];
+  memset(issep, 0, sizeof issep);
+  for (int i = 0; seplist[i]; i++)
+    issep[(uint8) seplist[i]] = true;
+  res.clear();
+  int prev = 0;
+  bool quote = false;
+  for (int i = 0; i <= length(); i++)
+  {
+    if ((issep[(uint8) buf[i]] && !quote) || buf[i] == 0)
+    {
+      res.push(substring(prev, i));
+      prev = i + 1;
+    }
+    else if (buf[i] == '"')
+    {
+      if (!quote && quotes && i == prev)
+        quote = true;
+      else
+        quote = false;
+    }
+  }
+  return res.length();
+}
 
 int String::smartCompare(String a, String b)
 {

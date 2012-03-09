@@ -10,6 +10,7 @@
 
 class MPQArchive;
 class ImageLibrary;
+class DotaLibrary;
 
 class Application
 {
@@ -21,6 +22,7 @@ class Application
   MPQArchive* resources;
   ImageLibrary* imageLibrary;
   Registry* registry;
+  DotaLibrary* dotaLibrary;
 public:
   Application(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow);
   ~Application();
@@ -40,6 +42,10 @@ public:
   Registry* getRegistry() const
   {
     return registry;
+  }
+  DotaLibrary* getDotaLibrary() const
+  {
+    return dotaLibrary;
   }
   String getRootPath() const
   {

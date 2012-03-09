@@ -75,7 +75,22 @@ uint32 IntDictionary::set (uint32 key, uint32 value)
   buf[cur + NODE_SIZE + p] = 1;
   return prev;
 }
-uint32 IntDictionary::get (uint32 key)
+uint32 IntDictionary::del (uint32 key)
+{
+  uint32 cur = 0;
+  for (int i = 1; i < maxDepth && (i == 1 || cur); i++)
+  {
+    int p = 0xFF & (key >> ((maxDepth - i) * 8));
+    cur = ((uint32*) (buf + cur + 4))[p];
+  }
+  if (maxDepth > 1 && cur == 0)
+    return 0;
+  buf[cur + NODE_SIZE + (key & 0xFF)] = 0;
+  uint32 prev = ((uint32*) (buf + cur + 4))[key & 0xFF];
+  ((uint32*) (buf + cur + 4))[key & 0xFF] = 0;
+  return prev;
+}
+uint32 IntDictionary::get (uint32 key) const
 {
   uint32 cur = 0;
   for (int i = 1; i <= maxDepth && (i == 1 || cur); i++)
@@ -85,7 +100,7 @@ uint32 IntDictionary::get (uint32 key)
   }
   return cur;
 }
-bool IntDictionary::has (uint32 key)
+bool IntDictionary::has (uint32 key) const
 {
   uint32 cur = 0;
   for (int i = 1; i < maxDepth && (i == 1 || cur); i++)
@@ -98,11 +113,11 @@ bool IntDictionary::has (uint32 key)
   return ((uint8*) (buf + cur + NODE_SIZE))[key & 0xFF] != 0;
 }
 
-uint32 IntDictionary::enumStart ()
+uint32 IntDictionary::enumStart () const
 {
   return enumNext (0);
 }
-uint32 IntDictionary::enumNext (uint32 cur)
+uint32 IntDictionary::enumNext (uint32 cur) const
 {
   uint32 p, depth;
   if (cur == 0)
@@ -157,7 +172,7 @@ uint32 IntDictionary::enumNext (uint32 cur)
   }
   return 0;
 }
-uint32 IntDictionary::enumGetKey (uint32 cur)
+uint32 IntDictionary::enumGetKey (uint32 cur) const
 {
   uint32 val = 0;
   for (int i = 0; i < maxDepth; i++)
@@ -168,7 +183,7 @@ uint32 IntDictionary::enumGetKey (uint32 cur)
   }
   return val;
 }
-uint32 IntDictionary::enumGetValue (uint32 cur)
+uint32 IntDictionary::enumGetValue (uint32 cur) const
 {
   uint32 p = (cur % 257);
   cur -= p;

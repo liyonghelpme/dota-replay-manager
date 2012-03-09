@@ -1,6 +1,8 @@
 #ifndef __BASE_UTILS_H__
 #define __BASE_UTILS_H__
 
+#include <windows.h>
+
 #include "base/string.h"
 #include "base/types.h"
 

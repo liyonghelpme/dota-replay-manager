@@ -31,9 +31,9 @@ int CharacterClass::init(char const* src, bool plain)
         for (char c = src[i]; c <= src[i + 2]; c++)
         {
           if (invert)
-            add(c);
-          else
             remove(c);
+          else
+            add(c);
         }
         i += 2;
       }
@@ -83,7 +83,9 @@ struct State
   enum {
     START = 1,
     RBRA,
+    RBRANC,
     LBRA,
+    LBRANC,
     OR,
     CAT,
     STAR,
@@ -166,7 +168,10 @@ void Compiler::init(char const* expr)
   for (int i = 0; expr[i]; i++)
     if (expr[i] == '[')
       maxMasks++;
-  masks = new CharacterClass[maxMasks];
+  if (maxMasks)
+    masks = new CharacterClass[maxMasks];
+  else
+    masks = NULL;
   numMasks = 0;
 
   andsize = 0;
@@ -199,31 +204,32 @@ void Compiler::pushand(State* first, State* last)
 }
 void Compiler::pushator(int type)
 {
-  if (type == State::RBRA)
+  if (type == State::RBRA || type == State::RBRANC)
     brackets--;
-  if (type == State::LBRA)
+  if (type == State::LBRA || type == State::LBRANC)
   {
-    cursub++;
+    if (type == State::LBRA)
+      cursub++;
     brackets++;
     if (lastand)
       pushator(State::CAT);
   }
   else
     evaluntil(type);
-  if (type != State::RBRA)
+  if (type != State::RBRA && type != State::RBRANC)
   {
     atorstack[atorsize].type = type;
     atorstack[atorsize].subid = cursub;
     atorsize++;
   }
   lastand = (type == State::STAR || type == State::PLUS ||
-    type == State::QUEST || type == State::RBRA);
+    type == State::QUEST || type == State::RBRA || type == State::RBRANC);
 }
 void Compiler::evaluntil(int pri)
 {
   State* s1;
   State* s2;
-  while (pri == State::RBRA || atorstack[atorsize - 1].type >= pri)
+  while (pri == State::RBRA || pri == State::RBRANC || atorstack[atorsize - 1].type >= pri)
   {
     atorsize--;
     switch (atorstack[atorsize].type)
@@ -241,6 +247,8 @@ void Compiler::evaluntil(int pri)
       andstack[andsize - 1].last->next = s2;
       andstack[andsize - 1].last = s2;
       s2->next = NULL;
+      return;
+    case State::LBRANC:
       return;
     case State::OR:
       andsize--;
@@ -331,6 +339,7 @@ struct RegExp::Prog
   _re::State* states;
   int numStates;
   CharacterClass* masks;
+  int numCaptures;
 
   Prog(char const* expr);
   ~Prog();
@@ -356,47 +365,62 @@ RegExp::Prog::Prog(char const* expr)
   {
     int type = _re::State::CHAR;
     CharacterClass const* mask = NULL;
-    if (expr[pos] == '\\')
+    switch (expr[pos])
     {
+    case '\\':
       pos++;
       if (_re::maskmap[expr[pos]])
       {
         type = _re::State::CCLASS;
         mask = _re::maskmap[expr[pos]];
       }
-    }
-    else if (expr[pos] == 0)
+      break;
+    case 0:
       type = _re::State::END;
-    else if (expr[pos] == '*')
+      break;
+    case '*':
       type = _re::State::STAR;
-    else if (expr[pos] == '+')
+      break;
+    case '+':
       type = _re::State::PLUS;
-    else if (expr[pos] == '?')
+      break;
+    case '?':
       type = _re::State::QUEST;
-    else if (expr[pos] == '|')
+      break;
+    case '|':
       type = _re::State::OR;
-    else if (expr[pos] == '(')
+      break;
+    case '(':
       type = _re::State::LBRA;
-    else if (expr[pos] == ')')
+      break;
+    case ')':
       type = _re::State::RBRA;
-    else if (expr[pos] == '^')
+      break;
+    case '{':
+      type = _re::State::LBRANC;
+      break;
+    case '}':
+      type = _re::State::RBRANC;
+      break;
+    case '^':
       type = _re::State::BOL;
-    else if (expr[pos] == '$')
+      break;
+    case '$':
       type = _re::State::EOL;
-    else if (expr[pos] == '.')
-    {
+      break;
+    case '.':
       type = _re::State::CCLASS;
       mask = &CharacterClass::dot;
-    }
-    else if (expr[pos] == '[')
-    {
+      break;
+    case '[':
       type = _re::State::CCLASS;
       CharacterClass* tmask = &comp.masks[comp.numMasks++];
       pos += tmask->init(expr + pos + 1) + 1;
       mask = tmask;
+      break;
     }
-    if (expr[pos] == 0)
-      type = _re::State::END;
+    //if (expr[pos] == 0)
+    //  type = _re::State::END;
     if (type < _re::State::OPERAND)
       comp.pushator(type);
     else
@@ -440,6 +464,7 @@ RegExp::Prog::Prog(char const* expr)
   numStates = comp.optsize;
   start = &states[startpos];
 
+  numCaptures = comp.cursub;
   maxThreads = 32;
   threads = new _re::Thread[maxThreads * 2];
 }
@@ -588,7 +613,18 @@ static bool matcher(_re::Match const& match, void* arg)
 }
 bool RegExp::match(char const* text, Array<String>* sub) const
 {
-  return prog->run(text, true, matcher, sub) > 0;
+  int res = prog->run(text, true, matcher, sub);
+  if (res)
+  {
+    if (sub)
+    {
+      while (sub->length() <= prog->numCaptures)
+        sub->push("");
+    }
+    return true;
+  }
+  else
+    return false;
 }
 static bool finder(_re::Match const& match, void* arg)
 {
@@ -600,9 +636,14 @@ int RegExp::find(char const* text, int start, Array<String>* sub) const
   _re::Match match;
   if (prog->run(text + start, false, finder, &match))
   {
-    sub->clear();
-    for (int i = 0; i < sizeof(match.start) / sizeof(match.start[0]) && match.start[i]; i++)
-      sub->push(String(match.start[i], match.end[i] - match.start[i]));
+    if (sub)
+    {
+      sub->clear();
+      for (int i = 0; i < sizeof(match.start) / sizeof(match.start[0]) && match.start[i]; i++)
+        sub->push(String(match.start[i], match.end[i] - match.start[i]));
+      while (sub->length() <= prog->numCaptures)
+        sub->push("");
+    }
     return match.start[0] - text;
   }
   else

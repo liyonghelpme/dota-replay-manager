@@ -57,7 +57,7 @@ void ReplayTree::populate(HTREEITEM parent, String thePath)
     {
       if (data.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY)
         items.push(FoundItem(true, data.cFileName));
-      else if (String::getExtension(data.cFileName).caseInsensitiveCompare(".w3g") == 0)
+      else if (String::getExtension(data.cFileName).icompare(".w3g") == 0)
         items.push(FoundItem(false, data.cFileName));
     }
     success = FindNextFile(hFind, &data);

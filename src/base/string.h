@@ -58,9 +58,17 @@ public:
   {
     return buf == str.buf ? 0 : strcmp(buf, str.buf);
   }
-  int caseInsensitiveCompare(String str) const
+  int compare(char const* str) const
+  {
+    return strcmp(buf, str);
+  }
+  int icompare(String str) const
   {
     return buf == str.buf ? 0 : stricmp(buf, str.buf);
+  }
+  int icompare(char const* str) const
+  {
+    return stricmp(buf, str);
   }
 
   operator const char * () const
@@ -285,6 +293,9 @@ public:
   bool match(char const* re, Array<String>* sub = NULL) const;
   int rfind(char const* re, int start = 0, Array<String>* sub = NULL) const;
   String& rreplace(char const* re, char const* with);
+
+  int split(Array<String>& res, char sep, bool quotes = false);
+  int split(Array<String>& res, char const* seplist, bool quotes = false);
 
   static int smartCompare(String a, String b);
 

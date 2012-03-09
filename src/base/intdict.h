@@ -14,13 +14,14 @@ public:
   ~IntDictionary ();
 
   uint32 set (uint32 key, uint32 value);
-  uint32 get (uint32 key);
-  bool has (uint32 key);
+  uint32 del (uint32 key);
+  uint32 get (uint32 key) const;
+  bool has (uint32 key) const;
 
-  uint32 enumStart ();
-  uint32 enumNext (uint32 cur);
-  uint32 enumGetKey (uint32 cur);
-  uint32 enumGetValue (uint32 cur);
+  uint32 enumStart () const;
+  uint32 enumNext (uint32 cur) const;
+  uint32 enumGetKey (uint32 cur) const;
+  uint32 enumGetValue (uint32 cur) const;
 
   void clear ();
 };

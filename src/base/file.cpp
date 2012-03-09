@@ -388,3 +388,23 @@ void File::printf (char const* fmt, ...)
   if (dst != buf)
     delete[] dst;
 }
+String File::gets()
+{
+  String result = "";
+  while (int c = getc())
+  {
+    result += c;
+    if (c == '\n')
+      break;
+    if (c == '\r')
+    {
+      int pos = tell();
+      if (getc() == '\n')
+        result += '\n';
+      else
+        seek(pos, SEEK_SET);
+      break;
+    }
+  }
+  return result;
+}

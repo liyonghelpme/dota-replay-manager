@@ -7,66 +7,11 @@
 #include <string.h>
 #include <malloc.h>
 
+#include "base/gzmemory.h"
+
 extern uint32 mpq_error;
 static bool _partial = false;
-struct gzmemory
-{
-  int count;
-  int pos;
-  char* buf;
-  int size;
-  void reset ();
-  void* alloc (int block);
-  void free (void* ptr);
-  gzmemory ()
-  {
-    buf = NULL;
-    size = 0;
-    count = 65536;
-  }
-  ~gzmemory ()
-  {
-    if (buf)
-      ::free (buf);
-  }
-};
 static gzmemory* gzmem = NULL;
-void gzmemory::reset ()
-{
-  if (count > size)
-  {
-    if (buf)
-      ::free (buf);
-    buf = (char*) malloc (count);
-    size = count;
-  }
-  count = 0;
-  pos = 0;
-}
-void* gzmemory::alloc (int block)
-{
-  count += block;
-  if (pos + block > size)
-    return malloc (block);
-  char* ptr = buf + pos;
-  pos += block;
-  return ptr;
-}
-void gzmemory::free (void* ptr)
-{
-  if (ptr && (ptr < buf || ptr >= buf + size))
-    ::free (ptr);
-}
-void* gzalloc (void* param, unsigned int items, unsigned int size)
-{
-  if (param == NULL) return malloc (items * size);
-  return ((gzmemory*) param)->alloc (items * size);
-}
-void gzfree (void* param, void* ptr)
-{
-  if (param) ((gzmemory*) param)->free (ptr);
-  else free (ptr);
-}
 
 struct CompressionType
 {

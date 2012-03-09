@@ -7,6 +7,9 @@
 #include "frameui/framewnd.h"
 #include "frameui/controlframes.h"
 #include "ui/mainwnd.h"
+#include "dota/dotadata.h"
+
+#include "replay/replay.h"
 
 Application* Application::instance = NULL;
 
@@ -20,6 +23,7 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
 }
 Application::~Application()
 {
+  delete dotaLibrary;
   delete imageLibrary;
   delete resources;
   delete registry;
@@ -39,8 +43,15 @@ int Application::run()
 
   registry = new Registry();
 
+  dotaLibrary = new DotaLibrary();
+
   resources = new MPQArchive("resources.mpq");
   imageLibrary = new ImageLibrary(resources);
+
+  File* file = File::open("replay.w3g");
+  W3GReplay* replay = W3GReplay::load(file);
+  delete file;
+  delete replay;
 
   MainWnd mainWnd;
 

@@ -249,6 +249,10 @@
 					>
 				</File>
 				<File
+					RelativePath="..\src\base\gzmemory.h"
+					>
+				</File>
+				<File
 					RelativePath="..\src\base\intdict.h"
 					>
 				</File>
@@ -276,6 +280,10 @@
 					RelativePath="..\src\base\utils.h"
 					>
 				</File>
+				<File
+					RelativePath="..\src\base\version.h"
+					>
+				</File>
 			</Filter>
 			<Filter
 				Name="Source"
@@ -286,7 +294,15 @@
 					>
 				</File>
 				<File
+					RelativePath="..\src\dota\dotadata.cpp"
+					>
+				</File>
+				<File
 					RelativePath="..\src\base\file.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\base\gzmemory.cpp"
 					>
 				</File>
 				<File
@@ -307,6 +323,10 @@
 				</File>
 				<File
 					RelativePath="..\src\base\utils.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\base\version.cpp"
 					>
 				</File>
 			</Filter>
@@ -375,68 +395,6 @@
 						>
 					</File>
 				</Filter>
-			</Filter>
-		</Filter>
-		<Filter
-			Name="rMPQ"
-			>
-			<Filter
-				Name="Headers"
-				Filter="h;hpp;hxx;hm;inl;inc;xsd"
-				>
-				<File
-					RelativePath="..\src\rmpq\huffman.h"
-					>
-				</File>
-				<File
-					RelativePath="..\src\rmpq\mpqcompress.h"
-					>
-				</File>
-				<File
-					RelativePath="..\src\rmpq\pklib.h"
-					>
-				</File>
-				<File
-					RelativePath="..\src\rmpq\rmpq.h"
-					>
-				</File>
-				<File
-					RelativePath="..\src\rmpq\wave.h"
-					>
-				</File>
-			</Filter>
-			<Filter
-				Name="Source"
-				Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
-				>
-				<File
-					RelativePath="..\src\rmpq\explode.c"
-					>
-				</File>
-				<File
-					RelativePath="..\src\rmpq\filesys.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\src\rmpq\huffman.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\src\rmpq\implode.c"
-					>
-				</File>
-				<File
-					RelativePath="..\src\rmpq\mpqcompress.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\src\rmpq\rmpq.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\src\rmpq\wave.cpp"
-					>
-				</File>
 			</Filter>
 		</Filter>
 		<Filter
@@ -567,11 +525,19 @@
 				Filter="h;hpp;hxx;hm;inl;inc;xsd"
 				>
 				<File
-					RelativePath="..\src\dota\misc.h"
+					RelativePath="..\src\dota\buildings.h"
 					>
 				</File>
 				<File
-					RelativePath="..\src\dota\replay.h"
+					RelativePath="..\src\dota\colors.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\dota\consts.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\dota\dotadata.h"
 					>
 				</File>
 			</Filter>
@@ -580,11 +546,163 @@
 				Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
 				>
 				<File
-					RelativePath="..\src\dota\misc.cpp"
+					RelativePath="..\src\dota\buildings.cpp"
 					>
 				</File>
 				<File
-					RelativePath="..\src\dota\replay.cpp"
+					RelativePath="..\src\dota\colors.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\dota\dotaconsts.cpp"
+					>
+				</File>
+			</Filter>
+		</Filter>
+		<Filter
+			Name="Replay"
+			>
+			<Filter
+				Name="Headers"
+				Filter="h;hpp;hxx;hm;inl;inc;xsd"
+				>
+				<File
+					RelativePath="..\src\replay\action.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\consts.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\hero.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\inventory.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\message.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\player.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\replay.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\timeline.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\zplayer.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\zreplay.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Source"
+				Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
+				>
+				<File
+					RelativePath="..\src\replay\action.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\hero.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\inventory.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\parser.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\player.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\replay.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\replayconsts.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\timeline.cpp"
+					>
+				</File>
+			</Filter>
+		</Filter>
+		<Filter
+			Name="rMPQ"
+			>
+			<Filter
+				Name="Headers"
+				Filter="h;hpp;hxx;hm;inl;inc;xsd"
+				>
+				<File
+					RelativePath="..\src\rmpq\huffman.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\rmpq\mpqcompress.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\rmpq\pklib.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\rmpq\rmpq.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\rmpq\wave.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Source"
+				Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
+				>
+				<File
+					RelativePath="..\src\rmpq\explode.c"
+					>
+				</File>
+				<File
+					RelativePath="..\src\rmpq\filesys.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\rmpq\huffman.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\rmpq\implode.c"
+					>
+				</File>
+				<File
+					RelativePath="..\src\rmpq\mpqcompress.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\rmpq\rmpq.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\rmpq\wave.cpp"
 					>
 				</File>
 			</Filter>
