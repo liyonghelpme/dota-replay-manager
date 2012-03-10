@@ -21,4 +21,6 @@ String format_time(long time, int flags = TIME_SECONDS);
 
 bool browseForFolder(String prompt, String& result);
 
+uint32 flip_int(uint32 i);
+
 #endif // __BASE_UTILS_H__

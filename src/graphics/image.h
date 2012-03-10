@@ -106,6 +106,9 @@ public:
 
   void desaturate();
 
+  void sharpen(float coeff);
+  void modBrightness(float coeff);
+
   bool getRect(int& left, int& top, int& right, int& bottom) const;
 
   void setPixel(int x, int y, unsigned int color)

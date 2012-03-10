@@ -41,12 +41,6 @@ struct PNGHeader
 };
 #pragma	pack (pop)
 
-inline uint32 flip_int (uint32 n)
-{
-  return ((n << 24) & 0xFF000000) | ((n << 8) & 0x00FF0000) |
-         ((n >> 24) & 0x000000FF) | ((n >> 8) & 0x0000FF00);
-}
-
 bool read_chunk (PNGChunk& ch, File* f)
 {
   delete[] ch.data;

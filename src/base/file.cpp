@@ -388,9 +388,9 @@ void File::printf (char const* fmt, ...)
   if (dst != buf)
     delete[] dst;
 }
-String File::gets()
+int File::gets(String& result)
 {
-  String result = "";
+  result = "";
   while (int c = getc())
   {
     result += c;
@@ -406,5 +406,11 @@ String File::gets()
       break;
     }
   }
+  return result.length();
+}
+String File::gets()
+{
+  String result;
+  gets(result);
   return result;
 }

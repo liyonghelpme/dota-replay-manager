@@ -72,7 +72,7 @@ void Dota::load(String path)
     int posAbility = -1;
     int posItem = -1;
     int posRecipe = -1;
-    while (!(buf = file->gets()).isEmpty())
+    while (file->gets(buf))
     {
       buf.trim();
       if (buf[0] == '[')
@@ -91,7 +91,7 @@ void Dota::load(String path)
     if (posAbility >= 0)
     {
       file->seek(posAbility, SEEK_SET);
-      while (!(buf = file->gets()).isEmpty())
+      while (file->gets(buf))
       {
         buf.trim();
         if (buf[0] == '[')
@@ -123,7 +123,7 @@ void Dota::load(String path)
     if (posHero >= 0)
     {
       file->seek(posHero, SEEK_SET);
-      while (!(buf = file->gets()).isEmpty())
+      while (file->gets(buf))
       {
         buf.trim();
         if (buf[0] == '[')
@@ -156,7 +156,7 @@ void Dota::load(String path)
     if (posItem >= 0)
     {
       file->seek(posItem, SEEK_SET);
-      while (!(buf = file->gets()).isEmpty())
+      while (file->gets(buf))
       {
         buf.trim();
         if (buf[0] == '[')
@@ -185,7 +185,7 @@ void Dota::load(String path)
     if (posRecipe >= 0)
     {
       file->seek(posRecipe, SEEK_SET);
-      while (!(buf = file->gets()).isEmpty())
+      while (file->gets(buf))
       {
         buf.trim();
         if (buf[0] == '[')
@@ -301,9 +301,96 @@ void Dota::release()
   if (this && --ref <= 0)
     library->delDota(version);
 }
-
+String DotaLibrary::simplify(String str) const
+{
+  String res = "";
+  for (int i = 0; i < str.length(); i++)
+  {
+    if ((str[i] >= '0' && str[i] <= '9') ||
+        (str[i] >= 'a' && str[i] <= 'z'))
+      res += str[i];
+    else if (str[i] >= 'A' && str[i] <= 'Z')
+      res += char(str[i] + 'a' - 'A');
+  }
+  return res;
+}
 DotaLibrary::DotaLibrary()
 {
+  File* common = getApp()->getResources()->openFile("dota\\common.txt", File::READ);
+  if (common)
+  {
+    enum {cTavern = 1, cShop = 2, cAbbr = 3, cPd = 4, cPdMed = 5, cPdWide = 6, cPdItem = 7};
+    int cat = 0;
+    String buf;
+    Array<String> list;
+    while (common->gets(buf))
+    {
+      buf.trim();
+      if (buf[0] == '[')
+      {
+        if (buf == "[TAVERN]")
+          cat = cTavern;
+        else if (buf == "[SHOP]")
+          cat = cShop;
+        else if (buf == "[ABBREVIATION]")
+          cat = cAbbr;
+        else if (buf == "[PDTAG]")
+          cat = cPd;
+        else if (buf == "[PDTAGMED]")
+          cat = cPdMed;
+        else if (buf == "[PDTAGWIDE]")
+          cat = cPdWide;
+        else if (buf == "[PLAYDOTAITEMTAG]")
+          cat = cPdItem;
+        else
+          cat = 0;
+      }
+      else if (cat && buf.length())
+      {
+        buf.split(list, ',', true);
+        if (cat == cTavern)
+        {
+          if (list.length() == 2)
+          {
+            Tavern& t = taverns.push();
+            t.name = list[0];
+            t.side = list[1].toInt();
+          }
+        }
+        else if (cat == cShop)
+        {
+          if (list.length() == 1)
+            shops.push(list[0]);
+        }
+        else if (cat == cAbbr)
+        {
+          if (list.length() == 2)
+            heroAbbr[list[0].toInt()] = list[1];
+        }
+        else if (cat == cPd)
+        {
+          if (list.length() == 2)
+            heroPdTag[list[0].toInt()] = list[1];
+        }
+        else if (cat == cPdMed)
+        {
+          if (list.length() == 2)
+            heroPdTagMed[list[0].toInt()] = list[1];
+        }
+        else if (cat == cPdWide)
+        {
+          if (list.length() == 2)
+            heroPdTagWide[list[0].toInt()] = list[1];
+        }
+        else if (cat == cPdItem)
+        {
+          if (list.length() == 2)
+            itemPdTag.set(simplify(list[0]), list[1]);
+        }
+      }
+    }
+    delete common;
+  }
 }
 DotaLibrary::~DotaLibrary()
 {

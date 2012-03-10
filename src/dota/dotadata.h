@@ -131,9 +131,64 @@ class DotaLibrary
   IntDictionary versions;
   void delDota(uint32 version);
   friend class Dota;
+
+  struct Tavern
+  {
+    String name;
+    int side;
+  };
+  Array<Tavern> taverns;
+  Array<String> shops;
+  String heroAbbr[256];
+  String heroPdTag[256];
+  String heroPdTagMed[256];
+  String heroPdTagWide[256];
+  String simplify(String str) const;
+  Dictionary<String> itemPdTag;
 public:
   DotaLibrary();
   ~DotaLibrary();
+
+  int getNumTaverns() const
+  {
+    return taverns.length();
+  }
+  String getTavernName(int i) const
+  {
+    return taverns[i].name;
+  }
+  int getTavernSide(int i) const
+  {
+    return taverns[i].side;
+  }
+  int getNumShops() const
+  {
+    return shops.length();
+  }
+  String getShopName(int i) const
+  {
+    return shops[i];
+  }
+  String getHeroAbbreviation(int point) const
+  {
+    return heroAbbr[point];
+  }
+  String getHeroPdTag(int point) const
+  {
+    return heroPdTag[point];
+  }
+  String getHeroPdTagMedium(int point) const
+  {
+    return heroPdTagMed[point];
+  }
+  String getHeroPdTagWide(int point) const
+  {
+    return heroPdTagWide[point];
+  }
+  String getItemPdTag(String name) const
+  {
+    return itemPdTag.get(simplify(name));
+  }
 
   Dota* getDota(uint32 version);
   Dota* getDota(uint32 version, String path);

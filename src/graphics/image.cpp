@@ -698,3 +698,65 @@ bool Image::getRect(int& left, int& top, int& right, int& bottom) const
 //  images.set (0, pos);
 //  return pos;
 //}
+
+static inline int swork(int org, int acc, int count, float coeff)
+{
+  int res = int(float(org) * (1 + count * coeff) - float(acc) * coeff + 0.5f);
+  if (res < 0) res = 0;
+  if (res > 255) res = 255;
+  return res;
+}
+static inline int sadd(uint32 pixel, int* acc)
+{
+  acc[0] += int(pixel & 0xFF);
+  acc[1] += int((pixel >> 8) & 0xFF);
+  acc[2] += int((pixel >> 16) & 0xFF);
+  acc[3] += int((pixel >> 24) & 0xFF);
+  return 1;
+}
+void Image::sharpen(float coeff)
+{
+  static int ox[4] = {-1, 0, 0, 1};
+  static int oy[4] = {0, -1, 1, 0};
+  uint32* extra = new uint32[_width];
+  for (int y = 0; y < _height; y++)
+  {
+    uint32 prev;
+    for (int x = 0; x < _width; x++)
+    {
+      int pos = x + y * _width;
+      int acc[4] = {0, 0, 0, 0};
+      int count = 0;
+      if (x > 0)
+        count += sadd(prev, acc);
+      if (y > 0)
+        count += sadd(extra[x], acc);
+      if (x < _width - 1)
+        count += sadd(_bits[pos + 1], acc);
+      if (y < _height - 1)
+        count += sadd(_bits[pos + _width], acc);
+      prev = _bits[pos];
+      extra[x] = _bits[pos];
+      _bits[pos] = swork(prev & 0xFF, acc[0], count, coeff) |
+                  (swork((prev >> 8) & 0xFF, acc[0], count, coeff) << 8) |
+                  (swork((prev >> 16) & 0xFF, acc[0], count, coeff) << 16) |
+                  (swork((prev >> 24) & 0xFF, acc[0], count, coeff) << 24);
+    }
+  }
+  delete[] extra;
+}
+static inline int bwork(int org, float coeff)
+{
+  int res = int(float(org) * coeff + 0.5f);
+  if (res < 0) res = 0;
+  if (res > 255) res = 255;
+  return res;
+}
+void Image::modBrightness(float coeff)
+{
+  for (int i = _width * _height - 1; i >= 0; i--)
+    _bits[i] = bwork(_bits[i] & 0xFF, coeff) |
+              (bwork((_bits[i] >> 8) & 0xFF, coeff) << 8) |
+              (bwork((_bits[i] >> 16) & 0xFF, coeff) << 16) |
+              (_bits[i] & 0xFF000000);
+}

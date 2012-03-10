@@ -38,6 +38,8 @@ public:
   Image* getImage(String name);
   HBITMAP getBitmap(String name);
   int getListIndex(String name);
+
+  void addImage(String name, Image* image, bool big = false);
 };
 
 #endif // __GRAPHICS_IMAGELIB_H__

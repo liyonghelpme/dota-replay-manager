@@ -8,34 +8,34 @@ class MPQListFile
 {
   MPQLISTFILE handle;
 public:
-  MPQListFile (char const* filename = NULL)
+  MPQListFile(char const* filename = NULL)
   {
-    handle = MPQCreateList (filename);
+    handle = MPQCreateList(filename);
   }
-  ~MPQListFile ()
+  ~MPQListFile()
   {
-    MPQDeleteList (handle);
-  }
-
-  uint32 insert (char const* name, bool check = false)
-  {
-    return MPQListInsert (handle, name, check);
-  }
-  uint32 size () const
-  {
-    return MPQListSize (handle);
-  }
-  char const* item (uint32 pos) const
-  {
-    return MPQListItem (handle, pos);
+    MPQDeleteList(handle);
   }
 
-  uint32 flush (char const* filename)
+  uint32 insert(char const* name, bool check = false)
   {
-    return MPQFlushList (handle, filename);
+    return MPQListInsert(handle, name, check);
+  }
+  uint32 size() const
+  {
+    return MPQListSize(handle);
+  }
+  char const* item(uint32 pos) const
+  {
+    return MPQListItem(handle, pos);
   }
 
-  MPQLISTFILE getHandle () const
+  uint32 flush(char const* filename)
+  {
+    return MPQFlushList(handle, filename);
+  }
+
+  MPQLISTFILE getHandle() const
   {
     return handle;
   }
@@ -48,88 +48,88 @@ class MPQFile : public File
   uint32 size;
   friend class MPQArchive;
   friend class MPQLoader;
-  MPQFile (MPQFILE file, bool readonly)
+  MPQFile(MPQFILE file, bool readonly)
   {
     handle = file;
     ronly = readonly;
-    MPQFileSeek (handle, 0, MPQSEEK_END);
-    size = MPQFileTell (handle);
-    MPQFileSeek (handle, 0, MPQSEEK_SET);
+    MPQFileSeek(handle, 0, MPQSEEK_END);
+    size = MPQFileTell(handle);
+    MPQFileSeek(handle, 0, MPQSEEK_SET);
   }
 public:
-  ~MPQFile ()
+  ~MPQFile()
   {
-    MPQCloseFile (handle);
+    MPQCloseFile(handle);
   }
-  uint32 reopen ()
+  uint32 reopen()
   {
-    return MPQReopenFile (handle);
+    return MPQReopenFile(handle);
   }
-  uint32 attribute (uint32 attr) const
+  uint32 attribute(uint32 attr) const
   {
-    return MPQFileAttribute (handle, attr);
+    return MPQFileAttribute(handle, attr);
   }
 
-  bool readonly () const
+  bool readonly() const
   {
     return ronly;
   }
 
-  int read (void* buf, int count)
+  int read(void* buf, int count)
   {
-    return MPQFileRead (handle, count, buf);
+    return MPQFileRead(handle, count, buf);
   }
-  int write (void* buf, int count)
+  int write(void* buf, int count)
   {
-    return MPQFileWrite (handle, count, buf);
+    return MPQFileWrite(handle, count, buf);
   }
-  int getc ()
+  int getc()
   {
-    return MPQFileGetc (handle);
+    return MPQFileGetc(handle);
   }
-  int putc (int c)
+  int putc(int c)
   {
-    return MPQ_ERROR (MPQFilePutc (handle, (uint8) c)) ? 0 : 1;
-  }
-
-  void seek (int pos, int rel)
-  {
-    MPQFileSeek (handle, pos, rel);
-  }
-  int tell () const
-  {
-    return MPQFileTell (handle);
+    return MPQ_ERROR(MPQFilePutc(handle, (uint8) c)) ? 0 : 1;
   }
 
-  uint32 setFlags (uint32 flags, uint32 mask)
+  void seek(int pos, int rel)
   {
-    return MPQFileSetFlags (handle, flags, mask);
+    MPQFileSeek(handle, pos, rel);
   }
-  uint32 getFlags () const
+  int tell() const
   {
-    return MPQFileGetFlags (handle);
-  }
-
-  uint32 del (uint32 count)
-  {
-    return MPQFileDel (handle, count);
-  }
-  uint32 push (uint32 count)
-  {
-    return MPQFilePush (handle, count);
+    return MPQFileTell(handle);
   }
 
-  uint32 flush ()
+  uint32 setFlags(uint32 flags, uint32 mask)
   {
-    return MPQFlushFile (handle);
+    return MPQFileSetFlags(handle, flags, mask);
+  }
+  uint32 getFlags() const
+  {
+    return MPQFileGetFlags(handle);
   }
 
-  bool eof () const
+  uint32 del(uint32 count)
   {
-    return MPQFileTell (handle) == size;
+    return MPQFileDel(handle, count);
+  }
+  uint32 push(uint32 count)
+  {
+    return MPQFilePush(handle, count);
   }
 
-  MPQFILE getHandle () const
+  uint32 flush()
+  {
+    return MPQFlushFile(handle);
+  }
+
+  bool eof() const
+  {
+    return MPQFileTell(handle) == size;
+  }
+
+  MPQFILE getHandle() const
   {
     return handle;
   }
@@ -138,179 +138,179 @@ public:
 class MPQArchive
 {
   MPQARCHIVE handle;
-  MPQArchive (MPQARCHIVE mpq)
+  MPQArchive(MPQARCHIVE mpq)
   {
     handle = mpq;
   }
 public:
-  MPQArchive (char const* filename, int mode = MPQFILE_MODIFY)
+  MPQArchive(char const* filename, int mode = MPQFILE_MODIFY)
   {
-    handle = MPQOpen (filename, mode);
+    handle = MPQOpen(filename, mode);
   }
-  ~MPQArchive ()
+  ~MPQArchive()
   {
-    MPQClose (handle);
+    MPQClose(handle);
   }
 
-  static MPQArchive* open (char const* filename, int mode = MPQFILE_MODIFY)
+  static MPQArchive* open(char const* filename, int mode = MPQFILE_MODIFY)
   {
-    MPQARCHIVE mpq = MPQOpen (filename, mode);
+    MPQARCHIVE mpq = MPQOpen(filename, mode);
     if (mpq)
-      return new MPQArchive (mpq);
+      return new MPQArchive(mpq);
     else
       return NULL;
   }
-  static MPQArchive* create (char const* filename, bool listfile = true, uint32 offset = 0,
+  static MPQArchive* create(char const* filename, bool listfile = true, uint32 offset = 0,
     uint32 hashSize = 1024, uint32 blockSize = 131072, bool v2 = false)
   {
-    MPQARCHIVE mpq = MPQCreateArchive (filename, listfile, offset, hashSize, blockSize, v2);
+    MPQARCHIVE mpq = MPQCreateArchive(filename, listfile, offset, hashSize, blockSize, v2);
     if (mpq)
-      return new MPQArchive (mpq);
+      return new MPQArchive(mpq);
     else
       return NULL;
   }
 
-  bool isOk () const
+  bool isOk() const
   {
     return handle != NULL;
   }
 
-  uint32 listFiles (MPQListFile const& list)
+  uint32 listFiles(MPQListFile const& list)
   {
-    return MPQListFiles (handle, list.getHandle ());
+    return MPQListFiles(handle, list.getHandle());
   }
 
-  uint32 getCompression () const
+  uint32 getCompression() const
   {
-    return MPQGetCompression (handle);
+    return MPQGetCompression(handle);
   }
-  uint32 setCompression (uint32 method)
+  uint32 setCompression(uint32 method)
   {
-    return MPQSetCompression (handle, method);
+    return MPQSetCompression(handle, method);
   }
-  uint32 saveAs (char const* filename)
+  uint32 saveAs(char const* filename)
   {
-    return MPQSaveAs (handle, filename);
+    return MPQSaveAs(handle, filename);
   }
-  uint32 makeTemp ()
+  uint32 makeTemp()
   {
-    return MPQMakeTemp (handle);
-  }
-
-  uint32 findFile (char const* name) const
-  {
-    return MPQFindFile (handle, name);
-  }
-  uint32 findFile (char const* name, uint16 locale) const
-  {
-    return MPQFindFile (handle, name, locale);
-  }
-  uint32 findNextFile (char const* name, uint32 cur) const
-  {
-    return MPQFindNextFile (handle, name, cur);
-  }
-  bool testFile (uint32 pos) const
-  {
-    return MPQTestFile (handle, pos);
+    return MPQMakeTemp(handle);
   }
 
-  MPQFile* openFile (char const* name, uint32 options)
+  uint32 findFile(char const* name) const
   {
-    MPQFILE file = MPQOpenFile (handle, name, options);
+    return MPQFindFile(handle, name);
+  }
+  uint32 findFile(char const* name, uint16 locale) const
+  {
+    return MPQFindFile(handle, name, locale);
+  }
+  uint32 findNextFile(char const* name, uint32 cur) const
+  {
+    return MPQFindNextFile(handle, name, cur);
+  }
+  bool testFile(uint32 pos) const
+  {
+    return MPQTestFile(handle, pos);
+  }
+
+  MPQFile* openFile(char const* name, uint32 options)
+  {
+    MPQFILE file = MPQOpenFile(handle, name, options);
     if (file)
-      return new MPQFile (file, options == MPQFILE_READ);
+      return new MPQFile(file, options == MPQFILE_READ);
     else
       return NULL;
   }
-  MPQFile* openFile (char const* name, uint16 locale, uint32 options)
+  MPQFile* openFile(char const* name, uint16 locale, uint32 options)
   {
-    MPQFILE file = MPQOpenFile (handle, name, locale, options);
+    MPQFILE file = MPQOpenFile(handle, name, locale, options);
     if (file)
-      return new MPQFile (file, options == MPQFILE_READ);
+      return new MPQFile(file, options == MPQFILE_READ);
     else
       return NULL;
   }
-  MPQFile* openFile (uint32 pos, uint32 options)
+  MPQFile* openFile(uint32 pos, uint32 options)
   {
-    MPQFILE file = MPQOpenFile (handle, pos, options);
+    MPQFILE file = MPQOpenFile(handle, pos, options);
     if (file)
-      return new MPQFile (file, options == MPQFILE_READ);
+      return new MPQFile(file, options == MPQFILE_READ);
     else
       return NULL;
   }
 
-  uint32 getHashSize () const
+  uint32 getHashSize() const
   {
-    return MPQGetHashSize (handle);
+    return MPQGetHashSize(handle);
   }
 
-  bool fileExists (char const* name) const
+  bool fileExists(char const* name) const
   {
-    return MPQFileExists (handle, name);
+    return MPQFileExists(handle, name);
   }
-  bool fileExists (char const* name, uint16 locale) const
+  bool fileExists(char const* name, uint16 locale) const
   {
-    return MPQFileExists (handle, name, locale);
+    return MPQFileExists(handle, name, locale);
   }
-  bool fileExists (uint32 pos) const
+  bool fileExists(uint32 pos) const
   {
-    return MPQFileExists (handle, pos);
-  }
-
-  uint32 renameFile (char const* source, char const* dest)
-  {
-    return MPQRenameFile (handle, source, dest);
-  }
-  uint32 encryptFile (char const* name, uint32 options)
-  {
-    return MPQEncryptFile (handle, name, options);
-  }
-  uint32 deleteFile (char const* name)
-  {
-    return MPQDeleteFile (handle, name);
+    return MPQFileExists(handle, pos);
   }
 
-  uint32 resizeHash (uint32 size)
+  uint32 renameFile(char const* source, char const* dest)
   {
-    return MPQResizeHash (handle, size);
+    return MPQRenameFile(handle, source, dest);
   }
-  bool hasUnknowns () const
+  uint32 encryptFile(char const* name, uint32 options)
   {
-    return MPQHasUnknowns (handle);
+    return MPQEncryptFile(handle, name, options);
   }
-  uint32 fillHashTable ()
+  uint32 deleteFile(char const* name)
   {
-    return MPQFillHashTable (handle);
-  }
-
-  char const* getFileName (uint32 pos) const
-  {
-    return MPQGetFileName (handle, pos);
-  }
-  uint32 getFileAttribute (uint32 pos, uint32 attr) const
-  {
-    return MPQItemAttribute (handle, pos, attr);
-  }
-  uint32 peekFile (uint32 pos, uint8* dest)
-  {
-    return MPQPeekFile (handle, pos, dest);
+    return MPQDeleteFile(handle, name);
   }
 
-  uint32 flush ()
+  uint32 resizeHash(uint32 size)
   {
-    return MPQFlush (handle);
+    return MPQResizeHash(handle, size);
   }
-  uint32 flushListFile ()
+  bool hasUnknowns() const
   {
-    return MPQFlushListfile (handle);
+    return MPQHasUnknowns(handle);
+  }
+  uint32 fillHashTable()
+  {
+    return MPQFillHashTable(handle);
   }
 
-  uint32 readMapName (char* buf) const
+  char const* getFileName(uint32 pos) const
   {
-    return MPQReadMapName (handle, buf);
+    return MPQGetFileName(handle, pos);
+  }
+  uint32 getFileAttribute(uint32 pos, uint32 attr) const
+  {
+    return MPQItemAttribute(handle, pos, attr);
+  }
+  uint32 peekFile(uint32 pos, uint8* dest)
+  {
+    return MPQPeekFile(handle, pos, dest);
   }
 
-  MPQARCHIVE getHandle () const
+  uint32 flush()
+  {
+    return MPQFlush(handle);
+  }
+  uint32 flushListFile()
+  {
+    return MPQFlushListfile(handle);
+  }
+
+  uint32 readMapName(char* buf) const
+  {
+    return MPQReadMapName(handle, buf);
+  }
+
+  MPQARCHIVE getHandle() const
   {
     return handle;
   }
@@ -320,38 +320,38 @@ class MPQLoader : public FileLoader
 {
   MPQLOADER handle;
 public:
-  MPQLoader (char const* prefix = NULL)
+  MPQLoader(char const* prefix = NULL)
   {
-    handle = MPQCreateLoader (prefix);
+    handle = MPQCreateLoader(prefix);
   }
-  ~MPQLoader ()
+  ~MPQLoader()
   {
-    MPQReleaseLoader (handle);
-  }
-
-  uint32 addArchive (MPQArchive const& archive)
-  {
-    return MPQAddArchive (handle, archive.getHandle ());
-  }
-  uint32 removeArchive (MPQArchive const& archive)
-  {
-    return MPQRemoveArchive (handle, archive.getHandle ());
-  }
-  uint32 loadArchive (char const* path)
-  {
-    return MPQLoadArchive (handle, path);
+    MPQReleaseLoader(handle);
   }
 
-  File* load (char const* name)
+  uint32 addArchive(MPQArchive const& archive)
   {
-    MPQFILE file = MPQLoadFile (handle, name);
+    return MPQAddArchive(handle, archive.getHandle());
+  }
+  uint32 removeArchive(MPQArchive const& archive)
+  {
+    return MPQRemoveArchive(handle, archive.getHandle());
+  }
+  uint32 loadArchive(char const* path)
+  {
+    return MPQLoadArchive(handle, path);
+  }
+
+  File* load(char const* name)
+  {
+    MPQFILE file = MPQLoadFile(handle, name);
     if (file)
-      return new MPQFile (file, true);
+      return new MPQFile(file, true);
     else
       return NULL;
   }
 
-  MPQLOADER getHandle () const
+  MPQLOADER getHandle() const
   {
     return handle;
   }

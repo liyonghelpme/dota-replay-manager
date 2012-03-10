@@ -92,3 +92,39 @@ int ImageLibrary::getListIndex(String name)
   }
   return info.listIndex;
 }
+
+void ImageLibrary::addImage(String name, Image* image, bool big)
+{
+  if (images.has(String(name).toLower()))
+    return;
+
+  String name16 = String::format("images\\%s.bin", name);
+  File* file16 = mpq->openFile(name16, File::REWRITE);
+  if (file16)
+  {
+    Image i16(16, 16);
+    BLTInfo blt16(image);
+    blt16.setDstSize(16, 16);
+    i16.blt(blt16);
+    i16.modBrightness(1.16f);
+    i16.sharpen(0.16f);
+    i16.writeBIN(file16);
+    delete file16;
+    loadImage(name16);
+  }
+
+  String name32 = String::format("images\\big%s.bin", name);
+  File* file32 = mpq->openFile(name32, File::REWRITE);
+  if (file32)
+  {
+    Image i32(32, 32);
+    BLTInfo blt32(image);
+    blt32.setDstSize(32, 32);
+    i32.blt(blt32);
+    i32.modBrightness(1.16f);
+    i32.sharpen(0.08f);
+    i32.writeBIN(file32);
+    delete file32;
+    loadImage(name32);
+  }
+}

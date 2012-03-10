@@ -48,9 +48,7 @@ int Application::run()
   resources = new MPQArchive("resources.mpq");
   imageLibrary = new ImageLibrary(resources);
 
-  File* file = File::open("replay.w3g");
-  W3GReplay* replay = W3GReplay::load(file);
-  delete file;
+  W3GReplay* replay = W3GReplay::load("destroy.w3g");
   delete replay;
 
   MainWnd mainWnd;

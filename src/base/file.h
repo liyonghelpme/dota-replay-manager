@@ -150,6 +150,7 @@ public:
     write(str.c_str(), str.length() + 1);
   }
   String gets();
+  int gets(String& str);
 
   void printf(char const* fmt, ...);
 

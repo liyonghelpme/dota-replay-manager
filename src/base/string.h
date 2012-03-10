@@ -96,6 +96,7 @@ public:
   }
 
   String& operator = (String const& str);
+  String& operator = (char const* str);
 
   String& operator += (String str)
   {

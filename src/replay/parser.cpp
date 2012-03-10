@@ -793,7 +793,7 @@ void W3GReplay::parseEndgame(String slot, String stat, uint32 value, void* arg)
             "%s %s level %d tower was %s by %s.", __side[side], __lane[lane],
             level, __tact[act], player->format_full());
         else
-          addMessage(CHAT_NOTIFY_TOWER, player->player_id, state.time,
+          addMessage(CHAT_NOTIFY_TOWER, 0, state.time,
             "%s %s level %d tower was %s by @%s@.", __side[side], __lane[lane],
             level, __tact[act], __sideid[value / 6]);
       }
@@ -817,7 +817,7 @@ void W3GReplay::parseEndgame(String slot, String stat, uint32 value, void* arg)
             "%s %s %s barracks were %s by %s.", __side[side], __lane[lane],
             __rax[type], __tact[act], player->format_full());
         else
-          addMessage(CHAT_NOTIFY_BARRACKS, player->player_id, state.time,
+          addMessage(CHAT_NOTIFY_BARRACKS, 0, state.time,
             "%s %s %s barracks were %s by %s.", __side[side], __lane[lane],
             __rax[type], __tact[act], __sideid[value / 6]);
       }

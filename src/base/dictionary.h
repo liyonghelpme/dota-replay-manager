@@ -34,7 +34,7 @@ public:
 
   void clear();
 };
-template<class T = uint32>
+template<class T>
 class Dictionary : public DictionaryBase
 {
   Node* newnode() const

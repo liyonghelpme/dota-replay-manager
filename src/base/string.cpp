@@ -95,6 +95,18 @@ String& String::operator = (String const& str)
     _ref(buf)++;
   return *this;
 }
+String& String::operator = (char const* str)
+{
+  if (str == buf)
+    return *this;
+
+  if (_ref(buf) > 1) splice();
+  int len = strlen(str);
+  realloc(len);
+  memcpy(buf, str, len + 1);
+  _len(buf) = len;
+  return *this;
+}
 
 String& String::operator += (char ch)
 {

@@ -540,6 +540,14 @@
 					RelativePath="..\src\dota\dotadata.h"
 					>
 				</File>
+				<Filter
+					Name="load"
+					>
+					<File
+						RelativePath="..\src\dota\load\datafile.h"
+						>
+					</File>
+				</Filter>
 			</Filter>
 			<Filter
 				Name="Source"
@@ -557,6 +565,18 @@
 					RelativePath="..\src\dota\dotaconsts.cpp"
 					>
 				</File>
+				<Filter
+					Name="load"
+					>
+					<File
+						RelativePath="..\src\dota\load\datafile.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\src\dota\load\dotaload.cpp"
+						>
+					</File>
+				</Filter>
 			</Filter>
 		</Filter>
 		<Filter

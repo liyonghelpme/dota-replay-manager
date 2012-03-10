@@ -122,3 +122,11 @@ bool browseForFolder(String prompt, String& result)
 
   return true;
 }
+
+uint32 flip_int(uint32 i)
+{
+  return ((i >> 24) & 0x000000FF) |
+         ((i >>  8) & 0x0000FF00) |
+         ((i <<  8) & 0x00FF0000) |
+         ((i << 24) & 0xFF000000);
+}
