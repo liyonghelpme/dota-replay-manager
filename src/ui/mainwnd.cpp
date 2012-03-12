@@ -34,11 +34,13 @@ MainWnd::MainWnd()
   settings = new ExtWindowFrame(this, new SettingsWindow(this));
   settings->setPoint(PT_TOPLEFT, replayTree, PT_TOPRIGHT, SPLITTER_WIDTH, 0);
   settings->setPoint(PT_BOTTOMRIGHT, 0, 0);
-
-  ShowWindow(hWnd, reg->readInt("wndShow", SW_SHOW));
 }
 MainWnd::~MainWnd()
 {
+}
+void MainWnd::postLoad()
+{
+  ShowWindow(hWnd, getApp()->getRegistry()->readInt("wndShow", SW_SHOW));
 }
 
 uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)

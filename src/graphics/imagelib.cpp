@@ -31,6 +31,7 @@ Image* ImageLibrary::ImageInfo::getImage(MPQArchive* mpq)
 }
 
 ImageLibrary::ImageLibrary(MPQArchive* _mpq)
+  : images(mapAlNumNoCase)
 {
   mpq = _mpq;
   list = ImageList_Create(16, 16, ILC_COLOR24, 16, 16);
@@ -49,34 +50,32 @@ ImageLibrary::~ImageLibrary()
 
 void ImageLibrary::loadImage(String name)
 {
-  String title = String::getFileTitle(name).toLower();
-  ImageInfo& info = images.create(title);
+  ImageInfo& info = images.create(String::getFileTitle(name));
   info.filename = name;
 }
 
-String ImageLibrary::getTooltip(String name)
+String ImageLibrary::getTooltip(char const* name)
 {
-  return images.get(name.toLower()).tooltip;
+  return images.get(name).tooltip;
 }
-void ImageLibrary::setTooltip(String name, String tooltip)
+void ImageLibrary::setTooltip(char const* name, String tooltip)
 {
-  images.get(name.toLower()).tooltip = tooltip;
+  images.get(name).tooltip = tooltip;
 }
-Image* ImageLibrary::getImage(String name)
+Image* ImageLibrary::getImage(char const* name)
 {
-  ImageInfo& info = images.get(name.toLower());
+  ImageInfo& info = images.get(name);
   return info.getImage(mpq);
 }
-HBITMAP ImageLibrary::getBitmap(String name)
+HBITMAP ImageLibrary::getBitmap(char const* name)
 {
-  ImageInfo& info = images.get(name.toLower());
+  ImageInfo& info = images.get(name);
   if (!info.hBitmap)
     info.hBitmap = info.getImage(mpq)->createBitmap();
   return info.hBitmap;
 }
-int ImageLibrary::getListIndex(String name)
+int ImageLibrary::getListIndex(char const* name)
 {
-  name.toLower();
   if (!images.has(name))
     name = "Empty";
   ImageInfo& info = images.get(name);
@@ -93,9 +92,9 @@ int ImageLibrary::getListIndex(String name)
   return info.listIndex;
 }
 
-void ImageLibrary::addImage(String name, Image* image, bool big)
+void ImageLibrary::addImage(char const* name, Image* image, bool big)
 {
-  if (images.has(String(name).toLower()))
+  if (images.has(name))
     return;
 
   String name16 = String::format("images\\%s.bin", name);

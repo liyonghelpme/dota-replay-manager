@@ -97,45 +97,45 @@ Registry::~Registry()
   }
 }
 
-void Registry::dwriteInt(String name, int value)
+void Registry::dwriteInt(char const* name, int value)
 {
   RegistryItem& item = defaults.create(name);
   item.set(VALUE_INT, sizeof value, &value);
 }
-void Registry::dwriteInt64(String name, __int64 value)
+void Registry::dwriteInt64(char const* name, __int64 value)
 {
   RegistryItem& item = defaults.create(name);
   item.set(VALUE_INT64, sizeof value, &value);
 }
-void Registry::dwriteDouble(String name, double value)
+void Registry::dwriteDouble(char const* name, double value)
 {
   RegistryItem& item = defaults.create(name);
   item.set(VALUE_DOUBLE, sizeof value, &value);
 }
-void Registry::dwriteString(String name, char const* value)
+void Registry::dwriteString(char const* name, char const* value)
 {
   RegistryItem& item = defaults.create(name);
   item.set(VALUE_STRING, strlen(value) + 1, value);
 }
-void Registry::dwriteBinary(String name, void const* data, uint32 size)
+void Registry::dwriteBinary(char const* name, void const* data, uint32 size)
 {
   RegistryItem& item = defaults.create(name);
   item.set(VALUE_BINARY, size, data);
 }
 
-void Registry::delKey(String name)
+void Registry::delKey(char const* name)
 {
   if (items.has(name) && (items.get(name).type & VALUE_FROZEN))
     return;
   items.del(name);
 }
 
-void Registry::writeInt(String name, int value)
+void Registry::writeInt(char const* name, int value)
 {
   RegistryItem& item = items.create(name);
   item.set(VALUE_INT, sizeof value, &value);
 }
-int Registry::readInt(String name, int def)
+int Registry::readInt(char const* name, int def)
 {
   dwriteInt(name, def);
   RegistryItem& item = items.create(name);
@@ -150,12 +150,12 @@ int Registry::readInt(String name, int def)
     return def;
   }
 }
-void Registry::writeInt64(String name, __int64 value)
+void Registry::writeInt64(char const* name, __int64 value)
 {
   RegistryItem& item = items.create(name);
   item.set(VALUE_INT64, sizeof value, &value);
 }
-__int64 Registry::readInt64(String name, __int64 def)
+__int64 Registry::readInt64(char const* name, __int64 def)
 {
   dwriteInt64(name, def);
   RegistryItem& item = items.create(name);
@@ -172,12 +172,12 @@ __int64 Registry::readInt64(String name, __int64 def)
     return def;
   }
 }
-void Registry::writeDouble(String name, double value)
+void Registry::writeDouble(char const* name, double value)
 {
   RegistryItem& item = items.create(name);
   item.set(VALUE_DOUBLE, sizeof value, &value);
 }
-double Registry::readDouble(String name, double def)
+double Registry::readDouble(char const* name, double def)
 {
   dwriteDouble(name, def);
   RegistryItem& item = items.create(name);
@@ -194,12 +194,12 @@ double Registry::readDouble(String name, double def)
     return def;
   }
 }
-void Registry::writeString (String name, char const* value)
+void Registry::writeString (char const* name, char const* value)
 {
   RegistryItem& item = items.create(name);
   item.set(VALUE_STRING, strlen(value) + 1, value);
 }
-String Registry::readString(String name, char const* def)
+String Registry::readString(char const* name, char const* def)
 {
   if (def)
     dwriteString(name, def);
@@ -217,12 +217,12 @@ String Registry::readString(String name, char const* def)
     return "";
   }
 }
-void Registry::writeBinary(String name, void const* data, uint32 size)
+void Registry::writeBinary(char const* name, void const* data, uint32 size)
 {
   RegistryItem& item = items.create(name);
   item.set(VALUE_BINARY, size, data);
 }
-uint32 Registry::readBinary(String name, void* data, uint32 size)
+uint32 Registry::readBinary(char const* name, void* data, uint32 size)
 {
   if (data)
     dwriteBinary(name, data, size);
@@ -245,7 +245,7 @@ uint32 Registry::readBinary(String name, void* data, uint32 size)
   }
 }
 
-int* Registry::createInt(String name, int def)
+int* Registry::createInt(char const* name, int def)
 {
   dwriteInt(name, def);
   RegistryItem& item = items.create(name);
@@ -255,7 +255,7 @@ int* Registry::createInt(String name, int def)
     item.type |= VALUE_FROZEN;
   return (int*) item.value;
 }
-__int64* Registry::createInt64(String name, __int64 def)
+__int64* Registry::createInt64(char const* name, __int64 def)
 {
   dwriteInt64(name, def);
   RegistryItem& item = items.create(name);
@@ -265,7 +265,7 @@ __int64* Registry::createInt64(String name, __int64 def)
     item.type |= VALUE_FROZEN;
   return (__int64*) item.value;
 }
-double* Registry::createDouble(String name, double def)
+double* Registry::createDouble(char const* name, double def)
 {
   dwriteDouble(name, def);
   RegistryItem& item = items.create(name);

@@ -4,29 +4,31 @@
 #include "base/types.h"
 #include "base/string.h"
 
+extern uint8 const* mapAlNum;
+extern uint8 const* mapAlNumNoCase;
+extern uint8 const* mapAlNumSpace;
+
 class DictionaryBase
 {
 protected:
   struct Node
   {
-    bool hasData;
-    String str;
-    int a, b;
     Node* parent;
-    Node* c[256];
-    uint8 data[1];
+    int len;
+    uint8* data;
+    uint8* str;
+    Node* c[1];
   };
-  virtual Node* newnode() const = NULL;
+  uint8 const* map;
+  int mapMax;
+  virtual Node* newnode(int len) const = NULL;
   virtual void delnode(Node* n) const = NULL;
-  mutable String lastFindKey;
-  mutable Node* lastFindNode;
-  void baseinit();
-  Node* baseadd(String key);
-  Node* basefind(String key) const;
+  Node* baseadd(uint8 const* key);
+  Node* basefind(uint8 const* key) const;
   
   Node* root;
 public:
-  DictionaryBase ();
+  DictionaryBase (uint8 const* map);
 
   uint32 enumStart () const;
   uint32 enumNext (uint32 cur) const;
@@ -34,93 +36,103 @@ public:
 
   void clear();
 };
+
 template<class T>
 class Dictionary : public DictionaryBase
 {
-  Node* newnode() const
+  Node* newnode(int len) const
   {
-    Node* n = (Node*) malloc(sizeof(Node) + sizeof(T) - 1);
-    memset(n, 0, sizeof(Node) + sizeof(T) - 1);
-    new(&n->str) String();
+    uint32 size = sizeof(Node) + sizeof(Node*) * mapMax + sizeof(T) + len;
+    Node* n = (Node*) malloc(size);
+    memset(n, 0, size);
+    n->data = ((uint8*) n) + sizeof(Node) + sizeof(Node*) * mapMax;
+    n->str = n->data + sizeof(T);
+    n->len = len;
     return n;
   }
   void delnode(Node* n) const
   {
-    for (int i = 0; i < sizeof n->c / sizeof n->c[0]; i++)
+    for (int i = 1; i <= mapMax; i++)
       if (n->c[i])
         delnode(n->c[i]);
-    if (n->hasData)
+    if (n->c[0])
       ((T*) n->data)->~T();
-    n->str.~String();
     free(n);
   }
+  T* nil;
 
 public:
-  Dictionary()
+  Dictionary(uint8 const* map = NULL)
+    : DictionaryBase(map)
   {
-    root = newnode();
+    root = newnode(0);
+    nil = (T*) malloc(sizeof(T));
+    memset(nil, 0, sizeof(T));
+    new(nil) T();
   }
   ~Dictionary()
   {
     delnode(root);
+    nil->~T();
+    free(nil);
   }
-  void set (String key, T const& value)
+  void set(char const* key, T const& value)
   {
-    Node* n = baseadd(key);
-    if (!n->hasData)
+    Node* n = baseadd((uint8 const*) key);
+    if (!n->c[0])
     {
-      n->hasData = true;
+      n->c[0] = n;
       new(n->data) T(value);
     }
     else
       *((T*) n->data) = value;
   }
-  T& create(String key)
+  T& create(char const* key)
   {
-    Node* n = baseadd(key);
-    if (!n->hasData)
+    Node* n = baseadd((uint8 const*) key);
+    if (!n->c[0])
     {
-      n->hasData = true;
+      n->c[0] = n;
       new(n->data) T();
     }
     return *((T*) n->data);
   }
-  T const& get (String key) const
+  T const& get(char const* key) const
   {
-    Node* n = basefind(key);
-    return *((T*) n->data);
+    Node* n = basefind((uint8 const*) key);
+    return n ? *((T*) n->data) : *nil;
   }
-  T& get (String key)
+  T& get (char const* key)
   {
-    Node* n = basefind(key);
-    return *((T*) n->data);
+    Node* n = basefind((uint8 const*) key);
+    return n ? *((T*) n->data) : *nil;
   }
-  bool has (String key) const
+  bool has(char const* key) const
   {
-    Node* n = basefind(key);
-    return (n && n->hasData);
+    Node* n = basefind((uint8 const*) key);
+    return (n && n->c[0]);
   }
-  void del (String key)
+  void del(char const* key)
   {
-    Node* n = basefind(key);
-    if (n && n->hasData)
+    Node* n = basefind((uint8 const*) key);
+    if (n && n->c[0])
     {
       ((T*) n->data)->~T();
-      n->hasData = false;
+      n->c[0] = NULL;
     }
   }
 
-  T const& enumGetValue (uint32 cur) const
+  T const& enumGetValue(uint32 cur) const
   {
     Node* n = (Node*) cur;
     return *((T*) n->data);
   }
-  T& enumGetValue (uint32 cur)
+  T& enumGetValue(uint32 cur)
   {
     Node* n = (Node*) cur;
     return *((T*) n->data);
   }
-  void enumSetValue (uint32 cur, T const& value)
+  void enumSetValue(uint32 cur, T const& value)
   {
     Node* n = (Node*) cur;
     *((T*) n->data) = value;

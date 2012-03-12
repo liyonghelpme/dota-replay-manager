@@ -102,7 +102,7 @@ SLKFile::SLKFile(File* file)
               megabuff = tmp;
             }
             if (cury == 0)
-              cols.set(e.val, curx + 1);
+              cols.set(e.val, curx);
             memcpy(megabuff + length, e.val.c_str(), len);
             table[curx + cury * width] = length;
             length += len;
@@ -154,7 +154,7 @@ MetaData::MetaData(File* file)
   {
     id[i].id = idFromString(slk.getItem(i, impRows[META_DATA_ID]));
     id[i].row = i;
-    data.set(slk.getItem(i, impRows[META_DATA_FIELD]), id[i].id);
+//    data.set(slk.getItem(i, impRows[META_DATA_FIELD]), id[i].id);
   }
 
   qsort(id, numId, sizeof(IdValue), idComp);
@@ -314,12 +314,11 @@ WEStrings::~WEStrings()
 {
   delete[] megabuff;
 }
-char const* WEStrings::getString(String str) const
+char const* WEStrings::getString(char const* str) const
 {
-  uint32 val = data.get(str);
-  if (val == 0)
-    return NULL;
-  return megabuff + val;
+  if (data.has(str))
+    return megabuff + data.get(str);
+  return NULL;
 }
 
 UnitData::UnitData(ObjectData* theOwner, int theId, UnitData* theBase)
@@ -493,7 +492,6 @@ ObjectData::ObjectData(WEStrings* we)
   : cols(NULL, 0)
 {
   wes = we;
-  dir = NULL;
   size = 32;
   count = 1;
   units = new UnitData*[size];
@@ -508,8 +506,8 @@ ObjectData::~ObjectData()
 }
 UnitData* ObjectData::addUnit(uint32 id, uint32 base)
 {
-  int pos = dir.get(id);
-  if (pos) return units[pos];
+  if (dir.has(id))
+    return units[dir.get(id)];
   if (count >= size)
   {
     size *= 2;
@@ -525,17 +523,19 @@ UnitData* ObjectData::addUnit(uint32 id, uint32 base)
   dir.set(id, count);
   return units[count++];
 }
-void ObjectData::setUnitData(UnitData* unit, String field, char const* data, int index)
+void ObjectData::setUnitData(UnitData* unit, char const* field, char const* data, int index)
 {
   if (unit == NULL) return;
-  int x = fields.get(field);
-  if (x == 0)
+  int col;
+  if (fields.has(field))
+    col = fields.get(field);
+  else
   {
-    x = numFields++;
-    fields.set(field, x);
-    cols.setData(x, field);
+    col = numFields++;
+    fields.set(field, col);
+    cols.setData(col, field);
   }
-  unit->setData(x, data, index);
+  unit->setData(col, data, index);
 }
 
 bool ObjectData::readSLK(File* file)
@@ -547,8 +547,9 @@ bool ObjectData::readSLK(File* file)
   for (int i = 1; i < slk.getNumColumns(); i++)
   {
     char const* field = slk.getColumn(i);
-    colid[i] = fields.get(field);
-    if (colid[i] == 0)
+    if (fields.has(field))
+      colid[i] = fields.get(field);
+    else
     {
       colid[i] = numFields++;
       fields.set(field, colid[i]);
@@ -614,6 +615,11 @@ bool ObjectData::readOBJ(File* file, MetaData* meta, bool ext, WTSData* wts)
         unit = addUnit(newid, oldid);
       else
       {
+        if (!dir.has(oldid))
+        {
+          err = true;
+          break;
+        }
         int upos = dir.get(oldid);
         if (units[upos] == NULL)
         {
@@ -699,8 +705,10 @@ void ObjectData::dump(File* f)
   }
 }
 
-String ObjectData::getUnitString(UnitData const* unit, String field, int index) const
+String ObjectData::getUnitString(UnitData const* unit, char const* field, int index) const
 {
+  if (!fields.has(field))
+    return String();
   char const* src = unit->getData(fields.get(field));
   if (index < 0)
   {

@@ -3012,7 +3012,8 @@ uint32 MPQAddArchive (MPQLOADER loader, MPQARCHIVE archive)
   _MPQLoader* ld = (_MPQLoader*) loader;
   if (ld->count >= ld->mx)
   {
-    ld->mx *= 2;
+    if (ld->mx == 0) ld->mx = 16;
+    else ld->mx *= 2;
     MPQARCHIVE* temp = new MPQARCHIVE[ld->mx];
     memset (temp, 0, ld->mx * sizeof (MPQARCHIVE));
     if (ld->count)

@@ -85,7 +85,10 @@ public:
   }
   int getc()
   {
-    return MPQFileGetc(handle);
+    uint32 c = MPQFileGetc(handle);
+    if (MPQError())
+      return 0;
+    return c;
   }
   int putc(int c)
   {

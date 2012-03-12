@@ -3,6 +3,7 @@
 
 #include "base/types.h"
 #include "base/string.h"
+#include "base/dictionary.h"
 #include "base/intdict.h"
 
 #define MAX_HERO_POINT          256
@@ -185,9 +186,9 @@ public:
   {
     return heroPdTagWide[point];
   }
-  String getItemPdTag(String name) const
+  String getItemPdTag(char const* name) const
   {
-    return itemPdTag.get(simplify(name));
+    return itemPdTag.get(name);
   }
 
   Dota* getDota(uint32 version);

@@ -45,9 +45,9 @@ public:
   {
     return table[(i + 1) * width + j] != 0;
   }
-  int getColumn(String name) const
+  int getColumn(char const* name) const
   {
-    return cols.get(name) - 1;
+    return cols.has(name) ? cols.get(name) : -1;
   }
 };
 
@@ -68,7 +68,7 @@ public:
 class MetaData
 {
   SLKFile slk;
-  Dictionary<uint32> data;
+//  Dictionary<uint32> data;
   struct IdValue
   {
     uint32 id;
@@ -107,10 +107,10 @@ public:
     if (index) *index = atoi(slk.getItem(row, impRows[META_DATA_INDEX]));
     return slk.getItem(row, impRows[META_DATA_FIELD]);
   }
-  int getId(char const* value) const
-  {
-    return data.get(value);
-  }
+  //int getId(char const* value) const
+  //{
+  //  return data.has(value) ? data[value] : -1;
+  //}
 };
 
 class WTSData
@@ -143,7 +143,7 @@ public:
   void merge(File* file);
   ~WEStrings();
 
-  char const* getString(String str) const;
+  char const* getString(char const* str) const;
 };
 
 class ObjectData;
@@ -188,11 +188,11 @@ public:
   }
   void compress();
 
-  char const* getData(String field) const;
-  bool isDataSet(String field) const;
-  int getIntData(String field) const;
-  float getRealData(String field) const;
-  String getStringData(String field, int index = -1) const;
+  char const* getData(char const* field) const;
+  bool isDataSet(char const* field) const;
+  int getIntData(char const* field) const;
+  float getRealData(char const* field) const;
+  String getStringData(char const* field, int index = -1) const;
 
   void release();
 };
@@ -247,24 +247,24 @@ public:
     return units[dir.get(id)];
   }
 
-  void setUnitData(UnitData* unit, String field, char const* data, int index = -1);
-  char const* getUnitData(UnitData const* unit, String field) const
+  void setUnitData(UnitData* unit, char const* field, char const* data, int index = -1);
+  char const* getUnitData(UnitData const* unit, char const* field) const
   {
     return unit->getData(fields.get(field));
   }
-  bool isUnitDataSet(UnitData const* unit, String field) const
+  bool isUnitDataSet(UnitData const* unit, char const* field) const
   {
     return unit->isDataSet(fields.get(field));
   }
-  int getUnitInt(UnitData const* unit, String field) const
+  int getUnitInt(UnitData const* unit, char const* field) const
   {
     return atoi(unit->getData(fields.get(field)));
   }
-  float getUnitReal(UnitData const* unit, String field) const
+  float getUnitReal(UnitData const* unit, char const* field) const
   {
     return (float) atof(unit->getData(fields.get(field)));
   }
-  String getUnitString(UnitData const* unit, String field, int index = -1) const;
+  String getUnitString(UnitData const* unit, char const* field, int index = -1) const;
 
   void dump(File* f);
   void dump(char const* path)
@@ -274,23 +274,23 @@ public:
     delete f;
   }
 };
-inline char const* UnitData::getData(String field) const
+inline char const* UnitData::getData(char const* field) const
 {
   return owner->getUnitData(this, field);
 }
-inline bool UnitData::isDataSet (String field) const
+inline bool UnitData::isDataSet (char const* field) const
 {
   return owner->isUnitDataSet(this, field);
 }
-inline int UnitData::getIntData(String field) const
+inline int UnitData::getIntData(char const* field) const
 {
   return owner->getUnitInt(this, field);
 }
-inline float UnitData::getRealData(String field) const
+inline float UnitData::getRealData(char const* field) const
 {
   return owner->getUnitReal(this, field);
 }
-inline String UnitData::getStringData(String field, int index) const
+inline String UnitData::getStringData(char const* field, int index) const
 {
   return owner->getUnitString(this, field, index);
 }

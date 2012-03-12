@@ -21,6 +21,8 @@ class MainWnd : public FrameWindow
 public:
   MainWnd();
   ~MainWnd();
+
+  void postLoad();
 };
 
 #endif // __UI_MAINWND_H__

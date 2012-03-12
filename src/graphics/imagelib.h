@@ -33,13 +33,13 @@ public:
     return list;
   }
 
-  String getTooltip(String name);
-  void setTooltip(String name, String tooltip);
-  Image* getImage(String name);
-  HBITMAP getBitmap(String name);
-  int getListIndex(String name);
+  String getTooltip(char const* name);
+  void setTooltip(char const* name, String tooltip);
+  Image* getImage(char const* name);
+  HBITMAP getBitmap(char const* name);
+  int getListIndex(char const* name);
 
-  void addImage(String name, Image* image, bool big = false);
+  void addImage(char const* name, Image* image, bool big = false);
 };
 
 #endif // __GRAPHICS_IMAGELIB_H__

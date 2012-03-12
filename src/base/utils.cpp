@@ -72,11 +72,18 @@ bool getRegString(HKEY key, char const* subkey, char const* value, String& resul
   if (RegOpenKeyEx(key, subkey, 0, KEY_QUERY_VALUE, &hKey) != ERROR_SUCCESS)
     return false;
   uint32 size;
-  if (RegQueryValueEx(key, value, 0, NULL, NULL, &size) != ERROR_SUCCESS)
+  if (RegQueryValueEx(hKey, value, 0, NULL, NULL, &size) != ERROR_SUCCESS)
+  {
+    RegCloseKey(hKey);
     return false;
+  }
   result.resize(size);
-  if (RegQueryValueEx(key, value, 0, NULL, (LPBYTE) result.getBuffer(), &size) != ERROR_SUCCESS)
+  if (RegQueryValueEx(hKey, value, 0, NULL, (LPBYTE) result.getBuffer(), &size) != ERROR_SUCCESS)
+  {
+    RegCloseKey(hKey);
     return false;
+  }
+  RegCloseKey(hKey);
   if (result.getBuffer()[size - 1] != 0)
     size++;
   result.setLength(size);

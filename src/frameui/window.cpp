@@ -139,7 +139,7 @@ void Window::enable(bool e)
 {
   EnableWindow(hWnd, e);
 }
-void Window::show(bool s)
+void Window::showWindow(bool s)
 {
   ShowWindow(hWnd, s ? SW_SHOW : SW_HIDE);
 }

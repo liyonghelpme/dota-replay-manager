@@ -10,7 +10,7 @@ class IntDictionary
   uint32 count;
   int maxDepth;
 public:
-  IntDictionary (int numBytes = 4);
+  explicit IntDictionary (int numBytes = 4);
   ~IntDictionary ();
 
   uint32 set (uint32 key, uint32 value);

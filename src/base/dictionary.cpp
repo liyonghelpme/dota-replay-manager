@@ -1,110 +1,149 @@
 #include "dictionary.h"
 
-DictionaryBase::DictionaryBase()
+static uint8 _mapFull[256];
+static uint8 _mapAlNum[256];
+uint8 const* mapAlNum = _mapAlNum;
+static uint8 _mapAlNumNoCase[256];
+uint8 const* mapAlNumNoCase = _mapAlNumNoCase;
+static uint8 _mapAlNumSpace[256];
+uint8 const* mapAlNumSpace = _mapAlNumSpace;
+static bool _mapInit = false;
+
+DictionaryBase::DictionaryBase(uint8 const* _map)
 {
-  lastFindKey = "";
-  lastFindNode = root;
+  if (!_mapInit)
+  {
+    for (int i = 0; i < 256; i++)
+      _mapFull[i] = i;
+    memset(_mapAlNum, 0, sizeof _mapAlNum);
+    memset(_mapAlNumNoCase, 0, sizeof _mapAlNumNoCase);
+    memset(_mapAlNumSpace, 0, sizeof _mapAlNumSpace);
+    for (int i = 0; i < 10; i++)
+    {
+      uint8 c = uint8('0' + i);
+      _mapAlNum[c] = _mapAlNumNoCase[c] = _mapAlNumSpace[c] = i + 1;
+    }
+    for (int i = 0; i < 26; i++)
+    {
+      uint8 c = uint8('a' + i);
+      uint8 C = uint8('A' + i);
+      _mapAlNum[c] = _mapAlNumNoCase[c] = _mapAlNumSpace[c] =
+        _mapAlNumNoCase[C] = _mapAlNumSpace[C] = i + 11;
+      _mapAlNum[C] = i + 37;
+    }
+    _mapInit = true;
+  }
+  map = _map;
+  if (map == NULL)
+    map = _mapFull;
+  mapMax = 0;
+  for (int i = 0; i < 256; i++)
+    if (map[i] > mapMax)
+      mapMax = map[i];
 }
 void DictionaryBase::clear()
 {
-  lastFindKey = "";
-  lastFindNode = root;
   delnode(root);
-  root = newnode();
+  root = newnode(0);
 }
 
-DictionaryBase::Node* DictionaryBase::baseadd(String key)
+DictionaryBase::Node* DictionaryBase::baseadd(uint8 const* key)
 {
-  if (key == lastFindKey && lastFindNode)
-    return lastFindNode;
   Node* cur = root;
-  int i = 0;
-  while (key[i])
+  while (*key)
   {
-    if (cur->c[key[i]] == NULL)
+    while (*key && map[*key] == 0)
+      key++;
+    if (*key == 0)
+      break;
+    uint8 c = map[*key];
+    if (cur->c[c] == NULL)
     {
-      cur->c[key[i]] = newnode();
-      cur->c[key[i]]->parent = cur;
-      cur = cur->c[key[i]];
-      cur->str = key;
-      cur->a = i;
-      cur->b = key.length ();
-      i = cur->b;
+      int rem = 0;
+      for (int j = 0; key[j]; j++)
+        if (map[key[j]])
+          rem++;
+      cur->c[c] = newnode(rem);
+      cur->c[c]->parent = cur;
+      cur = cur->c[c];
+      rem = 0;
+      for (; *key; key++)
+        if (map[*key])
+          cur->str[rem++] = *key;
     }
     else
     {
-      cur = cur->c[key[i]];
+      cur = cur->c[c];
       int ni;
-      for (ni = cur->a; ni < cur->b && key[i]; ni++, i++)
-        if (key[i] != cur->str[ni])
-          break;
-      if (ni < cur->b)
+      for (ni = 0; ni < cur->len && *key; ni++, key++)
       {
-        Node* n = newnode();
-        n->c[cur->str[ni]] = cur;
+        while (*key && map[*key] == 0)
+          key++;
+        if (*key == 0)
+          break;
+        if (map[*key] != map[cur->str[ni]])
+          break;
+      }
+      if (ni < cur->len)
+      {
+        Node* n = newnode(ni);
+        n->c[map[cur->str[ni]]] = cur;
         n->parent = cur->parent;
-        n->str = cur->str;
-        n->a = cur->a;
-        n->b = ni;
-        n->parent->c[n->str[n->a]] = n;
-        cur->a = ni;
+        memcpy(n->str, cur->str, ni);
+        cur->str += ni;
+        cur->len -= ni;
+        n->parent->c[map[n->str[0]]] = n;
         cur->parent = n;
         cur = n;
       }
     }
   }
-  lastFindKey = key;
-  lastFindNode = cur;
   return cur;
 }
-DictionaryBase::Node* DictionaryBase::basefind(String key) const
+DictionaryBase::Node* DictionaryBase::basefind(uint8 const* key) const
 {
-  if (key == lastFindKey && lastFindNode)
-    return lastFindNode;
-  lastFindKey = key;
   Node* cur = root;
-  int i = 0;
-  while (cur && key[i])
+  while (cur && *key)
   {
-    for (int ni = cur->a; ni < cur->b && key[i]; ni++, i++)
+    for (int ni = 0; ni < cur->len; ni++, key++)
     {
-      if (key[i] != cur->str[ni])
-      {
-        lastFindNode = NULL;
+      while (*key && map[*key] == 0)
+        key++;
+      if (map[*key] != map[cur->str[ni]])
         return NULL;
-      }
     }
-    if (key[i])
-      cur = cur->c[key[i]];
+    while (*key && map[*key] == 0)
+      key++;
+    if (*key)
+      cur = cur->c[map[*key]];
   }
-  lastFindNode = cur;
   return cur;
 }
 
-uint32 DictionaryBase::enumStart () const
+uint32 DictionaryBase::enumStart() const
 {
-  if (root->hasData)
-    return uint32 (root);
+  if (root->c[0])
+    return uint32(root);
   else
-    return enumNext (uint32 (root));
+    return enumNext(uint32(root));
 }
-uint32 DictionaryBase::enumNext (uint32 cur) const
+uint32 DictionaryBase::enumNext(uint32 cur) const
 {
   Node* node = (Node*) cur;
-  int ch = 0;
+  int ch = 1;
   bool newNode = false;
-  while (node && (!newNode || !node->hasData))
+  while (node && (!newNode || !node->c[0]))
   {
-    if (ch > 255)
+    if (ch > mapMax)
     {
-      ch = int (unsigned char (node->str[node->a])) + 1;
+      ch = map[node->str[0]] + 1;
       node = node->parent;
       newNode = false;
     }
     else if (node->c[ch])
     {
       node = node->c[ch];
-      ch = 0;
+      ch = 1;
       newNode = true;
     }
     else
@@ -112,14 +151,19 @@ uint32 DictionaryBase::enumNext (uint32 cur) const
   }
   return (uint32) node;
 }
-String DictionaryBase::enumGetKey (uint32 cur) const
+String DictionaryBase::enumGetKey(uint32 cur) const
 {
   Node* node = (Node*) cur;
-  String key = "";
-  while (node)
+  int len = 0;
+  for (Node* node = (Node*) cur; node; node = node->parent)
+    len += node->len;
+  String key;
+  key.resize(len);
+  int pos = len;
+  for (Node* node = (Node*) cur; node; node = node->parent)
   {
-    key = node->str.substring (node->a, node->b) + key;
-    node = node->parent;
+    pos -= node->len;
+    memcpy(key.getBuffer() + pos, node->str, node->len);
   }
   return key;
 }

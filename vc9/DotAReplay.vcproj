@@ -294,10 +294,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\src\dota\dotadata.cpp"
-					>
-				</File>
-				<File
 					RelativePath="..\src\base\file.cpp"
 					>
 				</File>
@@ -563,6 +559,10 @@
 				</File>
 				<File
 					RelativePath="..\src\dota\dotaconsts.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\dota\dotadata.cpp"
 					>
 				</File>
 				<Filter

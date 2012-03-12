@@ -11,7 +11,7 @@ uint32 idFromString(String str)
   return (uint32(str[0]) << 24) |
          (uint32(str[1]) << 16) |
          (uint32(str[2]) <<  8) |
-          uint32(str[0]);
+          uint32(str[3]);
 }
 String idToString(uint32 id)
 {
@@ -315,6 +315,7 @@ String DotaLibrary::simplify(String str) const
   return res;
 }
 DotaLibrary::DotaLibrary()
+  : itemPdTag(mapAlNumNoCase)
 {
   File* common = getApp()->getResources()->openFile("dota\\common.txt", File::READ);
   if (common)
@@ -385,7 +386,7 @@ DotaLibrary::DotaLibrary()
         else if (cat == cPdItem)
         {
           if (list.length() == 2)
-            itemPdTag.set(simplify(list[0]), list[1]);
+            itemPdTag.set(list[0], list[1]);
         }
       }
     }

@@ -101,6 +101,7 @@ public:
   }
   void reserve(int space)
   {
+    space = (space / 12) * 12 + 12;
     if (space > maxSize())
     {
       splice();
@@ -253,6 +254,7 @@ public:
   }
   void reserve(int space)
   {
+    space = (space / 12) * 12 + 12;
     if (space > maxSize())
     {
       splice();

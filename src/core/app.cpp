@@ -11,6 +11,8 @@
 
 #include "replay/replay.h"
 
+#include "base/dictionary.h"
+
 Application* Application::instance = NULL;
 
 Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -19,6 +21,7 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
   registry = NULL;
   resources = NULL;
   imageLibrary = NULL;
+  dotaLibrary = NULL;
   hInstance = _hInstance;
 }
 Application::~Application()
@@ -29,6 +32,7 @@ Application::~Application()
   delete registry;
   instance = NULL;
 }
+void loadDotaData(MPQLoader* ldr, String path);
 
 int Application::run()
 {
@@ -43,15 +47,24 @@ int Application::run()
 
   registry = new Registry();
 
-  dotaLibrary = new DotaLibrary();
-
   resources = new MPQArchive("resources.mpq");
   imageLibrary = new ImageLibrary(resources);
 
-  W3GReplay* replay = W3GReplay::load("destroy.w3g");
-  delete replay;
-
   MainWnd mainWnd;
+
+  dotaLibrary = new DotaLibrary();
+
+  MPQLoader ldr("Custom_V1");
+  String warPath = registry->readString("warPath");
+  ldr.loadArchive(String::buildFullName(warPath, "war3.mpq"));
+  ldr.loadArchive(String::buildFullName(warPath, "war3x.mpq"));
+  ldr.loadArchive(String::buildFullName(warPath, "war3xlocal.mpq"));
+  ldr.loadArchive(String::buildFullName(warPath, "war3patch.mpq"));
+  loadDotaData(&ldr, "DotA v6.73c.w3x");
+  //W3GReplay* replay = W3GReplay::load("destroy.w3g");
+  //delete replay;
+  
+  mainWnd.postLoad();
 
   MSG msg;
   while (GetMessage(&msg, NULL, 0, 0))

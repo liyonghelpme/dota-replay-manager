@@ -144,6 +144,9 @@ void SettingsWindow::addAllItems()
   String warPath = "";
   getRegString(HKEY_CURRENT_USER, "Software\\Blizzard Entertainment\\Warcraft III",
     "InstallPath", warPath);
+  if (warPath.isEmpty())
+    getRegString(HKEY_LOCAL_MACHINE, "Software\\Blizzard Entertainment\\Warcraft III",
+      "InstallPath", warPath);
   warPath = reg->readString("warPath", warPath);
 
   String replayPath;

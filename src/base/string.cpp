@@ -782,7 +782,10 @@ int String::split(Array<String>& res, char sep, bool quotes)
   {
     if ((buf[i] == sep && !quote) || buf[i] == 0)
     {
-      res.push(substring(prev, i));
+      String sub = substring(prev, i);
+      if (quotes)
+        sub.dequote();
+      res.push(sub);
       prev = i + 1;
     }
     else if (buf[i] == '"')

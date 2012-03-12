@@ -49,10 +49,10 @@ public:
   {
     enable(false);
   }
-  void show(bool s = true);
-  void hide()
+  void showWindow(bool s = true);
+  void hideWindow()
   {
-    show(false);
+    showWindow(false);
   }
 
   int id() const;
