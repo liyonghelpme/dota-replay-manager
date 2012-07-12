@@ -28,30 +28,18 @@ String idToString(uint32 id)
   }
 }
 
-Dota::Dota(uint32 ver, DotaLibrary* lib)
-{
-  version = ver;
-  library = lib;
-  ref = 0;
-
-  load(String::format("dota\\%s.txt", formatVersion(ver)));
-}
-Dota::Dota(uint32 ver, String path, DotaLibrary* lib)
-{
-  version = ver;
-  library = lib;
-  ref = 0;
-
-  load(path);
-}
 static int __cdecl recipeComp(void const* va, void const* vb)
 {
   Dota::Recipe* a = (Dota::Recipe*) va;
   Dota::Recipe* b = (Dota::Recipe*) vb;
   return b->result->cost - a->result->cost;
 }
-void Dota::load(String path)
+Dota::Dota(uint32 ver, File* file, DotaLibrary* lib)
 {
+  version = ver;
+  library = lib;
+  ref = 0;
+
   for (int i = 0; i < MAX_HERO_POINT; i++)
     heroes[i].id = 0;
   int numItems = 1;
@@ -64,7 +52,6 @@ void Dota::load(String path)
   abilities[0].icon = "Empty";
 
   numRecipes = 0;
-  File* file = getApp()->getResources()->openFile(path, File::READ);
   if (file)
   {
     String buf;
@@ -95,7 +82,7 @@ void Dota::load(String path)
       {
         buf.trim();
         if (buf[0] == '[')
-          continue;
+          break;
         buf.split(list, ',', true);
         if (list.length() > 6)
         {
@@ -127,7 +114,7 @@ void Dota::load(String path)
       {
         buf.trim();
         if (buf[0] == '[')
-          continue;
+          break;
         buf.split(list, ',', true);
         if (list.length() > 11 && list[5].toInt())
         {
@@ -160,7 +147,7 @@ void Dota::load(String path)
       {
         buf.trim();
         if (buf[0] == '[')
-          continue;
+          break;
         buf.split(list, ',', true);
         if (list.length() > 3)
         {
@@ -189,7 +176,7 @@ void Dota::load(String path)
       {
         buf.trim();
         if (buf[0] == '[')
-          continue;
+          break;
         buf.split(list, ',', true);
         if (list.length() > 1 && (list.length() & 1) == 1)
         {
@@ -208,8 +195,6 @@ void Dota::load(String path)
         }
       }
     }
-    delete file;
-
     ////////////////////////////////////////////
 
     for (int i = 1; i < MAX_HERO_POINT; i++)
@@ -300,19 +285,6 @@ void Dota::release()
 {
   if (this && --ref <= 0)
     library->delDota(version);
-}
-String DotaLibrary::simplify(String str) const
-{
-  String res = "";
-  for (int i = 0; i < str.length(); i++)
-  {
-    if ((str[i] >= '0' && str[i] <= '9') ||
-        (str[i] >= 'a' && str[i] <= 'z'))
-      res += str[i];
-    else if (str[i] >= 'A' && str[i] <= 'Z')
-      res += char(str[i] + 'a' - 'A');
-  }
-  return res;
 }
 DotaLibrary::DotaLibrary()
   : itemPdTag(mapAlNumNoCase)
@@ -408,7 +380,39 @@ Dota* DotaLibrary::getDota(uint32 version)
   Dota* dota = (Dota*) versions.get(version);
   if (dota == NULL)
   {
-    dota = new Dota(version, this);
+    String path = String::format("dota\\%s.txt", formatVersion(version));
+    File* file = getApp()->getResources()->openFile(path, File::READ);
+    if (file)
+    {
+      dota = new Dota(version, file, this);
+      delete file;
+    }
+    else
+      return NULL;
+    versions.set(version, (uint32) dota);
+  }
+  dota->ref++;
+  return dota;
+}
+Dota* DotaLibrary::getDota(uint32 version, String mapPath)
+{
+  Dota* dota = (Dota*) versions.get(version);
+  if (dota == NULL)
+  {
+    String path = String::format("dota\\%s.txt", formatVersion(version));
+    File* file = getApp()->getResources()->openFile(path, File::READ);
+    if (file == NULL)
+    {
+      loadMap(mapPath, path);
+      file = getApp()->getResources()->openFile(path, File::READ);
+    }
+    if (file)
+    {
+      dota = new Dota(version, file, this);
+      delete file;
+    }
+    else
+      return NULL;
     versions.set(version, (uint32) dota);
   }
   dota->ref++;

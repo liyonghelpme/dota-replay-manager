@@ -70,12 +70,12 @@ bool Image::load(File* file)
   if (file)
   {
     bool loaded = false;
-    if (!loaded) loaded = loadGIF(file);
-    if (!loaded) loaded = loadPNG(file);
-    if (!loaded) loaded = loadTGA(file);
-    if (!loaded) loaded = loadBIN(file);
-    if (!loaded) loaded = loadBLP(file);
-    if (!loaded) loaded = loadBLP2(file);
+    file->seek(0, SEEK_SET); if (!loaded) loaded = loadGIF(file);
+    file->seek(0, SEEK_SET); if (!loaded) loaded = loadPNG(file);
+    file->seek(0, SEEK_SET); if (!loaded) loaded = loadTGA(file);
+    file->seek(0, SEEK_SET); if (!loaded) loaded = loadBIN(file);
+    file->seek(0, SEEK_SET); if (!loaded) loaded = loadBLP(file);
+    file->seek(0, SEEK_SET); if (!loaded) loaded = loadBLP2(file);
     if (!loaded)
     {
       delete[] _bits;

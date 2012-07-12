@@ -41,7 +41,7 @@ ParseState::ParseState(bool quick)
   memset(this, NULL, sizeof ParseState);
 
   Registry* reg = getApp()->getRegistry();
-  if (!quick && reg->readInt("useLog"))
+  if (!quick && cfg::useLog)
     file = File::open("log.txt", File::REWRITE);
 
 }
@@ -253,7 +253,10 @@ bool W3GReplay::parseActions(int length, void* arg)
           uint32 itemid = parser->arg_int(1);
 
           Dota::Object object;
-          dota->getObjectById(itemid, &object);
+          if (dota)
+            dota->getObjectById(itemid, &object);
+          else
+            object.type = 0;
 
           player->actions.addEvent(state.time, ACTION_OTHER);
           if (player->sel)
@@ -346,7 +349,7 @@ bool W3GReplay::parseActions(int length, void* arg)
           uint64 object = parser->arg_int64(1);
           if (player->race == 0)
             player->race = convert_race (itemid);
-          Dota::Hero* hero = dota->getHeroById(itemid);
+          Dota::Hero* hero = (dota ? dota->getHeroById(itemid) : NULL);
           if (hero)
           {
             W3GHero* h = getHero(object, player->slot.team, hero);
@@ -629,9 +632,9 @@ void W3GReplay::parseEndgame(String slot, String stat, uint32 value, void* arg)
     }
     else if (stat.substring(0, 4) == "Pool")
     {
-      Dota::Hero* hero = dota->getHero(value);
+      Dota::Hero* hero = (dota ? dota->getHero(value) : NULL);
       if (hero == NULL)
-        hero = dota->getHeroById(value);
+        hero = (dota ? dota->getHeroById(value) : NULL);
       if (hero)
         dotaInfo->draft.pool[dotaInfo->draft.numPool++] = hero;
     }
@@ -642,9 +645,9 @@ void W3GReplay::parseEndgame(String slot, String stat, uint32 value, void* arg)
       if (dotaInfo->draft.numBans[0] == 0 && dotaInfo->draft.numBans[1] == 0 &&
           dotaInfo->draft.numPicks[0] == 0 && dotaInfo->draft.numPicks[1] == 0)
         dotaInfo->draft.firstPick = team;
-      Dota::Hero* hero = dota->getHero(value);
+      Dota::Hero* hero = (dota ? dota->getHero(value) : NULL);
       if (hero == NULL)
-        hero = dota->getHeroById(value);
+        hero = (dota ? dota->getHeroById(value) : NULL);
       if (hero)
       {
         dotaInfo->draft.bans[team][dotaInfo->draft.numBans[team]++] = hero;
@@ -664,9 +667,9 @@ void W3GReplay::parseEndgame(String slot, String stat, uint32 value, void* arg)
       if (dotaInfo->draft.numBans[0] == 0 && dotaInfo->draft.numBans[1] == 0 &&
           dotaInfo->draft.numPicks[0] == 0 && dotaInfo->draft.numPicks[1] == 0)
         dotaInfo->draft.firstPick = team;
-      Dota::Hero* hero = dota->getHero(value);
+      Dota::Hero* hero = (dota ? dota->getHero(value) : NULL);
       if (hero == NULL)
-        hero = dota->getHeroById(value);
+        hero = (dota ? dota->getHeroById(value) : NULL);
       if (hero)
       {
         dotaInfo->draft.picks[team][dotaInfo->draft.numPicks[team]++] = hero;
@@ -687,7 +690,7 @@ void W3GReplay::parseEndgame(String slot, String stat, uint32 value, void* arg)
       {
         if (!quickLoad && state.last_kill_target == target &&
           state.time - state.last_kill_time < 250 && state.last_kill_player != player &&
-          getApp()->getRegistry()->readInt("chatAssists"))
+          cfg::chatAssists)
         {
           W3GMessage& msg = messages[state.last_kill_message];
           if (state.last_kill_first)
@@ -955,7 +958,7 @@ void W3GReplay::parseEndgame(String slot, String stat, uint32 value, void* arg)
         player->heroId = value;
         if (player->hero == NULL)
         {
-          Dota::Hero* hero = dota->getHeroById(value);
+          Dota::Hero* hero = (dota ? dota->getHeroById(value) : NULL);
           if (hero)
             player->hero = newHero(player->slot.team, hero);
         }
@@ -965,7 +968,7 @@ void W3GReplay::parseEndgame(String slot, String stat, uint32 value, void* arg)
         dotaInfo->item_data = true;
         int index = int(stat[2] - '0');
         if (index >= 0 && index <= 5)
-          player->inv.final[index] = dota->getItemById(value);
+          player->inv.final[index] = (dota ? dota->getItemById(value) : NULL);
       }
     }
   }

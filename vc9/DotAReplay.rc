@@ -74,6 +74,7 @@ IDI_MAIN                ICON                    "K:\\Progs\\DotAReplay\\res\\idr
 //
 
 IDC_SPLITVERT           CURSOR                  "k:\\progs\\dotareplay\\res\\cursor1.cur"
+IDC_ELFHAND             CURSOR                  "K:\\Progs\\DotAReplay\\res\\sentinel.cur"
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
 

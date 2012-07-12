@@ -208,14 +208,14 @@ W3GInventory::W3GInventory()
 {
   memset(final, 0, sizeof final);
   wards = 0;
-  repDelay = getApp()->getRegistry()->readInt("repDelayItems");
 }
 void W3GInventory::addItem(Dota::Item* item, uint32 time)
 {
   if (items.length() && items[items.length() - 1].item == item)
   {
     uint32 last = items[items.length() - 1].time;
-    if ((item->cost > 100 && last - time < repDelay) || (last - time < repDelay / 3))
+    if ((item->cost > 100 && last - time < cfg::repDelayItems) ||
+                            (last - time < cfg::repDelayItems / 3))
       return;
   }
   W3GItem& it = items.push();

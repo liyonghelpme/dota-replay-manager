@@ -11,8 +11,8 @@
 
 struct DotaBuilding
 {
-  float x;
-  float y;
+  double x;
+  double y;
   String icon;
 };
 enum {

@@ -23,9 +23,11 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
   imageLibrary = NULL;
   dotaLibrary = NULL;
   hInstance = _hInstance;
+  _loaded = false;
 }
 Application::~Application()
 {
+  resources->flush();
   delete dotaLibrary;
   delete imageLibrary;
   delete resources;
@@ -42,6 +44,7 @@ int Application::run()
   iccex.dwSize = sizeof iccex;
   iccex.dwICC = ICC_STANDARD_CLASSES | ICC_PROGRESS_CLASS | ICC_TREEVIEW_CLASSES;
   InitCommonControlsEx(&iccex);
+  LoadLibrary("Riched20.dll");
 
   MPQInit();
 
@@ -52,19 +55,31 @@ int Application::run()
 
   MainWnd mainWnd;
 
-  dotaLibrary = new DotaLibrary();
+  //MPQLoader ldr("Custom_V1");
+  //String warPath = registry->readString("warPath");
+  //ldr.loadArchive(String::buildFullName(warPath, "war3.mpq"));
+  //ldr.loadArchive(String::buildFullName(warPath, "war3x.mpq"));
+  //ldr.loadArchive(String::buildFullName(warPath, "war3xlocal.mpq"));
+  //ldr.loadArchive(String::buildFullName(warPath, "war3patch.mpq"));
+  //ldr.loadArchive("K:\\Games\\Warcraft III\\Maps\\Download\\DotA v6.74.w3x");
 
-  MPQLoader ldr("Custom_V1");
-  String warPath = registry->readString("warPath");
-  ldr.loadArchive(String::buildFullName(warPath, "war3.mpq"));
-  ldr.loadArchive(String::buildFullName(warPath, "war3x.mpq"));
-  ldr.loadArchive(String::buildFullName(warPath, "war3xlocal.mpq"));
-  ldr.loadArchive(String::buildFullName(warPath, "war3patch.mpq"));
-  loadDotaData(&ldr, "DotA v6.73c.w3x");
-  //W3GReplay* replay = W3GReplay::load("destroy.w3g");
-  //delete replay;
+  //File* f = ldr.load("ReplaceableTextures\\CommandButtons\\BTNMountainGiant.blp");
+  //Image img(f);
+  //Image i16(16, 16);
+  //BLTInfo blt16(&img);
+  //blt16.setDstSize(16, 16);
+  //i16.blt(blt16);
+  //i16.modBrightness(1.16f);
+  //i16.sharpen(0.10f);
+  //i16.writePNG(TempFile(File::open("sven2.png", File::REWRITE)));
+  //delete f;
+
+  //return 0;
+
+  dotaLibrary = new DotaLibrary();
   
   mainWnd.postLoad();
+  _loaded = true;
 
   MSG msg;
   while (GetMessage(&msg, NULL, 0, 0))

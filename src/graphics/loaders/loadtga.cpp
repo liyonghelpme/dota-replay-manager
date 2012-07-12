@@ -112,7 +112,7 @@ bool Image::loadTGA(File* f)
         }
         else if (hdr.pixelSize == 24)
         {
-          int r = f->getc();
+          int b = f->getc();
           int g = f->getc();
           if (f->eof())
           {
@@ -120,14 +120,14 @@ bool Image::loadTGA(File* f)
             delete[] _bits;
             return false;
           }
-          int b = f->getc();
+          int r = f->getc();
           *out++ = clr(r, g, b);
         }
         else
         {
-          int r = f->getc();
-          int g = f->getc();
           int b = f->getc();
+          int g = f->getc();
+          int r = f->getc();
           if (f->eof())
           {
             delete[] pal;
@@ -180,7 +180,7 @@ bool Image::loadTGA(File* f)
           }
           else if (hdr.pixelSize == 24)
           {
-            int r = f->getc();
+            int b = f->getc();
             int g = f->getc();
             if (f->eof())
             {
@@ -188,14 +188,14 @@ bool Image::loadTGA(File* f)
               delete[] _bits;
               return false;
             }
-            int b = f->getc();
+            int r = f->getc();
             color = clr(r, g, b);
           }
           else
           {
-            int r = f->getc();
-            int g = f->getc();
             int b = f->getc();
+            int g = f->getc();
+            int r = f->getc();
             if (f->eof())
             {
               delete[] pal;

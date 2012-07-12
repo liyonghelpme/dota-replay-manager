@@ -4,16 +4,21 @@
 #include "frameui/framewnd.h"
 
 #include "ui/replaytree.h"
-#include "ui/settingswnd.h"
+#include "ui/viewitem.h"
+
+#define MAINWND_SETTINGS      0
+#define MAINWND_REPLAY        1
+#define MAINWND_FOLDER        2
+#define MAINWND_NUM_VIEWS     3
 
 class MainWnd : public FrameWindow
 {
   ReplayTree* replayTree;
 
-  ExtWindowFrame* settings;
+  ExtWindowFrame* views[MAINWND_NUM_VIEWS];
+  ViewItem* history;
 
   // splitter
-  int* splitterPos;
   int dragPos;
   HCURSOR sizeCursor;
 
@@ -21,6 +26,9 @@ class MainWnd : public FrameWindow
 public:
   MainWnd();
   ~MainWnd();
+
+  Window* setView(int view);
+  void pushView(ViewItem* item);
 
   void postLoad();
 };

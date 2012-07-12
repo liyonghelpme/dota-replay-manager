@@ -75,7 +75,7 @@ uint64 parseMode(String mode, String* parsed)
   return result;
 }
 
-int getModeTime (uint64 mode)
+int getModeTime(uint64 mode)
 {
   int time = 90;
   if (mode & (MODE_RD | MODE_LM | MODE_XL))
@@ -83,4 +83,67 @@ int getModeTime (uint64 mode)
   if (mode & (MODE_MM | MODE_VR | MODE_AP))
     time = 120;
   return (time + 30) * 1000;
+}
+
+#include "graphics/image.h"
+#include "base/file.h"
+#include "base/mpqfile.h"
+#include "core/app.h"
+
+class IconKeeper
+{
+public:
+  Image* img[3];
+  bool loaded;
+  IconKeeper()
+  {
+    loaded = false;
+    img[0] = NULL;
+    img[1] = NULL;
+    img[2] = NULL;
+  }
+  ~IconKeeper()
+  {
+    delete img[0];
+    delete img[1];
+    delete img[2];
+  }
+};
+static IconKeeper _icons;
+
+void addMapIcons(Image* image, File* desc)
+{
+  if (!_icons.loaded)
+  {
+    MPQArchive* mpq = MPQArchive::open(
+      String::buildFullName(cfg::warPath, "war3.mpq"), MPQFILE_READ);
+    if (mpq)
+    {
+      _icons.img[0] = new Image(TempFile(mpq->openFile(
+        "UI\\MiniMap\\MiniMapIcon\\MinimapIconGold.blp", File::READ)));
+      _icons.img[1] = new Image(TempFile(mpq->openFile(
+        "UI\\MiniMap\\MiniMapIcon\\MinimapIconNeutralBuilding.blp", File::READ)));
+      _icons.img[2] = new Image(TempFile(mpq->openFile(
+        "UI\\MiniMap\\MiniMapIcon\\MinimapIconStartLoc.blp", File::READ)));
+      _icons.loaded = true;
+    }
+  }
+  desc->seek(4, SEEK_SET);
+  uint32 count = desc->read_int32();
+  while (count--)
+  {
+    uint32 type = desc->read_int32();
+    uint32 cx = desc->read_int32();
+    uint32 cy = desc->read_int32();
+    uint32 clr = desc->read_int32();
+    if (type >= 0 && type <= 2 && _icons.img[type])
+    {
+      BLTInfo info(_icons.img[type],
+        image->width() * cx / 256 - _icons.img[type]->width() / 2,
+        image->height() * cy / 256 - _icons.img[type]->height() / 2);
+      if (type == 2)
+        info.modulate = clr;
+      image->blt(info);
+    }
+  }
 }

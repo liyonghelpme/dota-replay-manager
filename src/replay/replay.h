@@ -2,6 +2,8 @@
 #define __REPLAY_REPLAY_H__
 
 #include "base/file.h"
+#include "base/version.h"
+#include "base/utils.h"
 #include "replay/consts.h"
 #include "replay/player.h"
 #include "replay/message.h"
@@ -157,6 +159,53 @@ public:
 
   W3GPlayer* getCaptain(int team);
   W3GPlayer* getPlayerInSlot(int slot);
+  int getNumPlayers() const
+  {
+    return numPlayers;
+  }
+  W3GPlayer* getPlayer(int i)
+  {
+    return plist[i];
+  }
+  W3GPlayer* getPlayerById(int id)
+  {
+    return players[id];
+  }
+
+  W3GGame* getGameInfo() const
+  {
+    return game;
+  }
+  DotaInfo const* getDotaInfo() const
+  {
+    return dotaInfo;
+  }
+
+  uint32 getVersion() const
+  {
+    return makeVersion(1, hdr.major_v, 0);
+  }
+
+  int getNumMessages() const
+  {
+    return messages.length();
+  }
+  W3GMessage& getMessage(int i)
+  {
+    return messages[i];
+  }
+
+  int getNumWards() const
+  {
+    return wards.length();
+  }
+  W3GWard& getWard(int i)
+  {
+    return wards[i];
+  }
+  int getFirstWard(uint32 time) const;
+
+  String formatTime(uint32 time, int flags = TIME_SECONDS);
 
   uint32 getLength(bool throne = true);
 };

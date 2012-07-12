@@ -80,6 +80,16 @@ LRESULT CALLBACK Window::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
           return result;
       }
     }
+    else if (uMsg == WM_DRAWITEM)
+    {
+      DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*) lParam;
+      if (dis->CtlType |= ODT_MENU && GetParent(dis->hwndItem) == hWnd)
+      {
+        LRESULT result = SendMessage(dis->hwndItem, WM_DRAWITEMREFLECT, wParam, lParam);
+        if (result)
+          return result;
+      }
+    }
     uint32 result = wnd->onMessage(uMsg, wParam, lParam);
     if (uMsg == WM_DESTROY)
       wnd->hWnd = NULL;

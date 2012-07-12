@@ -68,4 +68,21 @@ public:
   }
 };
 
+class StaticFrame : public WindowFrame
+{
+public:
+  StaticFrame(Frame* parent, int id = 0, int style = 0, int exStyle = 0);
+  void setImage(HANDLE image, int type = IMAGE_BITMAP);
+};
+
+class RichEditFrame : public WindowFrame
+{
+  static DWORD CALLBACK StreamCallback(DWORD_PTR cookie, LPBYTE buff, LONG cb, LONG* pcb);
+public:
+  RichEditFrame(Frame* parent, int id = 0, int style = WS_VSCROLL | WS_HSCROLL |
+    ES_MULTILINE | ES_AUTOHSCROLL | ES_AUTOVSCROLL | ES_READONLY);
+  void setBackgroundColor(uint32 color);
+  void setRichText(String text);
+};
+
 #endif // __FRAMEUI_CONTROLFRAMES_H__

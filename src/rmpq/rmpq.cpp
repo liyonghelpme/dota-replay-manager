@@ -2305,11 +2305,15 @@ uint32 MPQResizeHash (MPQARCHIVE handle, uint32 bsize)
   while (size < bsize)
     size <<= 1;
 
-  uint32 xsize = mpq->xsize + (size - mpq->hdr->hashTableSize) * (sizeof (MPQHash) + sizeof (mpqname));
+  uint32 xsize = mpq->xsize + (size - mpq->hdr->hashTableSize) * (sizeof (MPQHash) +
+    (mpq->writelist ? sizeof(mpqname) : 0));
   uint8* data = new uint8[xsize];
-  uint32 hashOffset = mpq->blockSize * 2;
-  uint32 hashSize = mpq->hdr->hashTableSize * (sizeof (MPQHash) + sizeof (mpqname));
-  uint32 newHashSize = size * (sizeof (MPQHash) + sizeof (mpqname));
+  uint32 hashOffset = mpq->blockSize * 2 + sizeof(MPQHeader);
+  if (mpq->hdr2)
+    hashOffset += sizeof(MPQHeader2);
+  uint32 hashSize = mpq->hdr->hashTableSize * (sizeof (MPQHash) + (mpq->writelist ? sizeof(mpqname) : 0));
+  uint32 newHashSize = size * (sizeof (MPQHash) + (mpq->writelist ? sizeof(mpqname) : 0));
+  memcpy (data, mpq->data, hashOffset);
   memcpy (data + hashOffset + newHashSize, mpq->data + hashOffset + hashSize, mpq->xsize - hashOffset - hashSize);
   uint8* oldData = mpq->data;
   MPQHash* oldHashTable = mpq->hashTable;

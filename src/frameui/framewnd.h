@@ -24,6 +24,11 @@ class ExtWindowFrame : public Frame
 public:
   ExtWindowFrame(Frame* parent, Window* wnd);
   ~ExtWindowFrame();
+
+  Window* getWindow() const
+  {
+    return window;
+  }
 };
 
 class FrameWindow : public Frame, public Window

@@ -18,6 +18,7 @@ uint32 idFromString(String str);
 String idToString(uint32 id);
 
 class DotaLibrary;
+class File;
 class Dota
 {
 public:
@@ -98,9 +99,7 @@ private:
   friend class DotaLibrary;
   DotaLibrary* library;
   int ref;
-  void load(String path);
-  Dota(uint32 ver, DotaLibrary* lib);
-  Dota(uint32 ver, String path, DotaLibrary* lib);
+  Dota(uint32 ver, File* file, DotaLibrary* lib);
 public:
 
   Hero* getHero(int point)
@@ -144,8 +143,8 @@ class DotaLibrary
   String heroPdTag[256];
   String heroPdTagMed[256];
   String heroPdTagWide[256];
-  String simplify(String str) const;
   Dictionary<String> itemPdTag;
+  void loadMap(String map, String dest);
 public:
   DotaLibrary();
   ~DotaLibrary();
@@ -192,7 +191,7 @@ public:
   }
 
   Dota* getDota(uint32 version);
-  Dota* getDota(uint32 version, String path);
+  Dota* getDota(uint32 version, String mapPath);
 };
 
 #endif // __DOTA_DOTADATA_H__

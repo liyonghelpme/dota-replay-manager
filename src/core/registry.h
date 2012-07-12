@@ -4,47 +4,89 @@
 #include "base/string.h"
 #include "base/types.h"
 #include "base/dictionary.h"
+#include "base/utils.h"
 
+struct RegistryItem
+{
+  uint8 type;
+  uint32 size;
+  uint8* value;
+  RegistryItem();
+  ~RegistryItem();
+  void set(uint8 t, uint32 s, void const* v);
+};
 class Registry
 {
-  struct RegistryItem
-  {
-    uint8 type;
-    uint32 size;
-    uint8* value;
-    RegistryItem();
-    ~RegistryItem();
-    void set(uint8 t, uint32 s, void const* v);
-  };
   Dictionary<RegistryItem> items;
-  Dictionary<RegistryItem> defaults;
-  void dwriteInt(char const* name, int value);
-  void dwriteInt64(char const* name, __int64 value);
-  void dwriteDouble(char const* name, double value);
-  void dwriteString(char const* name, char const* value);
-  void dwriteBinary(char const* name, void const* data, uint32 size);
+
+  friend class cfg;
+  RegistryItem* createItem(char const* name);
 public:
   Registry();
   ~Registry();
+};
 
-  void delKey(char const* name);
+class cfg
+{
+public:
+  class ConfigItem
+  {
+  protected:
+    friend class cfg;
+    RegistryItem* item;
+  public:
+  };
+  class IntItem : public ConfigItem
+  {
+  public:
+    operator int();
+    IntItem& operator = (int value);
+  };
+  class Int64Item : public ConfigItem
+  {
+  public:
+    operator uint64();
+    Int64Item& operator = (uint64 value);
+  };
+  class DoubleItem : public ConfigItem
+  {
+  public:
+    operator double();
+    DoubleItem& operator = (double value);
+  };
+  class StringItem : public ConfigItem
+  {
+  public:
+    operator String();
+    StringItem& operator = (char const* value);
+  };
+  class BinaryItem : public ConfigItem
+  {
+  public:
+    uint32 size();
+    uint8 const* data();
+    void set(uint8* data, uint32 size);
 
-  void writeInt(char const* name, int value);
-  int readInt(char const* name, int def = 0);
-  void writeInt64(char const* name, __int64 value);
-  __int64 readInt64(char const* name, __int64 def = 0);
-  void writeDouble(char const* name, double value);
-  double readDouble(char const* name, double def = 0);
-  void writeString (char const* name, char const* value);
-  String readString(char const* name, char const* def = NULL);
-  void writeBinary(char const* name, void const* data, uint32 size);
-  uint32 readBinary(char const* name, void* data, uint32 size);
+    template<class T>
+    T const& get()
+    {
+      return *(T*) data();
+    }
+  };
 
-  int* createInt(char const* name, int def = 0);
-  __int64* createInt64(char const* name, __int64 def = 0);
-  double* createDouble(char const* name, double def = 0);
+#define cfg_int(n,d)        static IntItem n;
+#define cfg_int64(n,d)      static Int64Item n;
+#define cfg_double(n,d)     static DoubleItem n;
+#define cfg_string(n,d)     static StringItem n;
+#define cfg_binary(n,d,s)   static BinaryItem n;
+#include "cfgitems.h"
+#undef cfg_int
+#undef cfg_int64
+#undef cfg_double
+#undef cfg_string
+#undef cfg_binary
 
-  void restoreDefaults();
+  static void init(Registry* reg);
 };
 
 #endif // __CORE_REGISTRY_H__

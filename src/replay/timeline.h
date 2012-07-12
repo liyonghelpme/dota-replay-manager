@@ -54,7 +54,7 @@ public:
     return action_times[i];
   }
 
-  int getPosition(uint32 time, float& x, float& y) const;
+  int getPosition(uint32 time, float& x, float& y, float* dx = NULL, float* dy = NULL) const;
   int getActionCounter(int type) const
   {
     return acounter[type];

@@ -155,7 +155,7 @@ void W3GActionList::addDeath(uint32 time, uint32 length)
   }
 }
 
-int W3GActionList::getPosition(uint32 time, float& x, float& y) const
+int W3GActionList::getPosition(uint32 time, float& x, float& y, float* dx, float* dy) const
 {
   int left = 0;
   int right = actions.length() - 1;
@@ -171,6 +171,8 @@ int W3GActionList::getPosition(uint32 time, float& x, float& y) const
     return STATE_DEAD;
   x = actions[left].x;
   y = actions[left].y;
+  if (dx) *dx = x;
+  if (dy) *dy = y;
   if (left > 0)
     fix_vector(time - actions[left].time, actions[left - 1].x, actions[left - 1].y, x, y);
   return STATE_ALIVE;

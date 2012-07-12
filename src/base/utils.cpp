@@ -90,7 +90,7 @@ bool getRegString(HKEY key, char const* subkey, char const* value, String& resul
   return true;
 }
 
-String format_time (long time, int flags)
+String format_time(long time, int flags)
 {
   String result = "";
   if (time < 0)

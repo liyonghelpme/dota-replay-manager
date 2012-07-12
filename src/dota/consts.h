@@ -73,4 +73,8 @@
 int getModeTime (uint64 mode);
 uint64 parseMode(String mode, String* parsed = NULL);
 
+class Image;
+class File;
+void addMapIcons(Image* image, File* desc);
+
 #endif // __DOTA_CONSTS_H__

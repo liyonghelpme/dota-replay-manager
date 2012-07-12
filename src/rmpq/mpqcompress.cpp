@@ -354,7 +354,7 @@ uint32 mpq_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size, ui
       }
     }
   }
-  if (*out_size - 1 < cur_size)
+  if (*out_size - 1 <= cur_size)
   {
     if (*out_size == in_size)
     {
@@ -362,7 +362,7 @@ uint32 mpq_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size, ui
       return mpq_error = MPQ_OK;
     }
     else
-    return mpq_error = MPQ_ERROR_COMPRESS;
+      return mpq_error = MPQ_ERROR_COMPRESS;
   }
   if (cur_in == temp)
     memcpy (out + 1, temp, cur_size);

@@ -1,5 +1,9 @@
 #include "core/app.h"
 
+#include "ui/settingswnd.h"
+#include "ui/replaywnd.h"
+#include "ui/folderwnd.h"
+
 #include "mainwnd.h"
 
 #define SPLITTER_WIDTH      4
@@ -18,29 +22,47 @@ MainWnd::MainWnd()
   sizeCursor = LoadCursor(getInstance(), MAKEINTRESOURCE(IDC_SPLITVERT));
 
   Registry* reg = getApp()->getRegistry();
-  splitterPos = reg->createInt("splitterPos", 200);
 
-  create(reg->readInt("wndX", CW_USEDEFAULT),
-         reg->readInt("wndY", 0),
-         reg->readInt("wndWidth", CW_USEDEFAULT),
-         reg->readInt("wndHeight", 0),
-         "DotA Replay Manager", WS_OVERLAPPEDWINDOW, 0);
+  create(CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, "DotA Replay Manager", WS_OVERLAPPEDWINDOW, 0);
 
   replayTree = new ReplayTree("K:\\Games\\Warcraft III\\Replay", this);
-  replayTree->setPoint(PT_TOPLEFT, 0, 0);
-  replayTree->setPoint(PT_BOTTOM, 0, 0);
-  replayTree->setPoint(PT_RIGHT, NULL, PT_LEFT, *splitterPos, 0);
+  replayTree->setPoint(PT_TOPLEFT, 10, 10);
+  replayTree->setPoint(PT_BOTTOM, 0, -10);
+  replayTree->setPoint(PT_RIGHT, NULL, PT_LEFT, cfg::splitterPos, 0);
 
-  settings = new ExtWindowFrame(this, new SettingsWindow(this));
-  settings->setPoint(PT_TOPLEFT, replayTree, PT_TOPRIGHT, SPLITTER_WIDTH, 0);
-  settings->setPoint(PT_BOTTOMRIGHT, 0, 0);
+  views[MAINWND_SETTINGS] = new ExtWindowFrame(this, new SettingsWindow(this));
+  views[MAINWND_REPLAY] = new ExtWindowFrame(this, new ReplayWindow(this));
+  views[MAINWND_FOLDER] = new ExtWindowFrame(this, new FolderWindow(this));
+  for (int i = 0; i < MAINWND_NUM_VIEWS; i++)
+  {
+    views[i]->setPoint(PT_TOPLEFT, replayTree, PT_TOPRIGHT, SPLITTER_WIDTH, 0);
+    views[i]->setPoint(PT_BOTTOMRIGHT, -10, -10);
+    views[i]->hide();
+  }
+  history = NULL;
 }
 MainWnd::~MainWnd()
 {
 }
 void MainWnd::postLoad()
 {
-  ShowWindow(hWnd, getApp()->getRegistry()->readInt("wndShow", SW_SHOW));
+  WINDOWPLACEMENT pl;
+  memset(&pl, 0, sizeof pl);
+  pl.length = sizeof pl;
+  GetWindowPlacement(hWnd, &pl);
+  pl.flags = 0;
+  pl.showCmd = cfg::wndShow;
+  if (cfg::wndX != CW_USEDEFAULT)
+  {
+    pl.rcNormalPosition.left = cfg::wndX;
+    pl.rcNormalPosition.top = cfg::wndY;
+  }
+  if (cfg::wndWidth != CW_USEDEFAULT)
+  {
+    pl.rcNormalPosition.right = pl.rcNormalPosition.left + cfg::wndWidth;
+    pl.rcNormalPosition.bottom = pl.rcNormalPosition.top + cfg::wndHeight;
+  }
+  SetWindowPlacement(hWnd, &pl);
 }
 
 uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
@@ -52,18 +74,21 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     break;
   case WM_SIZE:
   case WM_MOVE:
+    if (getApp()->loaded())
     {
       WINDOWPLACEMENT pl;
+      memset(&pl, 0, sizeof pl);
+      pl.length = sizeof pl;
       GetWindowPlacement(hWnd, &pl);
       Registry* reg = getApp()->getRegistry();
+      cfg::wndShow = pl.showCmd;
       if (pl.showCmd == SW_SHOWNORMAL)
-        pl.showCmd = SW_SHOW;
-      if (pl.showCmd == SW_SHOWMAXIMIZED || pl.showCmd == SW_SHOW)
-        reg->writeInt("wndShow", pl.showCmd);
-      reg->writeInt("wndX", pl.rcNormalPosition.left);
-      reg->writeInt("wndY", pl.rcNormalPosition.top);
-      reg->writeInt("wndWidth", pl.rcNormalPosition.right - pl.rcNormalPosition.left);
-      reg->writeInt("wndHeight", pl.rcNormalPosition.bottom - pl.rcNormalPosition.top);
+      {
+        cfg::wndX = pl.rcNormalPosition.left;
+        cfg::wndY = pl.rcNormalPosition.top;
+        cfg::wndWidth = pl.rcNormalPosition.right - pl.rcNormalPosition.left;
+        cfg::wndHeight = pl.rcNormalPosition.bottom - pl.rcNormalPosition.top;
+      }
     }
     break;
 //////////////////// SPLITTER ////////////////////////
@@ -73,7 +98,7 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       POINT pt;
       GetCursorPos(&pt);
       ScreenToClient(hWnd, &pt);
-      if (pt.x > *splitterPos && pt.x < *splitterPos + SPLITTER_WIDTH)
+      if (pt.x > cfg::splitterPos && pt.x < cfg::splitterPos + SPLITTER_WIDTH)
       {
         SetCursor(sizeCursor);
         return TRUE;
@@ -85,7 +110,7 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       POINT pt;
       GetCursorPos(&pt);
       ScreenToClient(hWnd, &pt);
-      if (pt.x > *splitterPos && pt.x < *splitterPos + SPLITTER_WIDTH)
+      if (pt.x > cfg::splitterPos && pt.x < cfg::splitterPos + SPLITTER_WIDTH)
       {
         SetCapture(hWnd);
         dragPos = pt.x;
@@ -97,16 +122,16 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     if ((wParam & MK_LBUTTON) && GetCapture() == hWnd)
     {
       int pos = short(LOWORD(lParam));
-      *splitterPos += pos - dragPos;
+      cfg::splitterPos = cfg::splitterPos + pos - dragPos;
       dragPos = pos;
       RECT rc;
       GetClientRect(hWnd, &rc);
-      int oldSplitterPos = *splitterPos;
-      if (*splitterPos < 50) *splitterPos = 50;
-      if (*splitterPos > rc.right - 200) *splitterPos = rc.right - 200;
-      dragPos += *splitterPos - oldSplitterPos;
+      int oldSplitterPos = cfg::splitterPos;
+      if (cfg::splitterPos < 50) cfg::splitterPos = 50;
+      if (cfg::splitterPos > rc.right - 200) cfg::splitterPos = rc.right - 200;
+      dragPos += cfg::splitterPos - oldSplitterPos;
       if (replayTree)
-        replayTree->setPoint(PT_RIGHT, NULL, PT_LEFT, *splitterPos, 0);
+        replayTree->setPoint(PT_RIGHT, NULL, PT_LEFT, cfg::splitterPos, 0);
     }
     break;
   case WM_LBUTTONUP:
@@ -115,4 +140,16 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     break;
   }
   return FrameWindow::onMessage(message, wParam, lParam);
+}
+
+Window* MainWnd::setView(int view)
+{
+  for (int i = 0; i < MAINWND_NUM_VIEWS; i++)
+    views[i]->show(i == view);
+  return views[view]->getWindow();
+}
+void MainWnd::pushView(ViewItem* item)
+{
+  history = (history ? history->push(item) : item);
+  history->apply(this);
 }

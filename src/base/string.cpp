@@ -596,7 +596,7 @@ String String::getFileTitle(String str)
   {
     if (str.buf[i] == '/' || str.buf[i] == '\\')
       return str.substring(i + 1, dot);
-    if (str.buf[i] == '.')
+    if (str.buf[i] == '.' && dot == toTheEnd)
       dot = i;
   }
   return str.substring(0, dot);

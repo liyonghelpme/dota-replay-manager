@@ -79,7 +79,7 @@ public:
   {
     return MPQFileRead(handle, count, buf);
   }
-  int write(void* buf, int count)
+  int write(void const* buf, int count)
   {
     return MPQFileWrite(handle, count, buf);
   }

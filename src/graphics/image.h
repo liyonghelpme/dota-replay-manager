@@ -56,6 +56,10 @@ public:
   {
     return _bits;
   }
+  uint32 const* bits() const
+  {
+    return _bits;
+  }
 
   void blt(int x, int y, Image const* src);
   void blt(int x, int y, Image const* src, int srcX, int srcY, int srcW, int srcH);

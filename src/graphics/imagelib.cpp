@@ -74,10 +74,15 @@ HBITMAP ImageLibrary::getBitmap(char const* name)
     info.hBitmap = info.getImage(mpq)->createBitmap();
   return info.hBitmap;
 }
-int ImageLibrary::getListIndex(char const* name)
+int ImageLibrary::getListIndex(char const* name, char const* def)
 {
   if (!images.has(name))
-    name = "Empty";
+  {
+    if (def && images.has(def))
+      name = def;
+    else
+      name = "Empty";
+  }
   ImageInfo& info = images.get(name);
   if (info.listIndex < 0)
   {
@@ -106,24 +111,27 @@ void ImageLibrary::addImage(char const* name, Image* image, bool big)
     blt16.setDstSize(16, 16);
     i16.blt(blt16);
     i16.modBrightness(1.16f);
-    i16.sharpen(0.16f);
+    i16.sharpen(0.08f);
     i16.writeBIN(file16);
     delete file16;
     loadImage(name16);
   }
 
-  String name32 = String::format("images\\big%s.bin", name);
-  File* file32 = mpq->openFile(name32, File::REWRITE);
-  if (file32)
+  if (big)
   {
-    Image i32(32, 32);
-    BLTInfo blt32(image);
-    blt32.setDstSize(32, 32);
-    i32.blt(blt32);
-    i32.modBrightness(1.16f);
-    i32.sharpen(0.08f);
-    i32.writeBIN(file32);
-    delete file32;
-    loadImage(name32);
+    String name32 = String::format("images\\big%s.bin", name);
+    File* file32 = mpq->openFile(name32, File::REWRITE);
+    if (file32)
+    {
+      Image i32(32, 32);
+      BLTInfo blt32(image);
+      blt32.setDstSize(32, 32);
+      i32.blt(blt32);
+      i32.modBrightness(1.16f);
+  //    i32.sharpen(0.08f);
+      i32.writeBIN(file32);
+      delete file32;
+      loadImage(name32);
+    }
   }
 }

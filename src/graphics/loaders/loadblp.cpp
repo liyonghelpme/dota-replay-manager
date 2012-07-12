@@ -71,7 +71,7 @@ bool Image::loadBLP(File* f)
       return false;
     }
     f->seek(hdr.mipOffs[0], SEEK_SET);
-    if (f->read(data, hdr.mipSize[0]) != hdr.mipSize[0])
+    if (f->read(data + hsize, hdr.mipSize[0]) != hdr.mipSize[0])
     {
       delete[] data;
       return false;
@@ -118,9 +118,9 @@ bool Image::loadBLP(File* f)
       if (cinfo.jpeg_color_space != JCS_GRAYSCALE)
       {
         for (int i = 0; i < cinfo.actual_number_of_colors; i++)
-          palette[i] = clr(cinfo.colormap[0][i] << shift,
+          palette[i] = clr(cinfo.colormap[2][i] << shift,
                            cinfo.colormap[1][i] << shift,
-                           cinfo.colormap[2][i] << shift);
+                           cinfo.colormap[0][i] << shift);
       }
       else
       {
@@ -156,7 +156,7 @@ bool Image::loadBLP(File* f)
         uint8* ptr = buffer[0];
         for (int i = 0; i < _width; i++, ptr += cinfo.num_components)
         {
-          lineBuf[i] = clr(ptr[0], ptr[1], ptr[2]);
+          lineBuf[i] = clr(ptr[2], ptr[1], ptr[0]);
           if (cinfo.num_components > 3)
             lineBuf[i] = (lineBuf[i] & 0x00FFFFFF) | (ptr[3] << 24);
         }
@@ -178,8 +178,6 @@ bool Image::loadBLP(File* f)
     if (f->read(pal, sizeof pal) != sizeof pal)
       return false;
     f->seek(hdr.mipOffs[0], SEEK_SET);
-    for (int i = 0; i < 256; i++)
-      pal[i] = flip_color(pal[i]);
     if (hdr.type == 5)
     {
       for (int i = 0; i < _width * _height; i++)

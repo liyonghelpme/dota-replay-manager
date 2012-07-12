@@ -372,10 +372,7 @@ public:
   {
     map = MPQArchive::open(path, MPQFILE_READ);
     if (map == NULL)
-    {
-      String war = getApp()->getRegistry()->readString("warPath");
-      map = MPQArchive::open(String::buildFullName(war, path), MPQFILE_READ);
-    }
+      map = MPQArchive::open(String::buildFullName(cfg::warPath, path), MPQFILE_READ);
     if (map == NULL)
       return false;
     loader->addArchive(*map);
@@ -682,9 +679,8 @@ public:
     }
     return true;
   }
-  void write(String path)
+  void write(File* file)
   {
-    File* file = File::open(path, File::REWRITE);
     file->printf("[HERO]\r\n");
     for (int i = 0; i < heroes.length(); i++)
     {
@@ -731,13 +727,21 @@ public:
         file->printf(",%s,%d", idToString(items[r.src[j]].ids[0]), r.srccount[j]);
       file->printf("\r\n");
     }
-    delete file;
   }
 };
 
-void loadDotaData(MPQLoader* ldr, String path)
+void DotaLibrary::loadMap(String map, String dest)
 {
-  DotaLoader loader(ldr);
-  loader.load(path);
-  loader.write("test.txt");
+  MPQArchive* res = getApp()->getResources();
+  MPQLoader ldr("Custom_V1");
+  ldr.loadArchive(String::buildFullName(cfg::warPath, "war3.mpq"));
+  ldr.loadArchive(String::buildFullName(cfg::warPath, "war3x.mpq"));
+  ldr.loadArchive(String::buildFullName(cfg::warPath, "war3xlocal.mpq"));
+  ldr.loadArchive(String::buildFullName(cfg::warPath, "war3patch.mpq"));
+  DotaLoader loader(&ldr);
+  loader.load(map);
+  File* file = res->openFile(dest, File::REWRITE);
+  loader.write(file);
+  delete file;
+  res->flushListFile();
 }

@@ -159,11 +159,13 @@ String DictionaryBase::enumGetKey(uint32 cur) const
     len += node->len;
   String key;
   key.resize(len);
+  key.setLength(len);
   int pos = len;
   for (Node* node = (Node*) cur; node; node = node->parent)
   {
     pos -= node->len;
-    memcpy(key.getBuffer() + pos, node->str, node->len);
+    if (node->len)
+      memcpy(key.getBuffer() + pos, node->str, node->len);
   }
   return key;
 }

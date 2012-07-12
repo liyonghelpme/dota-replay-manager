@@ -184,3 +184,60 @@ void ComboFrame::setCurSel(int sel)
 {
   SendMessage(hWnd, CB_SETCURSEL, sel, 0);
 }
+
+///////////////////////////////////////////////////////
+
+StaticFrame::StaticFrame(Frame* parent, int id, int style, int exStyle)
+  : WindowFrame(parent)
+{
+  subclass("Static", "", style | SS_NOTIFY | WS_CHILD | WS_TABSTOP, exStyle);
+  setFont(FontSys::getSysFont());
+  setId(id);
+}
+void StaticFrame::setImage(HANDLE image, int type)
+{
+  SendMessage(hWnd, STM_SETIMAGE, (WPARAM) type, (LPARAM) image);
+}
+
+///////////////////////////////////////////////////////
+
+#include "richedit.h"
+
+struct EditStreamCookie
+{
+  String str;
+  int pos;
+};
+DWORD CALLBACK RichEditFrame::StreamCallback(DWORD_PTR cookie, LPBYTE buff, LONG cb, LONG* pcb)
+{
+  EditStreamCookie* ck = (EditStreamCookie*) cookie;
+  *pcb = ck->str.length() - ck->pos;
+  if (*pcb > cb)
+    *pcb = cb;
+  if (*pcb)
+    memcpy(buff, ck->str.c_str() + ck->pos, *pcb);
+  ck->pos += *pcb;
+  return 0;
+}
+RichEditFrame::RichEditFrame(Frame* parent, int id, int style)
+  : WindowFrame(parent)
+{
+  subclass(RICHEDIT_CLASS, "", style | WS_CHILD | WS_TABSTOP, WS_EX_CLIENTEDGE);
+  setFont(FontSys::getSysFont());
+  setId(id);
+}
+void RichEditFrame::setBackgroundColor(uint32 color)
+{
+  SendMessage(hWnd, EM_SETBKGNDCOLOR, 0, color);
+}
+void RichEditFrame::setRichText(String text)
+{
+  EditStreamCookie cookie;
+  cookie.str = text;
+  cookie.pos = 0;
+  EDITSTREAM es;
+  es.dwCookie = (DWORD_PTR) &cookie;
+  es.dwError = 0;
+  es.pfnCallback = StreamCallback;
+  SendMessage(hWnd, EM_STREAMIN, SF_RTF, (uint32) &es);
+}

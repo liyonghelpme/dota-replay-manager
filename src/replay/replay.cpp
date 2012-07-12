@@ -1,6 +1,5 @@
 #include "replay.h"
 #include "base/gzmemory.h"
-#include "base/version.h"
 #include "core/app.h"
 
 #include <stdarg.h>
@@ -163,7 +162,7 @@ W3GReplay::W3GReplay(File* unpacked, W3GHeader const& header, bool quick)
 
   if (dotaInfo)
   {
-    dota = getApp()->getDotaLibrary()->getDota(dotaInfo->version);
+    dota = getApp()->getDotaLibrary()->getDota(dotaInfo->version, game->map);
     for (int i = 0; i < numPlayers; i++)
       plist[i]->actions.start(quick, plist[i]->slot.team);
   }
@@ -171,7 +170,7 @@ W3GReplay::W3GReplay(File* unpacked, W3GHeader const& header, bool quick)
     dota = NULL;
 
   blockPos = replay->tell();
-  if (parseBlocks())
+  if (!parseBlocks())
     return;
 
   analyze();
@@ -388,9 +387,8 @@ void W3GReplay::analyze()
 {
   if (game->saver == NULL)
   {
-    String ownNames = getApp()->getRegistry()->readString("ownNames");
     Array<String> names;
-    ownNames.split(names, " ,;");
+    String(cfg::ownNames).split(names, " ,;");
     for (int i = 0; i < numPlayers && game->saver == NULL; i++)
     {
       for (int j = 0; j < names.length(); j++)
@@ -587,4 +585,28 @@ uint32 W3GReplay::getLength(bool throne)
   if (throne && dotaInfo)
     return dotaInfo->end_time;
   return game->end_time;
+}
+String W3GReplay::formatTime(uint32 time, int flags)
+{
+  long atime = time;
+  if (cfg::relTime && dotaInfo)
+    atime -= (long) dotaInfo->start_time;
+  return format_time(atime, flags);
+}
+
+int W3GReplay::getFirstWard(uint32 time) const
+{
+  int left = 0;
+  int right = wards.length() - 1;
+  if (right < 0 || wards[0].time > time)
+    return -1;
+  while (left < right)
+  {
+    int m = (left + right + 1) / 2;
+    if (wards[m].time > time)
+      right = m - 1;
+    else
+      left = m;
+  }
+  return left;
 }

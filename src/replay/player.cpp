@@ -73,9 +73,9 @@ W3GPlayer::W3GPlayer(File* f)
 
 String W3GPlayer::format() const
 {
-  return String::format("%s (%d-%d)", name, 0, 0);
+  return String::format("%s [%d-%d]", name, stats[STAT_KILLS], stats[STAT_DEATHS]);
 }
 String W3GPlayer::format_full() const
 {
-  return String::format("@%d|%d@%s", player_id, slot.color, name);
+  return String::format("@%d|%d@ [%d-%d]", player_id, slot.color, stats[STAT_KILLS], stats[STAT_DEATHS]);
 }

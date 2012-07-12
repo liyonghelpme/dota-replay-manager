@@ -9,24 +9,20 @@
 #define VALUE_DOUBLE    0x03
 #define VALUE_STRING    0x04
 #define VALUE_BINARY    0x05
-#define VALUE_MASK      0x7F
-#define VALUE_FROZEN    0x80
 
-Registry::RegistryItem::RegistryItem()
+RegistryItem::RegistryItem()
 {
   type = VALUE_VOID;
   size = 0;
   value = NULL;
 }
-Registry::RegistryItem::~RegistryItem()
+RegistryItem::~RegistryItem()
 {
   delete[] value;
 }
-void Registry::RegistryItem::set(uint8 t, uint32 s, void const* v)
+void RegistryItem::set(uint8 t, uint32 s, void const* v)
 {
-  if ((type & VALUE_FROZEN) && ((t & VALUE_MASK) != (type & VALUE_MASK) || s != size))
-    return;
-  type = t | (type & VALUE_FROZEN);
+  type = t;
   if (s != size)
   {
     size = s;
@@ -47,25 +43,29 @@ void Registry::RegistryItem::set(uint8 t, uint32 s, void const* v)
 
 Registry::Registry()
 {
+  cfg::init(this);
   File* file = File::open(String::buildFullName(getApp()->getRootPath(), "config.cfg"), File::READ);
   if (file)
   {
     int num = file->read_int32();
+    String name;
     for (int i = 0; i < num; i++)
     {
-      uint8 nlen = file->getc();
-      char name[256];
-      if (file->read(name, nlen) != nlen)
+      uint32 nlen = file->read_int32();
+      name.resize(nlen);
+      if (file->read(name.getBuffer(), nlen) != nlen)
         break;
-      name[nlen] = 0;
-      RegistryItem& item = items.create(name);
-      if (file->read(&item.type, 1) != 1 ||
-          file->read(&item.size, 4) != 4)
+      name.setLength(nlen);
+      RegistryItem* item = createItem(name);
+      uint8 type;
+      uint32 size;
+      if (file->read(&type, 1) != 1 ||
+          file->read(&size, 4) != 4)
         break;
-      if (item.size)
+      if (item->type == VALUE_VOID || item->type == type)
       {
-        item.value = new uint8[item.size];
-        if (file->read(item.value, item.size) != item.size)
+        item->set(type, size, NULL);
+        if (file->read(item->value, size) != size)
           break;
       }
     }
@@ -83,9 +83,9 @@ Registry::~Registry()
     {
       String name = items.enumGetKey(cur);
       RegistryItem const& item = items.enumGetValue(cur);
-      file->putc(name.length());
+      file->write_int32(name.length());
       file->write(name.c_str(), name.length());
-      file->putc(item.type & VALUE_MASK);
+      file->putc(item.type);
       file->write_int32(item.size);
       if (item.size)
         file->write(item.value, item.size);
@@ -96,193 +96,92 @@ Registry::~Registry()
     delete file;
   }
 }
-
-void Registry::dwriteInt(char const* name, int value)
+RegistryItem* Registry::createItem(char const* name)
 {
-  RegistryItem& item = defaults.create(name);
-  item.set(VALUE_INT, sizeof value, &value);
-}
-void Registry::dwriteInt64(char const* name, __int64 value)
-{
-  RegistryItem& item = defaults.create(name);
-  item.set(VALUE_INT64, sizeof value, &value);
-}
-void Registry::dwriteDouble(char const* name, double value)
-{
-  RegistryItem& item = defaults.create(name);
-  item.set(VALUE_DOUBLE, sizeof value, &value);
-}
-void Registry::dwriteString(char const* name, char const* value)
-{
-  RegistryItem& item = defaults.create(name);
-  item.set(VALUE_STRING, strlen(value) + 1, value);
-}
-void Registry::dwriteBinary(char const* name, void const* data, uint32 size)
-{
-  RegistryItem& item = defaults.create(name);
-  item.set(VALUE_BINARY, size, data);
+  return &items.create(name);
 }
 
-void Registry::delKey(char const* name)
+//////////////////////////////////////////
+
+cfg::IntItem::operator int()
 {
-  if (items.has(name) && (items.get(name).type & VALUE_FROZEN))
-    return;
-  items.del(name);
+  return *(int*) item->value;
+}
+cfg::IntItem& cfg::IntItem::operator = (int value)
+{
+  *(int*) item->value = value;
+  return *this;
 }
 
-void Registry::writeInt(char const* name, int value)
+cfg::Int64Item::operator uint64()
 {
-  RegistryItem& item = items.create(name);
-  item.set(VALUE_INT, sizeof value, &value);
+  return *(uint64*) item->value;
 }
-int Registry::readInt(char const* name, int def)
+cfg::Int64Item& cfg::Int64Item::operator = (uint64 value)
 {
-  dwriteInt(name, def);
-  RegistryItem& item = items.create(name);
-  int type = (item.type & VALUE_MASK);
-  if (type == VALUE_INT || type == VALUE_INT64)
-    return *(int*) item.value;
-  else if (type == VALUE_DOUBLE)
-    return int(*(double*) item.value);
-  else
-  {
-    item.set(VALUE_INT, sizeof def, &def);
-    return def;
-  }
-}
-void Registry::writeInt64(char const* name, __int64 value)
-{
-  RegistryItem& item = items.create(name);
-  item.set(VALUE_INT64, sizeof value, &value);
-}
-__int64 Registry::readInt64(char const* name, __int64 def)
-{
-  dwriteInt64(name, def);
-  RegistryItem& item = items.create(name);
-  int type = (item.type & VALUE_MASK);
-  if (type == VALUE_INT64)
-    return *(__int64*) item.value;
-  else if (type == VALUE_INT)
-    return *(int*) item.value;
-  else if (type == VALUE_DOUBLE)
-    return __int64(*(double*) item.value);
-  else
-  {
-    item.set(VALUE_INT64, sizeof def, &def);
-    return def;
-  }
-}
-void Registry::writeDouble(char const* name, double value)
-{
-  RegistryItem& item = items.create(name);
-  item.set(VALUE_DOUBLE, sizeof value, &value);
-}
-double Registry::readDouble(char const* name, double def)
-{
-  dwriteDouble(name, def);
-  RegistryItem& item = items.create(name);
-  int type = (item.type & VALUE_MASK);
-  if (type == VALUE_DOUBLE)
-    return *(double*) item.value;
-  else if (type == VALUE_INT)
-    return double(*(int*) item.value);
-  else if (type == VALUE_INT64)
-    return double(*(__int64*) item.value);
-  else
-  {
-    item.set(VALUE_DOUBLE, sizeof def, &def);
-    return def;
-  }
-}
-void Registry::writeString (char const* name, char const* value)
-{
-  RegistryItem& item = items.create(name);
-  item.set(VALUE_STRING, strlen(value) + 1, value);
-}
-String Registry::readString(char const* name, char const* def)
-{
-  if (def)
-    dwriteString(name, def);
-  RegistryItem& item = items.create(name);
-  if ((item.type & VALUE_MASK) == VALUE_STRING)
-    return String((char*) item.value);
-  else if (def)
-  {
-    item.set(VALUE_STRING, strlen(def) + 1, def);
-    return def;
-  }
-  else
-  {
-    item.set(VALUE_STRING, 1, "");
-    return "";
-  }
-}
-void Registry::writeBinary(char const* name, void const* data, uint32 size)
-{
-  RegistryItem& item = items.create(name);
-  item.set(VALUE_BINARY, size, data);
-}
-uint32 Registry::readBinary(char const* name, void* data, uint32 size)
-{
-  if (data)
-    dwriteBinary(name, data, size);
-  RegistryItem& item = items.create(name);
-  if ((item.type & VALUE_MASK) != VALUE_VOID)
-  {
-    if (data)
-    {
-      if (size >= item.size)
-        memcpy(data, item.value, item.size);
-      else
-        return 0;
-    }
-    return item.size;
-  }
-  else
-  {
-    item.set(VALUE_BINARY, size, data);
-    return size;
-  }
+  *(uint64*) item->value = value;
+  return *this;
 }
 
-int* Registry::createInt(char const* name, int def)
+cfg::DoubleItem::operator double()
 {
-  dwriteInt(name, def);
-  RegistryItem& item = items.create(name);
-  if (item.type == VALUE_VOID)
-    item.set(VALUE_INT | VALUE_FROZEN, sizeof def, &def);
-  else
-    item.type |= VALUE_FROZEN;
-  return (int*) item.value;
+  return *(double*) item->value;
 }
-__int64* Registry::createInt64(char const* name, __int64 def)
+cfg::DoubleItem& cfg::DoubleItem::operator = (double value)
 {
-  dwriteInt64(name, def);
-  RegistryItem& item = items.create(name);
-  if (item.type == VALUE_VOID)
-    item.set(VALUE_INT64 | VALUE_FROZEN, sizeof def, &def);
-  else
-    item.type |= VALUE_FROZEN;
-  return (__int64*) item.value;
-}
-double* Registry::createDouble(char const* name, double def)
-{
-  dwriteDouble(name, def);
-  RegistryItem& item = items.create(name);
-  if (item.type == VALUE_VOID)
-    item.set(VALUE_DOUBLE | VALUE_FROZEN, sizeof def, &def);
-  else
-    item.type |= VALUE_FROZEN;
-  return (double*) item.value;
+  *(double*) item->value = value;
+  return *this;
 }
 
-void Registry::restoreDefaults()
+cfg::StringItem::operator String()
 {
-  for (uint32 cur = defaults.enumStart(); cur; cur = defaults.enumNext(cur))
-  {
-    String name = defaults.enumGetKey(cur);
-    RegistryItem const& def = defaults.enumGetValue(cur);
-    RegistryItem& item = items.create(name);
-    item.set(def.type, def.size, def.value);
-  }
+  return String((char*) item->value);
+}
+cfg::StringItem& cfg::StringItem::operator = (char const* value)
+{
+  item->set(VALUE_STRING, strlen(value) + 1, value);
+  return *this;
+}
+
+uint32 cfg::BinaryItem::size()
+{
+  return item->size;
+}
+uint8 const* cfg::BinaryItem::data()
+{
+  return item->value;
+}
+void cfg::BinaryItem::set(uint8* d, uint32 s)
+{
+  item->set(VALUE_BINARY, s, d);
+}
+
+
+#define cfg_int(n,d)        cfg::IntItem cfg::n;
+#define cfg_int64(n,d)      cfg::Int64Item cfg::n;
+#define cfg_double(n,d)     cfg::DoubleItem cfg::n;
+#define cfg_string(n,d)     cfg::StringItem cfg::n;
+#define cfg_binary(n,d,s)   cfg::BinaryItem cfg::n;
+#include "cfgitems.h"
+#undef cfg_int
+#undef cfg_int64
+#undef cfg_double
+#undef cfg_string
+#undef cfg_binary
+
+void cfg::init(Registry* reg)
+{
+#define cfg_int(n,d)        {int v=d;n.item=reg->createItem(#n);n.item->set(VALUE_INT,sizeof(int),&v);}
+#define cfg_int64(n,d)      {uint64 v=d;n.item=reg->createItem(#n);n.item->set(VALUE_INT64,sizeof(uint64),&v);}
+#define cfg_double(n,d)     {double v=d;n.item=reg->createItem(#n);n.item->set(VALUE_DOUBLE,sizeof(double),&v);}
+#define cfg_string(n,d)     n.item=reg->createItem(#n);n=d;
+#define cfg_binary(n,d,s)   n.item=reg->createItem(#n);n.item->set(VALUE_BINARY,s,(uint8*)d);
+#define cfg_init
+#include "cfgitems.h"
+#undef cfg_int
+#undef cfg_int64
+#undef cfg_double
+#undef cfg_string
+#undef cfg_binary
+#undef cfg_init
 }

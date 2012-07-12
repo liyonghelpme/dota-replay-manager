@@ -19,9 +19,6 @@ struct W3GInventory
 
   W3GInventory();
   void addItem(Dota::Item* item, uint32 time);
-
-private:
-  uint32 repDelay;
 };
 
 #endif // __REPLAY_INVENTORY_H__

@@ -34,7 +34,7 @@ uint32 getSlotColor(int clr)
   case 8:  return 0x969594;
   case 9:  return 0xF1BE7D;
   case 10: return 0x45610F;
-  case 11: return 0x954D8D;
+  case 11: return 0x054D8D;
   default: return 0xFFFFFF;
   }
 }
@@ -86,14 +86,4 @@ uint32 getExtraColor(int clr)
 
   default: return 0xFFFFFF;
   }
-}
-String getExtraColors()
-{
-  String result = "";
-  for (int i = 15; i <= 31; i++)
-  {
-    uint32 c = getExtraColor(i);
-    result.printf("\\red%d\\green%d\\blue%d;", c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF);
-  }
-  return result;
 }

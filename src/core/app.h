@@ -23,6 +23,8 @@ class Application
   ImageLibrary* imageLibrary;
   Registry* registry;
   DotaLibrary* dotaLibrary;
+
+  bool _loaded;
 public:
   Application(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow);
   ~Application();
@@ -50,6 +52,11 @@ public:
   String getRootPath() const
   {
     return root;
+  }
+
+  bool loaded() const
+  {
+    return _loaded;
   }
 
   int run();

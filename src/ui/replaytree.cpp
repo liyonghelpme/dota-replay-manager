@@ -4,12 +4,12 @@
 #include "replaytree.h"
 #include "frameui/fontsys.h"
 
-struct ReplayTree::TreeItem
-{
-};
-ReplayTree::ReplayTree(String thePath, Frame* parent)
+#include "ui/mainwnd.h"
+
+ReplayTree::ReplayTree(String thePath, MainWnd* parent)
   : WindowFrame(parent)
 {
+  mainWnd = parent;
   tracker = NULL;
   subclass(WC_TREEVIEW, "",
     TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS |
@@ -18,12 +18,10 @@ ReplayTree::ReplayTree(String thePath, Frame* parent)
   TreeView_SetImageList(hWnd, getApp()->getImageLibrary()->getImageList(), TVSIL_NORMAL);
   TreeView_SetItemHeight(hWnd, 18);
 
+  replayRoot = NULL;
+
   setPath(thePath);
   setFont(FontSys::getSysFont());
-
-  items = NULL;
-  numItems = 0;
-  maxItems = 0;
 }
 
 struct FoundItem
@@ -46,7 +44,7 @@ static int compItems(FoundItem const& a, FoundItem const& b)
 
 void ReplayTree::populate(HTREEITEM parent, String thePath)
 {
-  Array<FoundItem> items;
+  Array<FoundItem> foundItems;
 
   WIN32_FIND_DATA data;
   HANDLE hFind = FindFirstFile(String::buildFullName(thePath, "*"), &data);
@@ -56,38 +54,44 @@ void ReplayTree::populate(HTREEITEM parent, String thePath)
     if (strcmp(data.cFileName, ".") && strcmp(data.cFileName, ".."))
     {
       if (data.dwFileAttributes == FILE_ATTRIBUTE_DIRECTORY)
-        items.push(FoundItem(true, data.cFileName));
+        foundItems.push(FoundItem(true, data.cFileName));
       else if (String::getExtension(data.cFileName).icompare(".w3g") == 0)
-        items.push(FoundItem(false, data.cFileName));
+        foundItems.push(FoundItem(false, data.cFileName));
     }
     success = FindNextFile(hFind, &data);
   }
   FindClose(hFind);
 
-  items.sort(compItems);
+  foundItems.sort(compItems);
 
   ImageLibrary* images = getApp()->getImageLibrary();
-  for (int i = 0; i < items.length(); i++)
+  for (int i = 0; i < foundItems.length(); i++)
   {
     TVINSERTSTRUCT tvis;
     memset(&tvis, 0, sizeof tvis);
     tvis.hInsertAfter = TVI_LAST;
     tvis.hParent = parent;
-    tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
-    tvis.item.pszText = const_cast<char*>(items[i].name.c_str());
-    if (items[i].folder)
+    tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM;
+    tvis.item.pszText = foundItems[i].name.getBuffer();
+    int pos = items.length();
+    tvis.item.lParam = pos;
+    items.push();
+    items[pos].path = String::buildFullName(thePath, foundItems[i].name);
+    if (foundItems[i].folder)
     {
+      items[pos].type = MAINWND_FOLDER;
       tvis.item.iImage = images->getListIndex("IconClosedFolder");
       tvis.item.iSelectedImage = images->getListIndex("IconOpenFolder");
-      HTREEITEM folder = TreeView_InsertItem(hWnd, &tvis);
-      populate(folder, String::buildFullName(thePath, items[i].name));
     }
     else
     {
+      items[pos].type = MAINWND_REPLAY;
       tvis.item.iImage = images->getListIndex("IconReplay");
       tvis.item.iSelectedImage = tvis.item.iImage;
-      TreeView_InsertItem(hWnd, &tvis);
     }
+    items[pos].treeItem = TreeView_InsertItem(hWnd, &tvis);
+    if (foundItems[i].folder)
+      populate(items[pos].treeItem, items[pos].path);
   }
 }
 void ReplayTree::setPath(String thePath)
@@ -100,5 +104,61 @@ void ReplayTree::setPath(String thePath)
 void ReplayTree::onDirChange()
 {
   TreeView_DeleteItem(hWnd, TVI_ROOT);
-  populate(TVI_ROOT, path);
+
+  String rootName = String::getFileTitle(path);
+  items.clear();
+
+  TVINSERTSTRUCT tvis;
+  memset(&tvis, 0, sizeof tvis);
+  tvis.hInsertAfter = TVI_LAST;
+  tvis.hParent = TVI_ROOT;
+  tvis.item.mask = TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_PARAM;
+  tvis.item.pszText = "Settings";
+  tvis.item.iImage = getApp()->getImageLibrary()->getListIndex("IconSettings");
+  tvis.item.iSelectedImage = tvis.item.iImage;
+  tvis.item.lParam = 0;
+
+  items.push();
+  items[0].type = MAINWND_SETTINGS;
+  items[0].treeItem = TreeView_InsertItem(hWnd, &tvis);
+
+  tvis.item.pszText = rootName.getBuffer();
+  tvis.item.iImage = getApp()->getImageLibrary()->getListIndex("IconClosedFolder");
+  tvis.item.iSelectedImage = getApp()->getImageLibrary()->getListIndex("IconOpenFolder");
+  tvis.item.lParam = 1;
+  replayRoot = TreeView_InsertItem(hWnd, &tvis);
+
+  items.push();
+  items[1].type = MAINWND_FOLDER;
+  items[1].path = path;
+  items[1].treeItem = replayRoot;
+
+  populate(replayRoot, path);
+}
+
+uint32 ReplayTree::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+{
+  switch (message)
+  {
+  case WM_NOTIFYREFLECT:
+    {
+      NMTREEVIEW* hdr = (NMTREEVIEW*) lParam;
+      if (hdr->hdr.code == TVN_SELCHANGED)
+      {
+        int pos = hdr->itemNew.lParam;
+        if (pos >= 0 && pos < items.length())
+        {
+          if (items[pos].type == MAINWND_FOLDER)
+            mainWnd->pushView(new FolderViewItem(items[pos].path));
+          else if (items[pos].type == MAINWND_REPLAY)
+            mainWnd->pushView(new ReplayViewItem(items[pos].path));
+          else if (items[pos].type == MAINWND_SETTINGS)
+            mainWnd->pushView(new SettingsViewItem());
+        }
+        return TRUE;
+      }
+    }
+    break;
+  }
+  return WindowFrame::onMessage(message, wParam, lParam);
 }

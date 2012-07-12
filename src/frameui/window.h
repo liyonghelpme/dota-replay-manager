@@ -8,7 +8,8 @@
 
 #define WM_NOTIFYREFLECT    (WM_USER+0x0157)
 #define WM_COMMANDREFLECT   (WM_USER+0x0158)
-#define WM_POSTCREATE       (WM_USER+0x0159)
+#define WM_DRAWITEMREFLECT  (WM_USER+0x0159)
+#define WM_POSTCREATE       (WM_USER+0x015A)
 
 class Window
 {
