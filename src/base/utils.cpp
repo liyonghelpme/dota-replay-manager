@@ -48,13 +48,14 @@ String getAppPath(bool quoted)
 {
   char const* pt = GetCommandLine();
   char esym = ' ';
+  int end = 0;
   if (*pt == '"')
   {
     if (!quoted)
       pt++;
+    end = 1;
     esym = '"';
   }
-  int end = 0;
   while (pt[end] && pt[end] != esym)
     end++;
   String path = String(pt, end);

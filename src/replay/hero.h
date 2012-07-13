@@ -18,16 +18,23 @@ struct W3GHero
   {
     Dota::Ability* skill;
     uint32 time;
+    int pos;
   };
   Array<SkillInfo> slearn;
   SkillInfo skills[32];
+
+  int currentLevel;
+  int skillLevels[5];
+  void compute(uint32 time);
 
   int actions[16];
 
   W3GHero();
   void pushAbility(Dota::Ability* ability, uint32 time);
   void setPlayer(W3GPlayer* player);
-  void process();
+private:
+  void undo(int pos);
+  bool fix(int pos);
 };
 
 #endif // __REPLAY_HERO__

@@ -14,6 +14,10 @@ class WindowFrame : public Frame, public Window
 protected:
   void create(String text, uint32 style, uint32 exStyle);
   void subclass(String wndClass, String text, uint32 style, uint32 exStyle);
+  HWND getOwner() const
+  {
+    return ownerWindow;
+  }
 public:
   WindowFrame(Frame* parent);
 };

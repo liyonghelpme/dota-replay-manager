@@ -85,4 +85,23 @@ public:
   void setRichText(String text);
 };
 
+class SliderFrame : public WindowFrame
+{
+public:
+  SliderFrame(Frame* parent, int id = 0, int style = TBS_AUTOTICKS | TBS_BOTH);
+
+  void setPos(int pos);
+  void setRange(int minValue, int maxValue);
+  void setLineSize(int size);
+  void setPageSize(int size);
+  void setTicFreq(int freq);
+  int getPos();
+};
+
+class UpDownFrame : public WindowFrame
+{
+public:
+  UpDownFrame(Frame* parent, int id = 0, int style = 0);
+};
+
 #endif // __FRAMEUI_CONTROLFRAMES_H__

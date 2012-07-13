@@ -255,7 +255,7 @@ void SettingsWindow::addAllItems()
   btn1->setSize(300, 16);
   btn1->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 5);
   String cmd;
-  if (getRegString(HKEY_CLASSES_ROOT, "Warcraft3.Replay\\shell\\open\\command", "", cmd) &&
+  if (getRegString(HKEY_CURRENT_USER, "Software\\Classes\\Warcraft3.Replay\\shell\\open\\command", "", cmd) &&
       cmd == getAppPath(true) + " \"%1\"")
     btn1->setCheck(true);
   else
@@ -476,34 +476,43 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
         else if (!String(cfg::warPath).isEmpty())
           cmd.printf("\"%s\" -loadfile \"%%1\"", String::buildFullName(cfg::warPath, "War3.exe"));
         HKEY hKey;
-        if (RegOpenKeyEx(HKEY_CLASSES_ROOT, "Warcraft3.Replay\\shell\\open\\command",
+        HRESULT result;
+        if (RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\Classes\\Warcraft3.Replay\\shell\\open\\command",
           0, KEY_SET_VALUE, &hKey) == ERROR_SUCCESS)
         {
           RegSetValueEx(hKey, "", 0, REG_SZ, (LPBYTE) cmd.c_str(), cmd.length() + 1);
           RegCloseKey(hKey);
         }
-        else if (RegCreateKeyEx(HKEY_CLASSES_ROOT, ".w3g", 0, NULL, REG_OPTION_NON_VOLATILE,
-          KEY_SET_VALUE, NULL, &hKey, NULL) == ERROR_SUCCESS)
+        else if ((result = RegCreateKeyEx(HKEY_CURRENT_USER, "Software\\Classes\\.w3g", 0, NULL, REG_OPTION_NON_VOLATILE,
+          KEY_SET_VALUE, NULL, &hKey, NULL)) == ERROR_SUCCESS)
         {
           RegSetValueEx(hKey, "", 0, REG_SZ, (LPBYTE) "Warcraft3.Replay", strlen("Warcraft3.Replay") + 1);
           RegCloseKey(hKey);
-          if (RegCreateKeyEx(HKEY_CLASSES_ROOT, "Warcraft3.Replay\\shell\\open\\command",
+          if (RegCreateKeyEx(HKEY_CURRENT_USER, "Software\\Classes\\Warcraft3.Replay\\shell\\open\\command",
             0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL) == ERROR_SUCCESS)
           {
             RegSetValueEx(hKey, "", 0, REG_SZ, (LPBYTE) cmd.c_str(), cmd.length() + 1);
             RegCloseKey(hKey);
           }
-          if (RegCreateKeyEx(HKEY_CLASSES_ROOT, "Warcraft3.Replay\\DefaultIcon",
+          if (RegCreateKeyEx(HKEY_CURRENT_USER, "Software\\Classes\\Warcraft3.Replay\\DefaultIcon",
             0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL) == ERROR_SUCCESS)
           {
             String warIcon;
             if (String(cfg::warPath).isEmpty())
               warIcon = String::buildFullName(cfg::warPath, "replays.ico");
             else
-              warIcon = getAppPath(true) + ",2";
+              warIcon = getAppPath(true) + ",0";
             RegSetValueEx(hKey, "", 0, REG_SZ, (LPBYTE) warIcon.c_str(), warIcon.length() + 1);
             RegCloseKey(hKey);
           }
+        }
+        else
+        {
+          LPTSTR pBuffer;
+          FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER,
+            NULL, result, 0, (LPTSTR) &pBuffer, 4, NULL);
+          MessageBox(hWnd, pBuffer, "Error", MB_ICONERROR | MB_OK);
+          LocalFree((HLOCAL) pBuffer);
         }
       }
       break;

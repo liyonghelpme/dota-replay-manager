@@ -180,6 +180,10 @@ public:
   {
     return dotaInfo;
   }
+  Dota* getDotaData()
+  {
+    return dota;
+  }
 
   uint32 getVersion() const
   {

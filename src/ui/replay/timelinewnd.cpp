@@ -431,13 +431,15 @@ void TimePicture::paint()
 
         glEnable(GL_SCISSOR_TEST);
         glScissor(ix + 8, height() - (iy + 110), 80, 118);
+        selPlayer->hero->compute(time);
+        selPlayer->inv.compute(time, w3g->getDotaData());
         gl->text(ix + 12, iy - 4, selPlayer->name);
         gl->text(ix + 12, iy + 12, selPlayer->hero->hero->shortName);
-        gl->text(ix + 12, iy + 28, String(selPlayer->hero->level));
+        gl->text(ix + 12, iy + 28, String(selPlayer->hero->currentLevel));
         for (int i = 0; i < 6; i++)
           gl->image((i % 2) * 16 + ix + 12,
                     (i / 2) * 16 + iy + 44, imgLib->getImage(
-                    selPlayer->inv.final[i] ? selPlayer->inv.final[i]->icon : "emptyslot"));
+                    selPlayer->inv.computed[i] ? selPlayer->inv.computed[i]->icon : "emptyslot"));
         for (int i = 0; i < 5; i++)
         {
           int px = ix + 52;
@@ -446,7 +448,7 @@ void TimePicture::paint()
           if (abil)
           {
             gl->image(px, py, imgLib->getImage(abil->icon));
-            gl->text(px + 18, py, String(4));
+            gl->text(px + 18, py, String(selPlayer->hero->skillLevels[i]));
           }
         }
         glDisable(GL_SCISSOR_TEST);
@@ -459,12 +461,45 @@ void TimePicture::paint()
 
 //////////////////////////////////////////
 
+#define ID_TIMER            102
+#define ID_SPINNER          105
+#define ID_PLAY             106
+#define ID_SLIDER           107
+
 ReplayTimelineTab::ReplayTimelineTab(FrameWindow* parent)
   : ReplayTab(parent)
 {
+  speedBox = new EditFrame(this, 0, ES_RIGHT | ES_READONLY);
+  updownBox = new UpDownFrame(this, ID_SPINNER);
+  playBox = new ButtonFrame("", this, ID_PLAY, BS_AUTOCHECKBOX | BS_PUSHLIKE | BS_ICON);
+  slider = new SliderFrame(this, ID_SLIDER);
+  timeBox = new EditFrame(this, 0, ES_RIGHT | ES_READONLY);
   picture = new TimePicture(this);
-  picture->setPoint(PT_TOPLEFT, 10, 10);
-  picture->setPoint(PT_BOTTOMRIGHT, -10, -10);
+
+  speedBox->setPoint(PT_BOTTOMLEFT, 40, -20);
+  speedBox->setSize(35, 23);
+  updownBox->setPoint(PT_TOPLEFT, speedBox, PT_TOPRIGHT, -1, 0);
+  updownBox->setSize(15, 23);
+  playBox->setPoint(PT_LEFT, updownBox, PT_RIGHT, 8, 0);
+  playBox->setSize(22, 21);
+  timeBox->setPoint(PT_BOTTOMRIGHT, -40, -20);
+  timeBox->setSize(70, 23);
+  slider->setPoint(PT_LEFT, playBox, PT_RIGHT, 8, 0);
+  slider->setPoint(PT_RIGHT, timeBox, PT_LEFT, -8, 0);
+  slider->setHeight(39);
+
+  picture->setPoint(PT_TOPLEFT, 40, 20);
+  picture->setPoint(PT_TOPRIGHT, -40, 20);
+  picture->setPoint(PT_BOTTOM, slider, PT_TOP, 0, -10);
+
+  SendMessage(playBox->getHandle(), BM_SETIMAGE, IMAGE_ICON,
+    (LPARAM) LoadIcon(getInstance(), MAKEINTRESOURCE(IDI_PLAY)));
+  speedBox->setText("1x");
+  speed = 1;
+  lastTime = 0;
+  lastUpdate = 0;
+
+  SetTimer(hWnd, ID_TIMER, 100, NULL);
 }
 ReplayTimelineTab::~ReplayTimelineTab()
 {
@@ -472,5 +507,83 @@ ReplayTimelineTab::~ReplayTimelineTab()
 
 void ReplayTimelineTab::onSetReplay()
 {
+  speed = 1;
+  speedBox->setText("1x");
+  playBox->setCheck(false);
+  timeBox->setText("");
   picture->setReplay(w3g);
+  updownBox->enable(w3g != NULL);
+  playBox->enable(w3g != NULL);
+  slider->enable(w3g != NULL);
+  if (w3g)
+  {
+    slider->setLineSize(60000);
+    slider->setPageSize(600000);
+    slider->setPos(0);
+    uint32 gameTime = w3g->getLength(false);
+    slider->setRange(0, gameTime);
+    if (gameTime < 20000) slider->setTicFreq(1000);
+    else if (gameTime < 40000) slider->setTicFreq(2000);
+    else if (gameTime < 100000) slider->setTicFreq(5000);
+    else if (gameTime < 200000) slider->setTicFreq(10000);
+    else if (gameTime < 600000) slider->setTicFreq(30000);
+    else if (gameTime < 1200000) slider->setTicFreq(60000);
+    else if (gameTime < 2400000) slider->setTicFreq(120000);
+    else if (gameTime < 6000000) slider->setTicFreq(300000);
+    else if (gameTime < 12000000) slider->setTicFreq(600000);
+    else slider->setTicFreq(900000);
+  }
+}
+
+void ReplayTimelineTab::onMove()
+{
+  if (!visible())
+    playBox->setCheck(false);
+}
+void ReplayTimelineTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+{
+  if (message == WM_TIMER && wParam == ID_TIMER)
+  {
+    if (w3g)
+    {
+      int time = slider->getPos();
+      if (playBox->checked())
+      {
+        time += int(GetTickCount() - lastUpdate) * speed;
+        if (time < 0)
+          time = 0;
+        else if (time > (int) w3g->getLength(false))
+          time = w3g->getLength(false);
+        lastUpdate = GetTickCount();
+        slider->setPos(time);
+      }
+      if (time != lastTime)
+      {
+        picture->setTime(time);
+        lastTime = time;
+      }
+      if (playBox->checked() || (GetTickCount() % 1400) > 400)
+        timeBox->setText(w3g->formatTime(time, TIME_HOURS | TIME_SECONDS));
+      else
+        timeBox->setText("");
+    }
+  }
+  else if (message == WM_COMMAND && HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == ID_PLAY)
+  {
+    lastUpdate = GetTickCount();
+  }
+  else if (message == WM_NOTIFY)
+  {
+    NMUPDOWN* nmud = (NMUPDOWN*) lParam;
+    if (nmud->hdr.code == UDN_DELTAPOS)
+    {
+      speed -= nmud->iDelta;
+      if (speed == 0)
+        speed -= nmud->iDelta;
+      if (speed < -99) speed = -99;
+      if (speed > 99) speed = 99;
+      speedBox->setText(String::format("%dx", speed));
+      SetFocus(hWnd);
+    }
+  }
 }

@@ -1,5 +1,6 @@
 #include "hero.h"
 #include "replay/player.h"
+#include "core/registry.h"
 
 W3GHero::W3GHero()
 {
@@ -14,9 +15,62 @@ W3GHero::W3GHero()
 }
 void W3GHero::setPlayer(W3GPlayer* player)
 {
-  level = player->level;
-  for (int i = 1; i < level; i++)
-    levelTime[i] = player->level_time[i];
+  for (int i = 0; i < slearn.length(); i++)
+    slearn[i].pos = -1;
+  memset(skills, 0, sizeof skills);
+  if (player->level)
+  {
+    level = player->level;
+    for (int i = 1; i < level; i++)
+      levelTime[i] = player->level_time[i];
+    levelTime[1] = 0;
+  }
+  else
+  {
+    fix(0);
+    level = 0;
+    for (int i = 1; i <= 25; i++)
+    {
+      if (skills[i].skill)
+      {
+        for (int j = i; j > level || skills[i].time < levelTime[j]; j--)
+          levelTime[j] = skills[i].time;
+        level = i;
+      }
+    }
+    levelTime[1] = 0;
+  }
+  memset(skills, 0, sizeof skills);
+  int curLevel = 0;
+  int points = 0;
+  for (int i = 0; i < slearn.length(); i++)
+  {
+    while (curLevel < level && levelTime[curLevel + 1] < slearn[i].time)
+    {
+      curLevel++;
+      points++;
+    }
+    if (points)
+    {
+      int skillLevel = 0;
+      for (int j = 1; j <= curLevel; j++)
+        if (skills[j].skill == slearn[i].skill)
+          skillLevel++;
+      if (skillLevel < slearn[i].skill->lvlMax)
+      {
+        int reqLevel = slearn[i].skill->lvlStart + slearn[i].skill->lvlSkip * skillLevel;
+        for (int j = reqLevel; j <= curLevel; j++)
+        {
+          if (skills[j].skill == NULL)
+          {
+            skills[j].skill = slearn[i].skill;
+            skills[j].time = slearn[i].time;
+            break;
+          }
+        }
+      }
+    }
+  }
 }
 void W3GHero::pushAbility(Dota::Ability* ability, uint32 time)
 {
@@ -24,109 +78,69 @@ void W3GHero::pushAbility(Dota::Ability* ability, uint32 time)
   skill.skill = ability;
   skill.time = time;
 }
-/*
-void W3GHero::undoFrom (int pos)
+void W3GHero::undo(int pos)
 {
-  for (int i = pos; i < nLearned; i++)
-    if (learned[i].pos >= 0)
-      abilities[learned[i].pos] = 0;
-  while (level > 0 && abilities[level - 1] == 0)
-    level--;
-}
-bool W3GHero::fixFrom (int pos)
-{
-  bool res = true;
-  for (int i = pos; i < nLearned; i++)
+  for (int i = pos; i < slearn.length(); i++)
   {
-    if (i > 0 && int (learned[i].time - learned[i - 1].time) < repDelay && learned[i].id == learned[i - 1].id)
+    if (slearn[i].pos >= 0)
     {
-      if (fixFrom (i + 1))
+      skills[slearn[i].pos].skill = NULL;
+      slearn[i].pos = -1;
+    }
+  }
+}
+bool W3GHero::fix(int pos)
+{
+  for (int i = pos; i < slearn.length(); i++)
+  {
+    if (i > 0 && int(slearn[i].time - slearn[i - 1].time) < cfg::repDelay &&
+        slearn[i].skill == slearn[i - 1].skill)
+    {
+      if (fix(i + 1))
       {
-        learned[i].pos = -1;
+        slearn[i].pos = -1;
         return true;
       }
       else
-        undoFrom (i + 1);
+        undo(i + 1);
     }
-    int cnt = 0;
-    for (int j = 0; j < level; j++)
-      if (abilities[j] != 0 && getAbility (abilities[j])->slot == learned[i].slot)
-        cnt++;
-    int mlvl = getMinLevel (cnt, learned[i].slot, learned[i].id);
-    bool placed = false;
-    if (mlvl < 32)
+    int skillLevel = 0;
+    for (int j = 1; j <= 25; j++)
+      if (skills[j].skill == slearn[i].skill)
+        skillLevel++;
+    if (skillLevel < slearn[i].skill->lvlMax)
     {
-      while (level < mlvl)
+      int reqLevel = slearn[i].skill->lvlStart + slearn[i].skill->lvlSkip * skillLevel;
+      for (int j = reqLevel; j <= 25; j++)
       {
-        abilities[level] = 0;
-        atime[level++] = learned[i].time;
-      }
-      while (mlvl < level)
-      {
-        if (abilities[mlvl] == 0)
+        if (skills[j].skill == NULL)
         {
-          abilities[mlvl] = learned[i].id;
-          learned[i].pos = mlvl;
-          atime[mlvl] = learned[i].time;
-          placed = true;
+          skills[j].skill = slearn[i].skill;
+          skills[j].time = slearn[i].time;
+          slearn[i].pos = j;
           break;
         }
-        mlvl++;
       }
-      if (!placed && level < 25)
+      if (slearn[i].pos >= 0)
       {
-        abilities[level] = learned[i].id;
-        learned[i].pos = level;
-        atime[level++] = learned[i].time;
-        placed = true;
+        for (int j = slearn[i].pos + 1; j <= 25; j++)
+          if (skills[j].skill && skills[j].time + 30000 < slearn[i].time)
+            return false;
       }
     }
-    if (placed && abilities[learned[i].pos + 1] != 0 && atime[learned[i].pos + 1] + 30000 < learned[i].time)
-      res = false;
-    else if (!placed)
-      learned[i].pos = -1;
   }
-  return res;
+  return true;
 }
-void W3GHero::fixAbilities ()
+
+void W3GHero::compute(uint32 time)
 {
-  fixFrom (0);
-}
-*/
-void W3GHero::process()
-{
-  memset(skills, 0, sizeof skills);
-  if (level)
+  for (int i = 0; i < 5; i++)
+    skillLevels[i] = 0;
+  currentLevel = 0;
+  for (int i = 1; i <= level && levelTime[i] <= time; i++)
   {
-    int curLevel = 0;
-    int points = 0;
-    for (int i = 0; i < slearn.length(); i++)
-    {
-      while (curLevel < level && levelTime[curLevel + 1] < slearn[i].time)
-      {
-        curLevel++;
-        points++;
-      }
-      if (points)
-      {
-        int skillLevel = 0;
-        for (int j = 0; j <= curLevel; j++)
-          if (skills[j].skill == slearn[i].skill)
-            skillLevel++;
-        if (curLevel < slearn[i].skill->lvlMax)
-        {
-          int reqLevel = slearn[i].skill->lvlStart + slearn[i].skill->lvlSkip * skillLevel;
-          for (int j = reqLevel; j <= curLevel; j++)
-          {
-            if (skills[j].skill == NULL)
-            {
-              skills[j].skill = slearn[i].skill;
-              skills[j].time = slearn[i].time;
-            }
-          }
-        }
-      }
-    }
+    currentLevel++;
+    if (skills[i].skill)
+      skillLevels[skills[i].skill->slot]++;
   }
-  slearn.clear();
 }

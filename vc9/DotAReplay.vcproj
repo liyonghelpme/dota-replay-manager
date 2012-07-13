@@ -229,7 +229,19 @@
 				>
 			</File>
 			<File
+				RelativePath="..\res\icon1.ico"
+				>
+			</File>
+			<File
 				RelativePath="..\res\idr_main.ico"
+				>
+			</File>
+			<File
+				RelativePath="..\res\play.ico"
+				>
+			</File>
+			<File
+				RelativePath="..\res\replays.ico"
 				>
 			</File>
 			<File

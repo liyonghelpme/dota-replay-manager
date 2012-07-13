@@ -1,3 +1,5 @@
+#include "core/app.h"
+
 #include "frameui/framewnd.h"
 #include "frameui/fontsys.h"
 
@@ -240,4 +242,57 @@ void RichEditFrame::setRichText(String text)
   es.dwError = 0;
   es.pfnCallback = StreamCallback;
   SendMessage(hWnd, EM_STREAMIN, SF_RTF, (uint32) &es);
+}
+
+/////////////////////////////////
+
+SliderFrame::SliderFrame(Frame* parent, int id, int style)
+  : WindowFrame(parent)
+{
+  subclass(TRACKBAR_CLASS, "", style | WS_CHILD | WS_TABSTOP, 0);
+  setFont(FontSys::getSysFont());
+  setId(id);
+}
+
+void SliderFrame::setPos(int pos)
+{
+  SendMessage(hWnd, TBM_SETPOS, TRUE, pos);
+}
+void SliderFrame::setRange(int minValue, int maxValue)
+{
+  SendMessage(hWnd, TBM_SETRANGEMIN, TRUE, minValue);
+  SendMessage(hWnd, TBM_SETRANGEMAX, TRUE, maxValue);
+}
+void SliderFrame::setLineSize(int size)
+{
+  SendMessage(hWnd, TBM_SETLINESIZE, 0, size);
+}
+void SliderFrame::setPageSize(int size)
+{
+  SendMessage(hWnd, TBM_SETPAGESIZE, 0, size);
+}
+void SliderFrame::setTicFreq(int freq)
+{
+  SendMessage(hWnd, TBM_SETTICFREQ, freq, 0);
+}
+int SliderFrame::getPos()
+{
+  return SendMessage(hWnd, TBM_GETPOS, 0, 0);
+}
+
+/////////////////////////////////////////
+
+UpDownFrame::UpDownFrame(Frame* parent, int id, int style)
+  : WindowFrame(parent)
+{
+  subclass(UPDOWN_CLASS, "", WS_CHILD | style, 0);
+  setId(id);
+  //subclass("Edit", "", ES_AUTOHSCROLL | WS_CHILD | WS_TABSTOP, WS_EX_CLIENTEDGE);
+  //setFont(FontSys::getSysFont());
+
+  //updown = CreateWindowEx(0, UPDOWN_CLASS, NULL,
+  //  WS_CHILD | WS_VISIBLE | style, 0, 0, 0, 0, getOwner(),
+  //  NULL, getInstance(), NULL);
+  //SendMessage(updown, UDM_SETBUDDY, (WPARAM) hWnd, NULL);
+  //SetWindowLong(updown, GWL_ID, id);
 }

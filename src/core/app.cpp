@@ -17,6 +17,7 @@ Application* Application::instance = NULL;
 
 Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
+  MPQInit();
   instance = this;
   registry = NULL;
   resources = NULL;
@@ -33,6 +34,7 @@ Application::~Application()
   delete resources;
   delete registry;
   instance = NULL;
+  MPQCleanup();
 }
 void loadDotaData(MPQLoader* ldr, String path);
 
@@ -46,35 +48,54 @@ int Application::run()
   InitCommonControlsEx(&iccex);
   LoadLibrary("Riched20.dll");
 
-  MPQInit();
-
   registry = new Registry();
 
-  resources = new MPQArchive("resources.mpq");
+  String path = String::getPath(getAppPath());
+  String resPath = String::buildFullName(path, "resources.mpq");
+  String patchPath = String::buildFullName(path, "install.mpq");
+  File* tOpen = File::open(resPath, File::READ);
+  if (tOpen == NULL)
+  {
+    tOpen = File::open(patchPath, File::READ);
+    if (tOpen)
+    {
+      delete tOpen;
+      MoveFile(patchPath, resPath);
+    }
+  }
+  else
+    delete tOpen;
+  resources = MPQArchive::open(resPath);
+  MPQArchive* patch = MPQArchive::open(patchPath, File::READ);
+  if (patch)
+  {
+    for (uint32 i = 0; i < patch->getHashSize(); i++)
+    {
+      char const* name = patch->getFileName(i);
+      if (name)
+      {
+        MPQFile* source = patch->openFile(i, File::READ);
+        if (source)
+        {
+          MPQFile* dest = resources->openFile(name, File::REWRITE);
+          if (dest)
+          {
+            static uint8 buf[1024];
+            while (int length = source->read(buf, sizeof buf))
+              dest->write(buf, length);
+            delete dest;
+          }
+          delete source;
+        }
+      }
+    }
+    delete patch;
+    DeleteFile(patchPath);
+  }
+
   imageLibrary = new ImageLibrary(resources);
 
   MainWnd mainWnd;
-
-  //MPQLoader ldr("Custom_V1");
-  //String warPath = registry->readString("warPath");
-  //ldr.loadArchive(String::buildFullName(warPath, "war3.mpq"));
-  //ldr.loadArchive(String::buildFullName(warPath, "war3x.mpq"));
-  //ldr.loadArchive(String::buildFullName(warPath, "war3xlocal.mpq"));
-  //ldr.loadArchive(String::buildFullName(warPath, "war3patch.mpq"));
-  //ldr.loadArchive("K:\\Games\\Warcraft III\\Maps\\Download\\DotA v6.74.w3x");
-
-  //File* f = ldr.load("ReplaceableTextures\\CommandButtons\\BTNMountainGiant.blp");
-  //Image img(f);
-  //Image i16(16, 16);
-  //BLTInfo blt16(&img);
-  //blt16.setDstSize(16, 16);
-  //i16.blt(blt16);
-  //i16.modBrightness(1.16f);
-  //i16.sharpen(0.10f);
-  //i16.writePNG(TempFile(File::open("sven2.png", File::REWRITE)));
-  //delete f;
-
-  //return 0;
 
   dotaLibrary = new DotaLibrary();
   

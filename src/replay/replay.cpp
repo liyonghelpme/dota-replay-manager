@@ -501,10 +501,7 @@ void W3GReplay::analyze()
     if (plist[i]->slot.color > 11 || plist[i]->slot.slot_status == 0)
       continue;
     if (plist[i]->hero)
-    {
       plist[i]->hero->setPlayer(plist[i]);
-      plist[i]->hero->process();
-    }
     int team = plist[i]->slot.color / 6;
     int pos = dotaInfo->team_size[team];
     while (pos > 0)

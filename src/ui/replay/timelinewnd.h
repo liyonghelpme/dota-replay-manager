@@ -36,8 +36,18 @@ public:
 
 class ReplayTimelineTab : public ReplayTab
 {
+  uint32 lastTime;
+  uint32 lastUpdate;
+  int speed;
   TimePicture* picture;
+  EditFrame* speedBox;
+  UpDownFrame* updownBox;
+  ButtonFrame* playBox;
+  SliderFrame* slider;
+  EditFrame* timeBox;
   void onSetReplay();
+  void onMessage(uint32 message, uint32 wParam, uint32 lParam);
+  void onMove();
 public:
   ReplayTimelineTab(FrameWindow* parent);
   ~ReplayTimelineTab();
