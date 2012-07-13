@@ -4,6 +4,7 @@
 #include "graphics/glib.h"
 #include "graphics/imagelib.h"
 #include "dota/colors.h"
+#include <math.h>
 
 ///////////////////// TimePicture ////////////////////////
 
@@ -452,6 +453,81 @@ void TimePicture::paint()
           }
         }
         glDisable(GL_SCISSOR_TEST);
+      }
+      if (cfg::drawChat || cfg::drawPings)
+      {
+        int pos = height() - 5;
+        int count = 0;
+        int delay = cfg::chatStaysOn * 1000;
+        if (delay < 2000) delay = 2000;
+        for (int line = w3g->getFirstMessage(time);
+          line >= 0 && int(time - w3g->getMessage(line).time) < delay; line--)
+        {
+          W3GMessage& msg = w3g->getMessage(line);
+          W3GPlayer* player = w3g->getPlayerById(msg.id);
+          if (cfg::drawChat && int(time - msg.time) < cfg::chatStaysOn * 1000)
+          {
+            int alpha = 255;
+            if (int(time - msg.time) > cfg::chatStaysOn * 750)
+              alpha = int((4 - double(time - msg.time) / double(cfg::chatStaysOn) / 250) * 255.0);
+            if (alpha < 0) alpha = 0;
+            if (alpha > 255) alpha = 255;
+            String text = "";
+            bool isChat = true;
+            switch (msg.mode)
+            {
+            case CHAT_ALL:
+              gl->color(getSlotColor(player->slot.color), alpha);
+              text.printf("[All] %s: ", formatPlayer(player));
+              break;
+            case CHAT_ALLIES:
+              gl->color(getSlotColor(player->slot.color), alpha);
+              text.printf("[Allies] %s: ", formatPlayer(player));
+              break;
+            case CHAT_OBSERVERS:
+              gl->color(getSlotColor(player->slot.color), alpha);
+              text.printf("[Observers] %s: ", formatPlayer(player));
+              break;
+            case CHAT_PRIVATE:
+              gl->color(getSlotColor(player->slot.color), alpha);
+              text.printf("[Private] %s: ", formatPlayer(player));
+              break;
+            case CHAT_NOTIFY:
+              break;
+            default:
+              isChat = false;
+            }
+            if (isChat)
+            {
+              gl->text(5, pos, text, ALIGN_Y_BOTTOM);
+              gl->color(0xFFFFFF, alpha);
+              if (msg.mode == CHAT_NOTIFY)
+                drawNotify(alpha, 5, pos, msg.text);
+              else
+                gl->text(5 + gl->getTextWidth(text), pos, msg.text, ALIGN_Y_BOTTOM);
+              text += msg.text;
+              pos -= gl->getTextHeight(text);
+              count++;
+            }
+          }
+          if (cfg::drawPings && msg.mode == CHAT_PING && int(time - msg.time) < 2000)
+          {
+            int alpha = 255;
+            if (int(time - msg.time) > 1000)
+              alpha = int((2 - double(time - msg.time) / 1000) * 255.0);
+            if (alpha < 0) alpha = 0;
+            if (alpha > 255) alpha = 255;
+            gl->color(getSlotColor(player->slot.color), alpha);
+            double r = double((time - msg.time) % 500) / 10;
+            glBegin(GL_LINE_LOOP);
+            int x0 = mapx(msg.x);
+            int y0 = mapy(msg.y);
+            for (int i = 0; i < 20; i++)
+              glVertex2i(x0 + int(cos(3.14159265358979 * double(i) / 10) * r + 0.5),
+                         y0 + int(sin(3.14159265358979 * double(i) / 10) * r + 0.5));
+            glEnd();
+          }
+        }
       }
     }
 

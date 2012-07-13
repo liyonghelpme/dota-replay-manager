@@ -591,6 +591,23 @@ String W3GReplay::formatTime(uint32 time, int flags)
   return format_time(atime, flags);
 }
 
+int W3GReplay::getFirstMessage(uint32 time) const
+{
+  int left = 0;
+  int right = messages.length() - 1;
+  if (right < 0 || messages[0].time > time)
+    return -1;
+  while (left < right)
+  {
+    int m = (left + right + 1) / 2;
+    if (messages[m].time > time)
+      right = m - 1;
+    else
+      left = m;
+  }
+  return left;
+}
+
 int W3GReplay::getFirstWard(uint32 time) const
 {
   int left = 0;

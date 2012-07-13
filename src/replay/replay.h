@@ -198,6 +198,7 @@ public:
   {
     return messages[i];
   }
+  int getFirstMessage(uint32 time) const;
 
   int getNumWards() const
   {
