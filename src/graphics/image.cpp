@@ -50,10 +50,9 @@ Image::Image(int width, int height)
   _bits = new unsigned long[width * height];
   mode = _opaque;
   _qmemset (_bits, 0xFF000000, width * height);
-  changes = NULL;
   unowned = false;
 
-  resetClipRect ();
+  resetClipRect();
 }
 bool Image::load(File* file)
 {
@@ -65,7 +64,6 @@ bool Image::load(File* file)
   _bits = NULL;
   mode = _opaque;
   unowned = false;
-  changes = NULL;
 
   if (file)
   {
@@ -114,7 +112,6 @@ Image::Image(int width, int height, uint32* bits)
   _bits = bits;
   mode = _opaque;
   _qmemset (_bits, 0xFF000000, width * height);
-  changes = NULL;
   unowned = true;
 
   resetClipRect ();
@@ -158,8 +155,6 @@ void Image::blt(int x, int y, Image const* src, int srcX, int srcY, int srcW, in
   endX += srcX;
   x -= srcX;
   y -= srcY;
-  if (changes)
-    changes->add(x + startX, y + startY, x + endX, y + endY);
   if (mode != _opaque && src->mode != _opaque)
     make_premult();
   for (int cy = startY; cy < endY; cy++)
@@ -211,8 +206,6 @@ void Image::blt(int x, int y, Image const* src, int srcX, int srcY, int srcW, in
 }
 void Image::fill(unsigned int color)
 {
-  if (changes)
-    changes->add(0, 0, _width, _height);
   _qmemset(_bits, color, _width * _height);
   mode = ((color & 0xFF000000) == 0xFF000000 ? _opaque : _alpha);
 }
@@ -222,8 +215,6 @@ void Image::fill(unsigned int color, int x, int y, int width, int height)
   if (x < clipRect.left) {width -= clipRect.left - x; x = clipRect.left;}
   if (y + height > clipRect.bottom) height = clipRect.bottom - y;
   if (x + width > clipRect.right) width = clipRect.right - x;
-  if (changes)
-    changes->add(x, y, x + width, y + height);
   if ((x != 0 || y != 0 || width != _width || height != _height) && mode == _premult)
   {
     unsigned char* buf = (unsigned char*) &color;
@@ -427,8 +418,6 @@ void Image::blt(BLTInfo& info)
     int srcOX = info.flipX ? info.srcX + info.srcW - 1 : info.srcX;
     int srcDY = info.flipY ? -1 : 1;
     int srcDX = info.flipX ? -1 : 1;
-    if (changes)
-      changes->add(info.x + cxStart, info.y + cyStart, info.x + cxEnd, info.y + cyEnd);
     for (int cy = cyStart; cy < cyEnd && cxEnd > cxStart; cy++)
     {
       int dstY = dstOY + cy;
@@ -490,8 +479,6 @@ void Image::blt(BLTInfo& info)
     int cyEnd = info.dstH;
     if (info.y + cyStart < clipRect.top) cyStart = clipRect.top - info.y;
     if (info.y + cyEnd > clipRect.bottom) cyEnd = clipRect.bottom - info.y;
-    if (changes)
-      changes->add(info.x + cxStart, info.y + cyStart, info.x + cxEnd, info.y + cyEnd);
     for (int cx = cxStart; cx < cxEnd; cx++)
     {
       for (int cy = cyStart; cy < cyEnd; cy++)

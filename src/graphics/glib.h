@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <gl/gl.h>
 #include "base/types.h"
+#include "base/dictionary.h"
 
 class Image;
 
@@ -25,6 +26,7 @@ class OpenGL
   bool ok;
   HFONT font;
   uint32* lgen;
+  bool active;
 public:
   int width, height;
 
@@ -43,8 +45,6 @@ public:
   int getTextHeight(char const* str);
 
   void text(int x, int y, char const* str, int mode = 0);
-  void image(int x, int y, Image const* img, int mode = 0);
-  void image(int x, int y, Image const* img, int x0, int y0, int sx, int sy, int mode = 0);
 
   void color(uint32 color);
   void color(uint32 color, int alpha);

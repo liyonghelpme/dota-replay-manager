@@ -11,7 +11,7 @@ SimpleListFrame::SimpleListFrame(Frame* parent, int id, int style, int styleEx)
 {
   style |= LVS_ALIGNLEFT | LVS_REPORT | LVS_NOCOLUMNHEADER | LVS_NOSCROLL |
            LVS_SINGLESEL;
-  subclass(WC_LISTVIEW, "", WS_CHILD | WS_TABSTOP | style, styleEx);
+  create(WC_LISTVIEW, "", WS_CHILD | WS_TABSTOP | style, styleEx);
   setFont(FontSys::getSysFont());
   setId(id);
 }
@@ -74,7 +74,7 @@ ListFrame::ListFrame(Frame* parent, int id, int style, int styleEx)
   style |= LVS_ALIGNLEFT | LVS_REPORT | LVS_OWNERDRAWFIXED | LVS_NOSORTHEADER | LVS_SHAREIMAGELISTS |
            LVS_SINGLESEL;
   simpleColors = false;
-  subclass(WC_LISTVIEW, "", WS_CHILD | WS_TABSTOP | WS_HSCROLL | style, styleEx);
+  create(WC_LISTVIEW, "", WS_CHILD | WS_TABSTOP | WS_HSCROLL | style, styleEx);
   setFont(FontSys::getSysFont());
   setId(id);
   ListView_SetExtendedListViewStyle(hWnd, LVS_EX_GRIDLINES | LVS_EX_FULLROWSELECT);
@@ -84,13 +84,12 @@ ListFrame::ListFrame(Frame* parent, int id, int style, int styleEx)
 
 uint32 ListFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
-  switch (message)
+  if (message == WM_DRAWITEM)
   {
-  case WM_DRAWITEMREFLECT:
     drawItem((DRAWITEMSTRUCT*) lParam);
-    return TRUE;
+    return 1;
   }
-  return WindowFrame::onMessage(message, wParam, lParam);
+  return 0;
 }
 int ListFrame::getItemTextWidth(HDC hDC, String text, uint32 format)
 {
@@ -362,4 +361,145 @@ void ListFrame::setItemText(int item, int column, String text)
   lvi.mask = LVIF_TEXT;
   lvi.pszText = text.getBuffer();
   ListView_SetItem(hWnd, &lvi);
+}
+
+//////////////////////////////////////////////
+
+ComboFrameEx::ComboFrameEx(Frame* parent, int id, int style)
+  : WindowFrame(parent)
+{
+  boxHeight = 500;
+  create("ComboBox", "", style | WS_CHILD | CBS_OWNERDRAWFIXED | WS_TABSTOP, 0);
+  setFont(FontSys::getSysFont());
+  setId(id);
+  setHeight(21);
+  prevSel = 0;
+}
+
+void ComboFrameEx::reset()
+{
+  SendMessage(hWnd, CB_RESETCONTENT, 0, 0);
+  items.clear();
+  prevSel = 0;
+}
+int ComboFrameEx::addString(String text, uint32 color, char const* icon, uint32 data)
+{
+  int id = items.length();
+  BoxItem& item = items.push();
+  item.data = data;
+  item.color = color;
+  item.icon = (icon ? getApp()->getImageLibrary()->getListIndex(icon) : 0xFFFFFFFF);
+  item.text = text;
+  int pos = SendMessage(hWnd, CB_ADDSTRING, 0, (uint32) "");
+  if (pos != CB_ERR)
+    SendMessage(hWnd, CB_SETITEMDATA, pos, id);
+  return pos;
+}
+int ComboFrameEx::getCount() const
+{
+  return SendMessage(hWnd, CB_GETCOUNT, 0, 0);
+}
+int ComboFrameEx::getItemData(int item) const
+{
+  return items[SendMessage(hWnd, CB_GETITEMDATA, item, 0)].data;
+}
+void ComboFrameEx::setItemData(int item, int data)
+{
+  items[SendMessage(hWnd, CB_GETITEMDATA, item, 0)].data = data;
+}
+int ComboFrameEx::getCurSel() const
+{
+  return SendMessage(hWnd, CB_GETCURSEL, 0, 0);
+}
+void ComboFrameEx::setCurSel(int sel)
+{
+  SendMessage(hWnd, CB_SETCURSEL, sel, 0);
+}
+
+void ComboFrameEx::onMove()
+{
+  if (hWnd)
+  {
+    if (visible())
+    {
+      if (IsWindowVisible(hWnd))
+        SetWindowPos(hWnd, NULL, left(), top(), width(), boxHeight, SWP_NOZORDER);
+      else
+      {
+        ShowWindow(hWnd, SW_SHOWNA);
+        SetWindowPos(hWnd, HWND_TOP, left(), top(), width(), boxHeight, 0);
+      }
+    }
+    else
+      ShowWindow(hWnd, SW_HIDE);
+  }
+}
+uint32 ComboFrameEx::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+{
+  if (message == WM_DRAWITEM)
+  {
+    DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*) lParam;
+    BoxItem& item = items[dis->itemData];
+
+    uint32 clrTextSave, clrBkSave;
+    if (item.color != 0 && (
+      (dis->itemAction | ODA_SELECT) && (dis->itemState & ODS_SELECTED) &&
+      !(dis->itemState & ODS_COMBOBOXEDIT)))
+    {
+      clrTextSave = SetTextColor(dis->hDC, GetSysColor(COLOR_HIGHLIGHTTEXT));
+      clrBkSave = SetBkColor(dis->hDC, GetSysColor(COLOR_HIGHLIGHT));
+    }
+    else
+    {
+      clrTextSave = SetTextColor(dis->hDC, GetSysColor(COLOR_BTNTEXT));
+      clrBkSave = SetBkColor(dis->hDC, item.color ? item.color : 0xFFFFFF);
+    }
+    ExtTextOut(dis->hDC, 0, 0, ETO_OPAQUE, &dis->rcItem, NULL, 0, NULL);
+
+    RECT rc = dis->rcItem;
+    rc.left += 2;
+    rc.right -= 2;
+    if (item.icon != 0xFFFFFFFF)
+      ImageList_Draw(getApp()->getImageLibrary()->getImageList(), item.icon,
+        dis->hDC, rc.left, (rc.top + rc.bottom) / 2 - 8, ILD_NORMAL);
+    rc.left += 18;
+    DrawText(dis->hDC, item.text.c_str(), item.text.length(), &rc,
+      DT_LEFT | DT_SINGLELINE | DT_VCENTER);
+
+    SetTextColor(dis->hDC, clrTextSave);
+    SetBkColor(dis->hDC, clrBkSave);
+    return TRUE;
+  }
+  else if (message == WM_COMMAND && lParam == (uint32) hWnd && HIWORD(wParam) == CBN_SELCHANGE)
+  {
+    int sel = SendMessage(hWnd, CB_GETCURSEL, 0, 0);
+    int delta = (sel >= prevSel ? 1 : -1);
+    prevSel = sel;
+    bool hit = false;
+    int count = SendMessage(hWnd, CB_GETCOUNT, 0, 0);
+    while (items[SendMessage(hWnd, CB_GETITEMDATA, sel, 0)].color == 0)
+    {
+      sel += delta;
+      if (sel < 0 || sel >= count)
+      {
+        if (hit)
+        {
+          sel = prevSel;
+          break;
+        }
+        else
+        {
+          delta = -delta;
+          sel += delta * 2;
+          hit = true;
+        }
+      }
+    }
+    if (sel != prevSel)
+    {
+      SendMessage(hWnd, CB_SETCURSEL, sel, 0);
+      prevSel = sel;
+    }
+  }
+  return 0;
 }

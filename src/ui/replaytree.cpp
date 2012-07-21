@@ -11,7 +11,7 @@ ReplayTree::ReplayTree(String thePath, MainWnd* parent)
 {
   mainWnd = parent;
   tracker = NULL;
-  subclass(WC_TREEVIEW, "",
+  create(WC_TREEVIEW, "",
     TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS |
     WS_HSCROLL | WS_TABSTOP | WS_CHILD | WS_VISIBLE, WS_EX_CLIENTEDGE);
 
@@ -140,7 +140,7 @@ uint32 ReplayTree::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
   switch (message)
   {
-  case WM_NOTIFYREFLECT:
+  case WM_NOTIFY:
     {
       NMTREEVIEW* hdr = (NMTREEVIEW*) lParam;
       if (hdr->hdr.code == TVN_SELCHANGED)
@@ -160,5 +160,5 @@ uint32 ReplayTree::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     }
     break;
   }
-  return WindowFrame::onMessage(message, wParam, lParam);
+  return 0;
 }

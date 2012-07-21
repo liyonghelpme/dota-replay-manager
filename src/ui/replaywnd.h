@@ -1,7 +1,7 @@
 #ifndef __UI_REPLAYWND__
 #define __UI_REPLAYWND__
 
-#include "frameui/framewnd.h"
+#include "frameui/controlframes.h"
 #include "replay/replay.h"
 
 class ReplayViewItem;
@@ -9,18 +9,19 @@ class ReplayViewItem;
 #define REPLAY_GAMEINFO         0
 #define REPLAY_GAMECHAT         1
 #define REPLAY_TIMELINE         2
-#define REPLAY_NUM_TABS         3
+#define REPLAY_PLAYERINFO       3
+#define REPLAY_NUM_TABS         4
+
+#define ID_PLAYERBOX            378
 
 class ReplayTab : public Frame
 {
 protected:
-  HWND hWnd;
   W3GReplay* w3g;
   virtual void onSetReplay() = 0;
 public:
-  ReplayTab(FrameWindow* parent)
+  ReplayTab(Frame* parent)
     : Frame(parent)
-    , hWnd(parent->getHandle())
     , w3g(NULL)
   {}
   void setReplay(W3GReplay* replay)
@@ -28,23 +29,20 @@ public:
     w3g = replay;
     onSetReplay();
   }
-  virtual void onMessage(uint32 message, uint32 wParam, uint32 lParam) {}
+  virtual void setPlayer(W3GPlayer* player)
+  {
+  }
 };
 
-class ReplayWindow : public FrameWindow
+class ReplayWindow : public TabFrame
 {
   W3GReplay* replay;
   ReplayViewItem* viewItem;
 
-  ReplayTab* tabs[REPLAY_NUM_TABS];
-  int curTab;
-
-  void setTab(int i, String name, ReplayTab* tab);
-
-  void update();
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
+  void update();
 public:
-  ReplayWindow(Window* parent);
+  ReplayWindow(Frame* parent);
   ~ReplayWindow();
   void openReplay(File* file);
   void openReplay(String path);

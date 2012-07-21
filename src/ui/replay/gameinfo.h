@@ -11,7 +11,7 @@ class MapPopout : public Window
 {
   HDC dc;
   HBITMAP bitmap;
-  uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
+  uint32 onWndMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:
   MapPopout(RECT const* rc, Image* image);
   ~MapPopout();
@@ -28,11 +28,11 @@ class ReplayGameInfoTab : public ReplayTab
   Image* mapCanvas;
   HBITMAP mapBitmap;
   int curImage;
-  void onMessage(uint32 message, uint32 wParam, uint32 lParam);
+  uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
   void onSetReplay();
   void addPlayer(W3GPlayer* player);
 public:
-  ReplayGameInfoTab(FrameWindow* parent);
+  ReplayGameInfoTab(Frame* parent);
   ~ReplayGameInfoTab();
 };
 

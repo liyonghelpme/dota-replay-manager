@@ -76,30 +76,34 @@ void TimePicture::setReplay(W3GReplay* replay)
 {
   w3g = replay;
   time = 0;
-  InvalidateRect(hWnd, NULL, FALSE);
+  //InvalidateRect(hWnd, NULL, FALSE);
+  paint();
 }
 void TimePicture::setTime(uint32 t)
 {
   time = t;
-  InvalidateRect(hWnd, NULL, FALSE);
+  //InvalidateRect(hWnd, NULL, FALSE);
+  paint();
 }
 
 uint32 TimePicture::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
   switch (message)
   {
-  case WM_POSTCREATE:
+  case WM_CREATE:
     gl = new OpenGL(hWnd);
     if (!gl->isOk())
       MessageBox(hWnd, "Error initializing OpenGL!", "Error", MB_OK | MB_ICONERROR);
     else
-      tex = gl->genTexture(getApp()->getImageLibrary()->getImage("dota_map"));
+      images.set("dota_map", gl->genTexture(getApp()->getImageLibrary()->getImage("dota_map")));
     break;
   case WM_SIZE:
-    gl->onSize(width(), height());
+    if (gl)
+      gl->onSize(width(), height());
     break;
   case WM_MOUSEMOVE:
-    InvalidateRect(hWnd, NULL, FALSE);
+    //InvalidateRect(hWnd, NULL, FALSE);
+    paint();
     break;
   case WM_PAINT:
     {
@@ -108,9 +112,15 @@ uint32 TimePicture::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       paint();
       EndPaint(hWnd, &ps);
     }
+    break;
+  case WM_ERASEBKGND:
+    break;
+  case WM_TIMER:
+    return notify(message, wParam, lParam);
+  default:
     return 0;
   }
-  return WindowFrame::onMessage(message, wParam, lParam);
+  return TRUE;
 }
 
 String TimePicture::formatPlayer(W3GPlayer* player)
@@ -340,18 +350,62 @@ void TimePicture::drawNotify(int alpha, int x, int y, String text)
   }
 }
 
+void TimePicture::rect(int x, int y, int width, int height, char const* icon, int inset)
+{
+  uint32 tex = 0;
+  if (icon)
+  {
+    if (images.has(icon))
+      tex = images.get(icon);
+    else
+    {
+      Image* image = getApp()->getImageLibrary()->getImage(icon);
+      if (image)
+      {
+        if (inset == 0)
+          tex = gl->genTexture(image);
+        else
+        {
+          Image sub(image->width() - inset * 2, image->height() - inset * 2);
+          sub.fill(0);
+          sub.blt(0, 0, image, inset, inset, sub.width(), sub.height());
+          tex = gl->genTexture(&sub);
+          images.set(icon, tex);
+        }
+      }
+    }
+  }
+  if (tex)
+  {
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glColor4d(1, 1, 1, 1);
+    glBegin(GL_QUADS);
+    glTexCoord2f(0, 0);
+    glVertex2i(x, y);
+    glTexCoord2f(1, 0);
+    glVertex2i(x + width, y);
+    glTexCoord2f(1, 1);
+    glVertex2i(x + width, y + height);
+    glTexCoord2f(0, 1);
+    glVertex2i(x, y + height);
+    glEnd();
+    glDisable(GL_TEXTURE_2D);
+  }
+}
 void TimePicture::paint()
 {
   POINT cursor;
   GetCursorPos(&cursor);
   ScreenToClient(hWnd, &cursor);
 
-  if (gl->isOk())
+  if (gl && gl->isOk() && visible())
   {
     gl->begin();
 
     if (w3g && w3g->getDotaInfo())
     {
+      uint32 tex = images.get("dota_map");
       glEnable(GL_TEXTURE_2D);
       glBindTexture(GL_TEXTURE_2D, tex);
       glBegin(GL_QUADS);
@@ -364,11 +418,9 @@ void TimePicture::paint()
       glTexCoord2f(0, (1 + rfix) / 2);
       glVertex2i(mapx(MX0) + 5, mapy(MY0) - 5);
       glEnd();
-      glBindTexture(GL_TEXTURE_2D, 0);
       glDisable(GL_TEXTURE_2D);
 
       DotaInfo const* dota = w3g->getDotaInfo();
-      ImageLibrary* imgLib = getApp()->getImageLibrary();
 
       if (cfg::drawBuildings)
       {
@@ -376,13 +428,11 @@ void TimePicture::paint()
         for (int i = NUM_BUILDINGS - 1; i >= 0; i--)
         {
           if (dota->bdTime[i] == 0 || dota->bdTime[i] > time)
-            gl->image(mapx(bld[i].x), mapy(bld[i].y), imgLib->getImage(bld[i].icon),
-              ALIGN_X_CENTER | ALIGN_Y_CENTER);
+            rect(mapx(bld[i].x) - 6, mapy(bld[i].y) - 6, 12, 12, bld[i].icon);
         }
       }
       if (cfg::drawWards)
       {
-        Image* img = imgLib->getImage("ward");
         for (int cur = w3g->getFirstWard(time); cur >= 0; cur--)
         {
           W3GWard& ward = w3g->getWard(cur);
@@ -391,8 +441,8 @@ void TimePicture::paint()
           int x = mapx(ward.x);
           int y = mapy(ward.y);
           gl->color(getSlotColor(ward.player->slot.color), 0xFF);
-          gl->image(x, y, NULL, 0, 0, 12, 12, ALIGN_X_CENTER | ALIGN_Y_CENTER);
-          gl->image(x, y, img, 1, 1, 10, 10, ALIGN_X_CENTER | ALIGN_Y_CENTER);
+          gl->fillrect(x - 6, y - 6, x + 6, y + 6);
+          rect(x - 5, y - 5, 10, 10, "ward", 1);
         }
       }
       W3GPlayer* selPlayer = NULL;
@@ -405,9 +455,8 @@ void TimePicture::paint()
           int ix = mapx(x);
           int iy = mapy(y);
           gl->color(getSlotColor(player->slot.color), 0xFF);
-          gl->image(ix, iy, NULL, 0, 0, 16, 16, ALIGN_X_CENTER | ALIGN_Y_CENTER);
-          gl->image(ix, iy, imgLib->getImage(player->hero->hero->icon),
-            1, 1, 14, 14, ALIGN_X_CENTER | ALIGN_Y_CENTER);
+          gl->fillrect(ix - 8, iy - 8, ix + 8, iy + 8);
+          rect(ix - 7, iy - 7, 14, 14, player->hero->hero->icon, 1);
 
           if (cursor.x > ix - 8 && cursor.x < ix + 8 &&
               cursor.y > iy - 8 && cursor.y < iy + 8)
@@ -438,9 +487,8 @@ void TimePicture::paint()
         gl->text(ix + 12, iy + 12, selPlayer->hero->hero->shortName);
         gl->text(ix + 12, iy + 28, String(selPlayer->hero->currentLevel));
         for (int i = 0; i < 6; i++)
-          gl->image((i % 2) * 16 + ix + 12,
-                    (i / 2) * 16 + iy + 44, imgLib->getImage(
-                    selPlayer->inv.computed[i] ? selPlayer->inv.computed[i]->icon : "emptyslot"));
+          rect((i % 2) * 16 + ix + 12, (i / 2) * 16 + iy + 44, 16, 16,
+            selPlayer->inv.computed[i] ? selPlayer->inv.computed[i]->icon : "emptyslot");
         for (int i = 0; i < 5; i++)
         {
           int px = ix + 52;
@@ -448,7 +496,7 @@ void TimePicture::paint()
           Dota::Ability* abil = selPlayer->hero->hero->abilities[i];
           if (abil)
           {
-            gl->image(px, py, imgLib->getImage(abil->icon));
+            rect(px, py, 16, 16, abil->icon);
             gl->text(px + 18, py, String(selPlayer->hero->skillLevels[i]));
           }
         }
@@ -542,7 +590,7 @@ void TimePicture::paint()
 #define ID_PLAY             106
 #define ID_SLIDER           107
 
-ReplayTimelineTab::ReplayTimelineTab(FrameWindow* parent)
+ReplayTimelineTab::ReplayTimelineTab(Frame* parent)
   : ReplayTab(parent)
 {
   speedBox = new EditFrame(this, 0, ES_RIGHT | ES_READONLY);
@@ -575,7 +623,7 @@ ReplayTimelineTab::ReplayTimelineTab(FrameWindow* parent)
   lastTime = 0;
   lastUpdate = 0;
 
-  SetTimer(hWnd, ID_TIMER, 100, NULL);
+  SetTimer(picture->getHandle(), ID_TIMER, 100, NULL);
 }
 ReplayTimelineTab::~ReplayTimelineTab()
 {
@@ -615,8 +663,9 @@ void ReplayTimelineTab::onMove()
 {
   if (!visible())
     playBox->setCheck(false);
+  ReplayTab::onMove();
 }
-void ReplayTimelineTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+uint32 ReplayTimelineTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
   if (message == WM_TIMER && wParam == ID_TIMER)
   {
@@ -643,10 +692,12 @@ void ReplayTimelineTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       else
         timeBox->setText("");
     }
+    return TRUE;
   }
   else if (message == WM_COMMAND && HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == ID_PLAY)
   {
     lastUpdate = GetTickCount();
+    return TRUE;
   }
   else if (message == WM_NOTIFY)
   {
@@ -659,7 +710,8 @@ void ReplayTimelineTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       if (speed < -99) speed = -99;
       if (speed > 99) speed = 99;
       speedBox->setText(String::format("%dx", speed));
-      SetFocus(hWnd);
+      return TRUE;
     }
   }
+  return 0;
 }

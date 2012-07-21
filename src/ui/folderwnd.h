@@ -3,10 +3,10 @@
 
 #include "frameui/framewnd.h"
 
-class FolderWindow : public FrameWindow
+class FolderWindow : public WindowFrame
 {
 public:
-  FolderWindow(Window* parent);
+  FolderWindow(Frame* parent);
 };
 
 #endif // __UI_FOLDERWND__

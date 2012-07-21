@@ -5,24 +5,23 @@
 
 #include "base/types.h"
 #include "base/string.h"
-
-#define WM_NOTIFYREFLECT    (WM_USER+0x0157)
-#define WM_COMMANDREFLECT   (WM_USER+0x0158)
-#define WM_DRAWITEMREFLECT  (WM_USER+0x0159)
-#define WM_POSTCREATE       (WM_USER+0x015A)
+#include "base/intdict.h"
 
 class Window
 {
   static LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
   static ATOM windowClass;
+  static IntDictionary handleMap;
   String regClass;
 protected:
   HWND hWnd;
   WNDPROC origProc;
-  virtual uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
+  virtual uint32 onWndMessage(uint32 message, uint32 wParam, uint32 lParam);
   WNDCLASSEX* createclass(String wndClass);
   void create(int x, int y, int width, int height, String text, uint32 style, uint32 exStyle,
     HWND parent = NULL);
+  void create(String wndClass, int x, int y, int width, int height, String text, uint32 style,
+    uint32 exStyle, HWND parent = NULL);
   void subclass(String wndClass, int x, int y, int width, int height, String text, uint32 style,
     uint32 exStyle, HWND parent = NULL);
 public:
@@ -37,6 +36,8 @@ public:
   {
     return hWnd;
   }
+
+  static Window* fromHandle(HWND hWnd);
 
   // random functions
   void setText(String text);
@@ -58,6 +59,8 @@ public:
 
   int id() const;
   void setId(int id);
+
+  void invalidate(bool erase = true);
 };
 
 #endif // __FRAMEUI_WINDOW_H__

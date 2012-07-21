@@ -8,7 +8,7 @@
 ButtonFrame::ButtonFrame(String text, Frame* parent, int id, int style)
   : WindowFrame(parent)
 {
-  subclass("Button", text, WS_CHILD | WS_TABSTOP | style, 0);
+  create("Button", text, WS_CHILD | WS_TABSTOP | style, 0);
   setFont(FontSys::getSysFont());
   setId(id);
 }
@@ -31,6 +31,7 @@ LinkFrame::LinkFrame(String text, Frame* parent, int id)
 void LinkFrame::resetSize()
 {
   HDC hDC = GetDC(hWnd);
+  SelectObject(hDC, hFont);
   SIZE sz;
   String text = getText();
   GetTextExtentPoint32(hDC, text, text.length(), &sz);
@@ -120,13 +121,13 @@ uint32 LinkFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     {
       ReleaseCapture();
       pressed = false;
-      HWND hParent = GetParent(hWnd);
-      if (hParent)
-        SendMessage(hParent, WM_COMMAND, MAKELONG(id(), BN_CLICKED), (uint32) hWnd);
+      notify(WM_COMMAND, MAKELONG(id(), BN_CLICKED), (uint32) hWnd);
     }
     break;
+  default:
+    return 0;
   }
-  return Window::onMessage(message, wParam, lParam);
+  return TRUE;
 }
 
 ///////////////////////////////////////////////////////
@@ -134,7 +135,7 @@ uint32 LinkFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 EditFrame::EditFrame(Frame* parent, int id, int style)
   : WindowFrame(parent)
 {
-  subclass("Edit", "", style | WS_CHILD | WS_TABSTOP, WS_EX_CLIENTEDGE);
+  create("Edit", "", style | WS_CHILD | WS_TABSTOP, WS_EX_CLIENTEDGE);
   setFont(FontSys::getSysFont());
   setId(id);
 }
@@ -147,8 +148,13 @@ void ComboFrame::onMove()
   {
     if (visible())
     {
-      SetWindowPos(hWnd, NULL, left(), top(), width(), boxHeight, SWP_NOZORDER);
-      ShowWindow(hWnd, SW_SHOWNA);
+      if (IsWindowVisible(hWnd))
+        SetWindowPos(hWnd, NULL, left(), top(), width(), boxHeight, SWP_NOZORDER);
+      else
+      {
+        ShowWindow(hWnd, SW_SHOWNA);
+        SetWindowPos(hWnd, HWND_TOP, left(), top(), width(), boxHeight, 0);
+      }
     }
     else
       ShowWindow(hWnd, SW_HIDE);
@@ -158,7 +164,7 @@ ComboFrame::ComboFrame(Frame* parent, int id, int style)
   : WindowFrame(parent)
 {
   boxHeight = 500;
-  subclass("ComboBox", "", style | WS_CHILD | WS_TABSTOP, 0);
+  create("ComboBox", "", style | WS_CHILD | WS_TABSTOP, 0);
   setFont(FontSys::getSysFont());
   setId(id);
   setHeight(21);
@@ -192,13 +198,31 @@ void ComboFrame::setCurSel(int sel)
 StaticFrame::StaticFrame(Frame* parent, int id, int style, int exStyle)
   : WindowFrame(parent)
 {
-  subclass("Static", "", style | SS_NOTIFY | WS_CHILD | WS_TABSTOP, exStyle);
+  create("Static", "", style | SS_NOTIFY | WS_CHILD | WS_TABSTOP, exStyle);
   setFont(FontSys::getSysFont());
+  setId(id);
+}
+StaticFrame::StaticFrame(String text, Frame* parent, int id, int style, int exStyle)
+  : WindowFrame(parent)
+{
+  create("Static", text, style | SS_NOTIFY | WS_CHILD | WS_TABSTOP, exStyle);
+  setFont(FontSys::getSysFont());
+  resetSize();
   setId(id);
 }
 void StaticFrame::setImage(HANDLE image, int type)
 {
   SendMessage(hWnd, STM_SETIMAGE, (WPARAM) type, (LPARAM) image);
+}
+void StaticFrame::resetSize()
+{
+  HDC hDC = GetDC(hWnd);
+  SelectObject(hDC, getFont());
+  SIZE sz;
+  String text = getText();
+  GetTextExtentPoint32(hDC, text, text.length(), &sz);
+  ReleaseDC(hWnd, hDC);
+  setSize(sz.cx, sz.cy);
 }
 
 ///////////////////////////////////////////////////////
@@ -224,7 +248,7 @@ DWORD CALLBACK RichEditFrame::StreamCallback(DWORD_PTR cookie, LPBYTE buff, LONG
 RichEditFrame::RichEditFrame(Frame* parent, int id, int style)
   : WindowFrame(parent)
 {
-  subclass(RICHEDIT_CLASS, "", style | WS_CHILD | WS_TABSTOP, WS_EX_CLIENTEDGE);
+  create(RICHEDIT_CLASS, "", style | WS_CHILD | WS_TABSTOP, WS_EX_CLIENTEDGE);
   setFont(FontSys::getSysFont());
   setId(id);
 }
@@ -249,7 +273,7 @@ void RichEditFrame::setRichText(String text)
 SliderFrame::SliderFrame(Frame* parent, int id, int style)
   : WindowFrame(parent)
 {
-  subclass(TRACKBAR_CLASS, "", style | WS_CHILD | WS_TABSTOP, 0);
+  create(TRACKBAR_CLASS, "", style | WS_CHILD | WS_TABSTOP, 0);
   setFont(FontSys::getSysFont());
   setId(id);
 }
@@ -285,14 +309,121 @@ int SliderFrame::getPos()
 UpDownFrame::UpDownFrame(Frame* parent, int id, int style)
   : WindowFrame(parent)
 {
-  subclass(UPDOWN_CLASS, "", WS_CHILD | style, 0);
+  create(UPDOWN_CLASS, "", WS_CHILD | style, 0);
   setId(id);
-  //subclass("Edit", "", ES_AUTOHSCROLL | WS_CHILD | WS_TABSTOP, WS_EX_CLIENTEDGE);
-  //setFont(FontSys::getSysFont());
+}
 
-  //updown = CreateWindowEx(0, UPDOWN_CLASS, NULL,
-  //  WS_CHILD | WS_VISIBLE | style, 0, 0, 0, 0, getOwner(),
-  //  NULL, getInstance(), NULL);
-  //SendMessage(updown, UDM_SETBUDDY, (WPARAM) hWnd, NULL);
-  //SetWindowLong(updown, GWL_ID, id);
+/////////////////////////////////////////
+
+TabFrame::TabFrame(Frame* parent, int id, int style)
+  : WindowFrame(parent)
+{
+  create(WC_TABCONTROL, "", WS_CHILD | style, 0);
+  setFont(FontSys::getSysFont());
+  setId(id);
+}
+Frame* TabFrame::addTab(int pos, String text, Frame* frame)
+{
+  if (pos >= tabs.length())
+    tabs.resize(pos + 1, 0);
+  if (frame == NULL)
+    frame = new Frame(this);
+  tabs[pos] = frame;
+
+  TCITEM item;
+  memset(&item, 0, sizeof item);
+  item.mask = TCIF_TEXT;
+  item.pszText = text.getBuffer();
+  TabCtrl_InsertItem(hWnd, pos, &item);
+  frame->show(pos == TabCtrl_GetCurSel(hWnd));
+
+  onMove();
+
+  return frame;
+}
+
+void TabFrame::onMove()
+{
+  WindowFrame::onMove();
+
+  RECT rc;
+  GetClientRect(hWnd, &rc);
+  TabCtrl_AdjustRect(hWnd, FALSE, &rc);
+  for (int i = 0; i < tabs.length(); i++)
+  {
+    if (tabs[i])
+    {
+      tabs[i]->setPoint(PT_TOPLEFT, rc.left, rc.top);
+      tabs[i]->setPoint(PT_BOTTOMRIGHT, rc.right - width(), rc.bottom - height());
+    }
+  }
+}
+uint32 TabFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+{
+  if (message == WM_NOTIFY)
+  {
+    NMHDR* hdr = (NMHDR*) lParam;
+    if (hdr->hwndFrom == hWnd && hdr->code == TCN_SELCHANGE)
+    {
+      int sel = TabCtrl_GetCurSel(hWnd);
+      for (int i = 0; i < tabs.length(); i++)
+        if (i != sel)
+          tabs[i]->hide();
+      tabs[sel]->show();
+      return TRUE;
+    }
+  }
+  return 0;
+}
+
+/////////////////////////////////////
+
+uint32 ImageFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+{
+  if (message == WM_PAINT)
+  {
+    PAINTSTRUCT ps;
+    HDC hPaintDC = BeginPaint(hWnd, &ps);
+    if (hBitmap)
+      BitBlt(hPaintDC, 0, 0, width(), height(), hDC, 0, 0, SRCCOPY);
+    EndPaint(hWnd, &ps);
+    return TRUE;
+  }
+  return 0;
+}
+ImageFrame::ImageFrame(Frame* parent, Image* img, bool ownd)
+  : WindowFrame(parent)
+{
+  create("", WS_CHILD, 0);
+  image = NULL;
+
+  hDC = CreateCompatibleDC(NULL);
+  hBitmap = NULL;
+  setImage(img, ownd);
+}
+ImageFrame::~ImageFrame()
+{
+  if (hBitmap)
+    DeleteObject(hBitmap);
+  DeleteDC(hDC);
+  if (owned)
+    delete image;
+}
+
+void ImageFrame::setImage(Image* img, bool ownd)
+{
+  if (owned)
+    delete image;
+  if (hBitmap)
+    DeleteObject(hBitmap);
+  hBitmap = NULL;
+  image = img;
+  owned = ownd;
+  if (image)
+  {
+    setSize(image->width(), image->height());
+    hBitmap = image->createBitmap(hDC);
+    SelectObject(hDC, hBitmap);
+  }
+  invalidate();
 }

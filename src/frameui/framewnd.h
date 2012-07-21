@@ -10,59 +10,29 @@
 class WindowFrame : public Frame, public Window
 {
   HWND ownerWindow;
+protected:
   void onMove();
+  uint32 onWndMessage(uint32 message, uint32 wParam, uint32 lParam);
 protected:
   void create(String text, uint32 style, uint32 exStyle);
-  void subclass(String wndClass, String text, uint32 style, uint32 exStyle);
+  void create(String wndClass, String text, uint32 style, uint32 exStyle);
   HWND getOwner() const
   {
     return ownerWindow;
   }
+  uint32 notify(uint32 message, uint32 wParam, uint32 lParam);
 public:
   WindowFrame(Frame* parent);
 };
-class ExtWindowFrame : public Frame
+
+class RootWindow : public Frame, public Window
 {
-  Window* window;
-  void onMove();
+  MasterFrame* masterFrame;
+  uint32 onControlMessage(HWND hControl, uint32 message, uint32 wParam, uint32 lParam);
+  uint32 onWndMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:
-  ExtWindowFrame(Frame* parent, Window* wnd);
-  ~ExtWindowFrame();
-
-  Window* getWindow() const
-  {
-    return window;
-  }
-};
-
-class FrameWindow : public Frame, public Window
-{
-  class Invalidator : public RectUpdater
-  {
-    HWND wnd;
-  public:
-    Invalidator()
-    {
-      wnd = NULL;
-    }
-    void setWindow(HWND window)
-    {
-      wnd = window;
-    }
-    void add(Rect const& rc)
-    {
-      if (wnd)
-        InvalidateRect(wnd, (RECT*) &rc, TRUE);
-    }
-  };
-
-  MasterRegion* masterRegion;
-  Invalidator invalidator;
-protected:
-  virtual uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
-public:
-  FrameWindow();
-  ~FrameWindow();
+  RootWindow();
+  ~RootWindow();
 };
 
 #endif // __FRAMEUI_FRAMEWND_H__

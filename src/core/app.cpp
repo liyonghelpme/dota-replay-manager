@@ -6,6 +6,7 @@
 #include "graphics/imagelib.h"
 #include "frameui/framewnd.h"
 #include "frameui/controlframes.h"
+#include "frameui/fontsys.h"
 #include "ui/mainwnd.h"
 #include "dota/dotadata.h"
 
@@ -44,7 +45,9 @@ int Application::run()
 
   INITCOMMONCONTROLSEX iccex;
   iccex.dwSize = sizeof iccex;
-  iccex.dwICC = ICC_STANDARD_CLASSES | ICC_PROGRESS_CLASS | ICC_TREEVIEW_CLASSES;
+  iccex.dwICC = ICC_STANDARD_CLASSES | ICC_PROGRESS_CLASS |
+      ICC_BAR_CLASSES | ICC_TREEVIEW_CLASSES | ICC_LISTVIEW_CLASSES |
+      ICC_TAB_CLASSES | ICC_UPDOWN_CLASS;
   InitCommonControlsEx(&iccex);
   LoadLibrary("Riched20.dll");
 

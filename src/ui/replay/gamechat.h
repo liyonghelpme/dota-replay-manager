@@ -13,7 +13,7 @@ class ReplayGameChatTab : public ReplayTab
   String sanitize(String str);
   String sanitizeNotify(String str);
 public:
-  ReplayGameChatTab(FrameWindow* parent);
+  ReplayGameChatTab(Frame* parent);
   ~ReplayGameChatTab();
 };
 

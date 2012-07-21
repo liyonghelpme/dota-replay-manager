@@ -40,4 +40,40 @@ public:
   void setItemText(int item, int column, String text);
 };
 
+class ComboFrameEx : public WindowFrame
+{
+  struct BoxItem
+  {
+    uint32 data;
+    uint32 color;
+    uint32 icon;
+    String text;
+  };
+  Array<BoxItem> items;
+  int prevSel;
+
+  void onMove();
+  int boxHeight;
+  uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
+public:
+  ComboFrameEx(Frame* parent, int id = 0, int style = CBS_DROPDOWNLIST);
+
+  void reset();
+  int addString(String text, uint32 data = 0)
+  {
+    return addString(text, 0xFFFFFF, NULL, data);
+  }
+  int addString(String text, uint32 color, char const* icon, uint32 data = 0);
+  int getCount() const;
+  int getItemData(int item) const;
+  void setItemData(int item, int data);
+  int getCurSel() const;
+  void setCurSel(int sel);
+  void setBoxHeight(int ht)
+  {
+    boxHeight = ht;
+    onMove();
+  }
+};
+
 #endif // __FRAMEUI_LISTCTRL__

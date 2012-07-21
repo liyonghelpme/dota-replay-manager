@@ -4,18 +4,21 @@
 #include "ui/replaywnd.h"
 
 #include "frameui/controlframes.h"
+#include "base/dictionary.h"
 
 class OpenGL;
 
 class TimePicture : public WindowFrame
 {
   OpenGL* gl;
-  uint32 tex;
   W3GReplay* w3g;
   uint32 time;
 
+  Dictionary<uint32> images;
+
   String formatPlayer(W3GPlayer* player);
   void drawNotify(int alpha, int x, int y, String text);
+  void rect(int x, int y, int width, int height, char const* icon, int inset = 0);
   void paint();
 
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
@@ -46,10 +49,10 @@ class ReplayTimelineTab : public ReplayTab
   SliderFrame* slider;
   EditFrame* timeBox;
   void onSetReplay();
-  void onMessage(uint32 message, uint32 wParam, uint32 lParam);
+  uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
   void onMove();
 public:
-  ReplayTimelineTab(FrameWindow* parent);
+  ReplayTimelineTab(Frame* parent);
   ~ReplayTimelineTab();
 };
 

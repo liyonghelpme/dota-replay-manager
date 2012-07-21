@@ -6,7 +6,7 @@
 #include "base/utils.h"
 #include "dota/colors.h"
 
-ReplayGameChatTab::ReplayGameChatTab(FrameWindow* parent)
+ReplayGameChatTab::ReplayGameChatTab(Frame* parent)
   : ReplayTab(parent)
 {
   chatFrame = new RichEditFrame(this);

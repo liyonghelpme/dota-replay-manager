@@ -23,16 +23,17 @@ MainWnd::MainWnd()
 
   Registry* reg = getApp()->getRegistry();
 
-  create(CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, "DotA Replay Manager", WS_OVERLAPPEDWINDOW, 0);
+  create(CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, "DotA Replay Manager",
+    WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, 0);
 
   replayTree = new ReplayTree("K:\\Games\\Warcraft III\\Replay", this);
   replayTree->setPoint(PT_TOPLEFT, 10, 10);
   replayTree->setPoint(PT_BOTTOM, 0, -10);
   replayTree->setPoint(PT_RIGHT, NULL, PT_LEFT, cfg::splitterPos, 0);
 
-  views[MAINWND_SETTINGS] = new ExtWindowFrame(this, new SettingsWindow(this));
-  views[MAINWND_REPLAY] = new ExtWindowFrame(this, new ReplayWindow(this));
-  views[MAINWND_FOLDER] = new ExtWindowFrame(this, new FolderWindow(this));
+  views[MAINWND_SETTINGS] = new SettingsWindow(this);
+  views[MAINWND_REPLAY] = new ReplayWindow(this);
+  views[MAINWND_FOLDER] = new FolderWindow(this);
   for (int i = 0; i < MAINWND_NUM_VIEWS; i++)
   {
     views[i]->setPoint(PT_TOPLEFT, replayTree, PT_TOPRIGHT, SPLITTER_WIDTH, 0);
@@ -71,6 +72,8 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
   {
   case WM_DESTROY:
     PostQuitMessage(0);
+    break;
+  case WM_MOVING:
     break;
   case WM_SIZE:
   case WM_MOVE:
@@ -139,14 +142,14 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       ReleaseCapture();
     break;
   }
-  return FrameWindow::onMessage(message, wParam, lParam);
+  return 0;
 }
 
-Window* MainWnd::setView(int view)
+Frame* MainWnd::setView(int view)
 {
   for (int i = 0; i < MAINWND_NUM_VIEWS; i++)
     views[i]->show(i == view);
-  return views[view]->getWindow();
+  return views[view];
 }
 void MainWnd::pushView(ViewItem* item)
 {

@@ -38,10 +38,6 @@ class Image
   Rect clipRect;
 
   void make_premult();
-
-  RectUpdater* changes;
-  //CDC* srcDC;
-  //CBitmap* bmp;
 public:
   Image(int width, int height);
   Image(char const* filename);
@@ -95,7 +91,6 @@ public:
     return (mn + mx) / 2;
   }
 
-  //void setClipRect (CDC* dc, int x, int y);
   void setClipRect(Rect const& rc)
   {
     clipRect = rc;
@@ -120,18 +115,8 @@ public:
     _bits[x + y * _width] = color;
   }
 
-  void notifyChanges(RectUpdater* rc)
-  {
-    changes = rc;
-  }
-
   HBITMAP createBitmap(HDC hDC = NULL);
   void fillBitmap(HBITMAP hBitmap, HDC hDC);
-
-  //void eraseBkgnd (CDC* dc, int x, int y, unsigned long color);
-  //void eraseBkgnd (CDC* dc, int x, int y, CRect const& rc, unsigned long color);
-  //void render (CDC* dc, int x, int y, bool opaque = true);
-  //void fillBitmap (CBitmap* bmp, CDC* pDC);
 };
 
 struct BLTInfo

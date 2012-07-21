@@ -2,6 +2,9 @@
 #include "image.h"
 #include "base/utils.h"
 
+#include "imagelib.h"
+#include "core/app.h"
+
 #pragma comment (lib, "opengl32.lib")
 
 OpenGL::OpenGL(HWND window, uint32 color)
@@ -11,6 +14,7 @@ OpenGL::OpenGL(HWND window, uint32 color)
   hrc = NULL;
   font = NULL;
   ok = false;
+  active = false;
 
   RECT rc;
   GetWindowRect(hWnd, &rc);
@@ -97,6 +101,7 @@ OpenGL::~OpenGL()
 
 void OpenGL::begin()
 {
+  active = true;
   wglMakeCurrent(hdc, hrc);
   glViewport(0, 0, width, height);
   glMatrixMode(GL_PROJECTION);
@@ -104,7 +109,7 @@ void OpenGL::begin()
   glOrtho(0, width, height, 0, -1, 1);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+  glClear(GL_COLOR_BUFFER_BIT);
   glColor3d(1, 1, 1);
 }
 void OpenGL::end()
@@ -112,6 +117,7 @@ void OpenGL::end()
   glFlush();
   SwapBuffers(hdc);
   wglMakeCurrent(NULL, NULL);
+  active = false;
 }
 
 int OpenGL::getTextWidth(char const* str)
@@ -169,82 +175,6 @@ void OpenGL::text(int x, int y, char const* str, int mode)
     }
   }
   glCallLists(length, GL_UNSIGNED_SHORT, wide);
-}
-void OpenGL::image(int x, int y, Image const* img, int mode)
-{
-  image(x, y, img, 0, 0, img ? img->width() : 0, img ? img->height() : 0, mode);
-}
-void OpenGL::image(int x, int y, Image const* img, int x0, int y0, int sx, int sy, int mode)
-{
-  switch (mode & ALIGN_X)
-  {
-  case ALIGN_X_LEFT:
-    break;
-  case ALIGN_X_RIGHT:
-    x -= sx;
-    break;
-  case ALIGN_X_CENTER:
-    x -= sx / 2;
-    break;
-  }
-  switch (mode & ALIGN_Y)
-  {
-  case ALIGN_Y_TOP:
-    break;
-  case ALIGN_Y_BOTTOM:
-    y -= sy;
-    break;
-  case ALIGN_Y_CENTER:
-    y -= sy / 2;
-    break;
-  }
-  if (img)
-  {
-    if (x < 0)
-    {
-      x0 -= x;
-      sx += x;
-      x = 0;
-    }
-    if (x + sx > width)
-      sx = width - x;
-    if (y < 0)
-    {
-      y0 -= y;
-      sy += y;
-      y = 0;
-    }
-    if (y + sy > height)
-      sy = height - y;
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, img->width());
-    glRasterPos2i(x, y);
-    glPixelZoom(1, -1);
-    glDrawPixels(sx, sy, GL_BGRA_EXT, GL_UNSIGNED_BYTE, img->bits() + x0 + y0 * img->width());
-    glPixelZoom(1, 1);
-  }
-  else
-  {
-    fillrect(x, y, x + sx, y + sy);
-    //glRasterPos2i(x + x0, y - y0);
-    //double clr[4];
-    //glGetDoublev(GL_CURRENT_COLOR, clr);
-    //int cli[3];
-    //for (int i = 0; i < 3; i++)
-    //{
-    //  cli[i] = int (clr[i] * 255 + 0.5);
-    //  if (cli[i] > 255) cli[i] = 255;
-    //  if (cli[i] < 0) cli[i] = 0;
-    //}
-    //for (int i = 0; i < sx * sy; i++)
-    //{
-    //  rectBuf[i * 3 + 0] = cli[0];
-    //  rectBuf[i * 3 + 1] = cli[1];
-    //  rectBuf[i * 3 + 2] = cli[2];
-    //}
-    //glPixelStorei (GL_UNPACK_ROW_LENGTH, 0);
-    //glRasterPos2i (x + x0, y + sy - y0);
-    //glDrawPixels (sx, sy, GL_RGB, GL_UNSIGNED_BYTE, rectBuf);
-  }
 }
 
 void OpenGL::color(uint32 color)
@@ -305,7 +235,8 @@ uint32 OpenGL::genTexture(Image const* img)
     return 0;
 
   uint32 id;
-  wglMakeCurrent(hdc, hrc);
+  if (!active)
+    wglMakeCurrent(hdc, hrc);
   glGenTextures(1, (GLuint*) &id);
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, id);
@@ -321,7 +252,8 @@ uint32 OpenGL::genTexture(Image const* img)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);
-  wglMakeCurrent(NULL, NULL);
+  if (!active)
+    wglMakeCurrent(NULL, NULL);
   return id;
 }
 

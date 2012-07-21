@@ -3,7 +3,8 @@
 
 #include "folderwnd.h"
 
-FolderWindow::FolderWindow(Window* parent)
+FolderWindow::FolderWindow(Frame* parent)
+  : WindowFrame(parent)
 {
-  create(0, 0, 10, 10, "", WS_CHILD | WS_VISIBLE, 0, parent->getHandle());
+  create("", WS_CHILD, 0);
 }

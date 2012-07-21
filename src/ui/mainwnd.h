@@ -11,11 +11,11 @@
 #define MAINWND_FOLDER        2
 #define MAINWND_NUM_VIEWS     3
 
-class MainWnd : public FrameWindow
+class MainWnd : public RootWindow
 {
   ReplayTree* replayTree;
 
-  ExtWindowFrame* views[MAINWND_NUM_VIEWS];
+  Frame* views[MAINWND_NUM_VIEWS];
   ViewItem* history;
 
   // splitter
@@ -27,7 +27,7 @@ public:
   MainWnd();
   ~MainWnd();
 
-  Window* setView(int view);
+  Frame* setView(int view);
   void pushView(ViewItem* item);
 
   void postLoad();

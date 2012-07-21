@@ -8,7 +8,7 @@ WindowFrame::WindowFrame(Frame* parent)
   Frame* cur = getParent();
   while (cur->getParent())
     cur = cur->getParent();
-  FrameWindow* frm = dynamic_cast<FrameWindow*>(cur);
+  RootWindow* frm = dynamic_cast<RootWindow*>(cur);
   if (frm)
     ownerWindow = frm->getHandle();
   else
@@ -21,8 +21,13 @@ void WindowFrame::onMove()
   {
     if (visible())
     {
-      SetWindowPos(hWnd, NULL, left(), top(), width(), height(), SWP_NOZORDER);
-      ShowWindow(hWnd, SW_SHOWNA);
+      if (IsWindowVisible(hWnd))
+        SetWindowPos(hWnd, NULL, left(), top(), width(), height(), SWP_NOZORDER);
+      else
+      {
+        ShowWindow(hWnd, SW_SHOWNA);
+        SetWindowPos(hWnd, HWND_TOP, left(), top(), width(), height(), 0);
+      }
     }
     else
       ShowWindow(hWnd, SW_HIDE);
@@ -32,72 +37,74 @@ void WindowFrame::create(String text, uint32 style, uint32 exStyle)
 {
   Window::create(0, 0, 10, 10, text, style, exStyle, ownerWindow);
 }
-void WindowFrame::subclass(String wndClass, String text, uint32 style, uint32 exStyle)
+void WindowFrame::create(String wndClass, String text, uint32 style, uint32 exStyle)
 {
   Window::subclass(wndClass, 0, 0, 10, 10, text, style, exStyle, ownerWindow);
 }
 
-///////////////////////////////////////////////////////
-
-ExtWindowFrame::ExtWindowFrame(Frame* parent, Window* wnd)
-  : Frame(parent)
+uint32 WindowFrame::onWndMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
-  window = wnd;
+  if (uint32 result = onMessage(message, wParam, lParam))
+    return result;
+  return Window::onWndMessage(message, wParam, lParam);
 }
-ExtWindowFrame::~ExtWindowFrame()
+uint32 WindowFrame::notify(uint32 message, uint32 wParam, uint32 lParam)
 {
-  delete window;
-}
-void ExtWindowFrame::onMove()
-{
-  if (window && window->getHandle())
-  {
-    if (visible())
-    {
-      SetWindowPos(window->getHandle(), NULL, left(), top(), width(), height(), SWP_NOZORDER);
-      ShowWindow(window->getHandle(), SW_SHOWNA);
-    }
-    else
-      ShowWindow(window->getHandle(), SW_HIDE);
-  }
+  Frame* cur = getParent();
+  uint32 result = 0;
+  while (cur && (result = cur->onMessage(message, wParam, lParam)) == 0)
+    cur = cur->getParent();
+  return result;
 }
 
 ///////////////////////////////////////////////////////
 
-FrameWindow::FrameWindow()
+RootWindow::RootWindow()
   : Frame(NULL)
 {
-  masterRegion = new MasterRegion(this);
+  masterFrame = new MasterFrame(this);
 }
-FrameWindow::~FrameWindow()
+RootWindow::~RootWindow()
 {
-  delete masterRegion;
+  delete masterFrame;
 }
 
-uint32 FrameWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+uint32 RootWindow::onControlMessage(HWND hControl, uint32 message, uint32 wParam, uint32 lParam)
+{
+  Frame* cur = dynamic_cast<WindowFrame*>(Window::fromHandle(hControl));
+  uint32 result = 0;
+  while (cur && (result = cur->onMessage(message, wParam, lParam)) == 0)
+    cur = cur->getParent();
+  return result;
+}
+
+uint32 RootWindow::onWndMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
   switch (message)
   {
-  case WM_POSTCREATE:
-    invalidator.setWindow(hWnd);
-    masterRegion->setUpdater(&invalidator);
+  case WM_NOTIFY:
+    return onControlMessage(((NMHDR*) lParam)->hwndFrom, message, wParam, lParam);
+  case WM_COMMAND:
+    return onControlMessage((HWND) lParam, message, wParam, lParam);
+  case WM_DRAWITEM:
+    {
+      DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*) lParam;
+      if (dis->CtlType != ODT_MENU)
+      {
+        if (uint32 result = onControlMessage(dis->hwndItem, message, wParam, lParam))
+          return result;
+      }
+    }
     break;
   case WM_SIZE:
     {
       RECT rc;
       GetClientRect(hWnd, &rc);
-      masterRegion->setSize(rc.right, rc.bottom);
+      masterFrame->setSize(rc.right, rc.bottom);
     }
     break;
-  case WM_PAINT:
-    {
-      PAINTSTRUCT ps;
-      HDC hDC = BeginPaint(hWnd, &ps);
-      Window::onMessage(message, (uint32) hDC, 0);
-      render(hDC);
-      EndPaint(hWnd, &ps);
-    }
-    return 0;
   }
-  return Window::onMessage(message, wParam, lParam);
+  if (uint32 result = onMessage(message, wParam, lParam))
+    return result;
+  return Window::onWndMessage(message, wParam, lParam);
 }

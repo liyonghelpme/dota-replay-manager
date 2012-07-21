@@ -7,30 +7,12 @@
 
 #define ITEM_BASE           157
 
-SettingsWindow::SettingsWindow(Window* parent)
+SettingsWindow::SettingsWindow(Frame* parent)
+  : TabFrame(parent)
 {
-  subclass(WC_TABCONTROL, 0, 0, 10, 10, "", WS_CHILD | WS_VISIBLE, 0, parent->getHandle());
-  setFont(FontSys::getSysFont());
-
   addAllItems();
 }
 
-int SettingsWindow::addTab(String name)
-{
-  int pos = tabs.push(new Frame(this));
-  TCITEM item;
-  memset(&item, 0, sizeof item);
-  item.mask = TCIF_TEXT;
-  item.pszText = name.getBuffer();
-  TabCtrl_InsertItem(hWnd, pos, &item);
-
-  if (pos != 0)
-    tabs[pos]->hide();
-
-  SendMessage(hWnd, WM_SIZE, 0, 0);
-
-  return pos;
-}
 WindowFrame* SettingsWindow::addStringItem(int tab, cfg::ConfigItem* item)
 {
   int pos = items.length();
@@ -39,7 +21,7 @@ WindowFrame* SettingsWindow::addStringItem(int tab, cfg::ConfigItem* item)
   cur.type = ITEM_STRING;
   cur.item = item;
   cur.ctrl = NULL;
-  EditFrame* frame = new EditFrame(tabs[tab], ITEM_BASE + pos);
+  EditFrame* frame = new EditFrame(getTab(tab), ITEM_BASE + pos);
   frame->setText(*(cfg::StringItem*) item);
   cur.ctrl = frame;
   return cur.ctrl;
@@ -52,7 +34,7 @@ WindowFrame* SettingsWindow::addIntItem(int tab, cfg::ConfigItem* item)
   cur.type = ITEM_INT;
   cur.item = item;
   cur.ctrl = NULL;
-  EditFrame* frame = new EditFrame(tabs[tab], ITEM_BASE + pos, ES_AUTOHSCROLL | ES_NUMBER);
+  EditFrame* frame = new EditFrame(getTab(tab), ITEM_BASE + pos, ES_AUTOHSCROLL | ES_NUMBER);
   frame->setText(String(*(cfg::IntItem*) item));
   cur.ctrl = frame;
   return cur.ctrl;
@@ -66,7 +48,7 @@ WindowFrame* SettingsWindow::addBoolItem(int tab, cfg::ConfigItem* item, int mas
   cur.item = item;
   cur.mask = mask;
   cur.ctrl = NULL;
-  ButtonFrame* frame = new ButtonFrame("", tabs[tab], ITEM_BASE + pos, BS_AUTOCHECKBOX);
+  ButtonFrame* frame = new ButtonFrame("", getTab(tab), ITEM_BASE + pos, BS_AUTOCHECKBOX);
   frame->setCheck(((*(cfg::IntItem*) item) & mask) != 0);
   cur.ctrl = frame;
   return cur.ctrl;
@@ -79,31 +61,6 @@ uint32 SettingsWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     return result;
   switch (message)
   {
-  case WM_NOTIFYREFLECT:
-    {
-      NMHDR* hdr = (NMHDR*) lParam;
-      if (hdr->code == TCN_SELCHANGE)
-      {
-        int sel = TabCtrl_GetCurSel(hWnd);
-        for (int i = 0; i < tabs.length(); i++)
-          tabs[i]->show(i == sel);
-        return TRUE;
-      }
-    }
-    break;
-  case WM_SIZE:
-    {
-      RECT rc;
-      GetClientRect(hWnd, &rc);
-      TabCtrl_AdjustRect(hWnd, FALSE, &rc);
-      for (int i = 0; i < tabs.length(); i++)
-      {
-        tabs[i]->setPoint(PT_TOPLEFT, rc.left, rc.top);
-        tabs[i]->setPoint(PT_BOTTOMRIGHT, NULL, PT_TOPLEFT, rc.right, rc.bottom);
-      }
-    }
-    break;
-
   case WM_COMMAND:
     if (lParam)
     {
@@ -128,11 +85,12 @@ uint32 SettingsWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
               (((ButtonFrame*) cur.ctrl)->checked() ? cur.mask : 0);
           break;
         }
+        return TRUE;
       }
     }
     break;
   }
-  return FrameWindow::onMessage(message, wParam, lParam);
+  return TabFrame::onMessage(message, wParam, lParam);
 }
 void SettingsWindow::updateKey(cfg::ConfigItem* item)
 {

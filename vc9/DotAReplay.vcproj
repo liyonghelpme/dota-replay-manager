@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9,00"
+	Version="9.00"
 	Name="DotAReplay"
 	ProjectGUID="{AF45FE07-EA3D-41C8-A8B4-817756A95CC2}"
 	RootNamespace="DotAReplay"
@@ -387,10 +387,6 @@
 					RelativePath="..\src\graphics\imagelib.cpp"
 					>
 				</File>
-				<File
-					RelativePath="..\src\graphics\rect.cpp"
-					>
-				</File>
 				<Filter
 					Name="loaders"
 					>
@@ -449,14 +445,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\src\frameui\region.h"
-					>
-				</File>
-				<File
-					RelativePath="..\src\frameui\static.h"
-					>
-				</File>
-				<File
 					RelativePath="..\src\frameui\window.h"
 					>
 				</File>
@@ -483,14 +471,6 @@
 				</File>
 				<File
 					RelativePath="..\src\frameui\listctrl.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\src\frameui\region.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\src\frameui\static.cpp"
 					>
 				</File>
 				<File
@@ -546,6 +526,10 @@
 						>
 					</File>
 					<File
+						RelativePath="..\src\ui\replay\playerinfo.h"
+						>
+					</File>
+					<File
 						RelativePath="..\src\ui\replay\timelinewnd.h"
 						>
 					</File>
@@ -596,6 +580,10 @@
 					</File>
 					<File
 						RelativePath="..\src\ui\replay\gameinfo.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\src\ui\replay\playerinfo.cpp"
 						>
 					</File>
 					<File

@@ -1,7 +1,7 @@
 #ifndef __UI_SETTINGSWND_H__
 #define __UI_SETTINGSWND_H__
 
-#include "frameui/framewnd.h"
+#include "frameui/controlframes.h"
 
 #define WM_UPDATEPATH       (WM_USER+257)
 
@@ -11,7 +11,7 @@
 
 class ClickColor;
 class ComboFrame;
-class SettingsWindow : public FrameWindow
+class SettingsWindow : public TabFrame
 {
   struct SettingsItem
   {
@@ -22,12 +22,10 @@ class SettingsWindow : public FrameWindow
     WindowFrame* ctrl;
   };
   Array<SettingsItem> items;
-  Array<Frame*> tabs;
 
   ClickColor* chatColors;
   ComboFrame* chatColorMode;
 
-  int addTab(String name);
   WindowFrame* addStringItem(int tab, cfg::ConfigItem* item);
   WindowFrame* addIntItem(int tab, cfg::ConfigItem* item);
   WindowFrame* addBoolItem(int tab, cfg::ConfigItem* item, int mask = 1);
@@ -38,7 +36,7 @@ class SettingsWindow : public FrameWindow
   uint32 handleExtra(uint32 message, uint32 wParam, uint32 lParam);
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:
-  SettingsWindow(Window* parent);
+  SettingsWindow(Frame* parent);
 };
 
 #endif // __UI_SETTINGSWND_H__

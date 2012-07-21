@@ -58,7 +58,7 @@ static char infoText[][64] = {
   "Game mode"
 };
 
-ReplayGameInfoTab::ReplayGameInfoTab(FrameWindow* parent)
+ReplayGameInfoTab::ReplayGameInfoTab(Frame* parent)
   : ReplayTab(parent)
 {
   popout = NULL;
@@ -256,7 +256,7 @@ void ReplayGameInfoTab::addPlayer(W3GPlayer* player)
     }
   }
 }
-void ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+uint32 ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
   if (message == WM_COMMAND)
   {
@@ -264,7 +264,7 @@ void ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     {
       if (mapImages[curImage] && popout == NULL)
       {
-        SetCapture(hWnd);
+        SetCapture(map->getHandle());
         RECT rc;
         GetClientRect(map->getHandle(), &rc);
         ClientToScreen(map->getHandle(), (POINT*) &rc.left);
@@ -276,6 +276,7 @@ void ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         popout = new MapPopout(&rc, mapImages[curImage]);
         ShowWindow(popout->getHandle(), SW_SHOWNA);
       }
+      return TRUE;
     }
     else if (HIWORD(wParam) == STN_DBLCLK && LOWORD(wParam) == IDC_MAPIMAGE)
     {
@@ -291,6 +292,7 @@ void ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         ReleaseDC(map->getHandle(), hDC);
         map->invalidate();
       }
+      return TRUE;
     }
   }
   else if (message == WM_LBUTTONUP)
@@ -300,13 +302,15 @@ void ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       delete popout;
       popout = NULL;
       ReleaseCapture();
+      return TRUE;
     }
   }
+  return 0;
 }
 
 /////////////////////////////////////////////////
 
-uint32 MapPopout::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+uint32 MapPopout::onWndMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
   if (message == WM_PAINT)
   {
@@ -320,7 +324,7 @@ uint32 MapPopout::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 
     return 0;
   }
-  return Window::onMessage(message, wParam, lParam);
+  return Window::onWndMessage(message, wParam, lParam);
 }
 MapPopout::MapPopout(RECT const* rc, Image* image)
 {

@@ -2,7 +2,17 @@
 
 #include "core/app.h"
 
+#include <stdio.h>
+
 ATOM Window::windowClass = NULL;
+IntDictionary Window::handleMap;
+
+Window* Window::fromHandle(HWND hWnd)
+{
+  if (handleMap.has((uint32) hWnd))
+    return (Window*) handleMap.get((uint32) hWnd);
+  return NULL;
+}
 
 WNDCLASSEX* Window::createclass(String wndClass)
 {
@@ -37,60 +47,38 @@ void Window::create(int x, int y, int width, int height, String text, uint32 sty
   }
   hWnd = CreateWindowEx(exStyle, regClass.isEmpty() ? "WUTILSWINDOW" : regClass, text, style,
     x, y, width, height, parent, NULL, getInstance(), this);
-  SendMessage(hWnd, WM_POSTCREATE, 0, 0);
+  handleMap.set((uint32) hWnd, (uint32) this);
+}
+void Window::create(String wndClass, int x, int y, int width, int height, String text, uint32 style,
+  uint32 exStyle, HWND parent)
+{
+  hWnd = CreateWindowEx(exStyle, wndClass, text, style, x, y, width, height,
+    parent, NULL, getInstance(), NULL);
+  handleMap.set((uint32) hWnd, (uint32) this);
 }
 void Window::subclass(String wndClass, int x, int y, int width, int height, String text, uint32 style,
   uint32 exStyle, HWND parent)
 {
   hWnd = CreateWindowEx(exStyle, wndClass, text, style, x, y, width, height,
-    parent, NULL, getInstance(), this);
-  SetWindowLong(hWnd, GWL_USERDATA, (uint32) this);
+    parent, NULL, getInstance(), NULL);
+  handleMap.set((uint32) hWnd, (uint32) this);
   origProc = (WNDPROC) SetWindowLong(hWnd, GWL_WNDPROC, (uint32) WindowProc);
-  SendMessage(hWnd, WM_POSTCREATE, 0, 0);
 }
 
 LRESULT CALLBACK Window::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-  Window* wnd = (Window*) GetWindowLong(hWnd, GWL_USERDATA);
+  Window* wnd = (Window*) (handleMap.has((uint32) hWnd)
+    ? handleMap.get((uint32) hWnd) : 0);
   if (wnd == NULL && uMsg == WM_CREATE)
   {
     CREATESTRUCT* cs = (CREATESTRUCT*) lParam;
     wnd = (Window*) cs->lpCreateParams;
-    SetWindowLong(hWnd, GWL_USERDATA, (uint32) wnd);
+    if (wnd)
+      wnd->hWnd = hWnd;
   }
   if (wnd)
   {
-    if (uMsg == WM_NOTIFY)
-    {
-      NMHDR* nmhdr = (NMHDR*) lParam;
-      if (GetParent(nmhdr->hwndFrom) == hWnd)
-      {
-        LRESULT result = SendMessage(nmhdr->hwndFrom, WM_NOTIFYREFLECT, wParam, lParam);
-        if (result)
-          return result;
-      }
-    }
-    else if (uMsg == WM_COMMAND)
-    {
-      HWND hwndFrom = (HWND) lParam;
-      if (GetParent(hwndFrom) == hWnd)
-      {
-        LRESULT result = SendMessage(hwndFrom, WM_COMMANDREFLECT, wParam, lParam);
-        if (result)
-          return result;
-      }
-    }
-    else if (uMsg == WM_DRAWITEM)
-    {
-      DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*) lParam;
-      if (dis->CtlType |= ODT_MENU && GetParent(dis->hwndItem) == hWnd)
-      {
-        LRESULT result = SendMessage(dis->hwndItem, WM_DRAWITEMREFLECT, wParam, lParam);
-        if (result)
-          return result;
-      }
-    }
-    uint32 result = wnd->onMessage(uMsg, wParam, lParam);
+    uint32 result = wnd->onWndMessage(uMsg, wParam, lParam);
     if (uMsg == WM_DESTROY)
       wnd->hWnd = NULL;
     return result;
@@ -98,7 +86,7 @@ LRESULT CALLBACK Window::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
   else
     return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }
-uint32 Window::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+uint32 Window::onWndMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
   if (origProc)
     return CallWindowProc(origProc, hWnd, message, wParam, lParam);
@@ -117,7 +105,7 @@ Window::~Window()
   {
     if (origProc)
       SetWindowLong(hWnd, GWL_WNDPROC, (uint32) origProc);
-    SetWindowLong(hWnd, GWL_USERDATA, 0);
+    handleMap.del((uint32) hWnd);
     DestroyWindow(hWnd);
   }
 }
@@ -161,4 +149,9 @@ int Window::id() const
 void Window::setId(int id)
 {
   SetWindowLong(hWnd, GWL_ID, id);
+}
+
+void Window::invalidate(bool erase)
+{
+  InvalidateRect(hWnd, NULL, erase ? TRUE : FALSE);
 }

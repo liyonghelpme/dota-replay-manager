@@ -143,42 +143,4 @@ struct Rect
   }
 };
 
-class RectUpdater
-{
-public:
-  virtual void add(Rect const& rect) = NULL;
-  void add(int left, int top, int right, int bottom)
-  {
-    add(Rect(left, top, right, bottom));
-  }
-};
-
-class RectCollection : public RectUpdater
-{
-  enum {maxRects = 32};
-  Rect rects[maxRects + 1];
-  int count;
-public:
-  RectCollection()
-  {
-    reset();
-  }
-
-  void reset();
-  void add(Rect const& rect);
-
-  Rect const& getBoundingRect() const
-  {
-    return rects[maxRects];
-  }
-  int getNumRects() const
-  {
-    return count;
-  }
-  Rect const& getRect(int i) const
-  {
-    return rects[i];
-  }
-};
-
 #endif // __RECT_H__

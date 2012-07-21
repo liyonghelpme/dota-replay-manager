@@ -1,10 +1,7 @@
 #ifndef __FRAMEUI_FRAME_H__
 #define __FRAMEUI_FRAME_H__
 
-#include <windows.h>
-
-#include "frameui/region.h"
-#include "frameui/static.h"
+#include "base/types.h"
 
 #define PT_TOPLEFT        0x00
 #define PT_TOP            0x01
@@ -16,29 +13,79 @@
 #define PT_BOTTOM         0x21
 #define PT_BOTTOMRIGHT    0x22
 
-#include "event.h"
-
-class Frame : public Region
+class MasterFrame
 {
+  friend class Frame;
+
+  Frame** frames;
+  int numFrames;
+  int maxFrames;
+  int moveid;
+  bool updating;
+
+  void addFrame(Frame* r);
+  void updateFrame(Frame* r);
+  void deepUpdateFrame(Frame* r);
+  void setPoint(Frame* r, int point, Frame* rel, int relPoint, int x, int y);
+  void setWidth(Frame* r, int width);
+  void setHeight(Frame* r, int height);
+  void removeFrame(Frame* r);
+public:
+  MasterFrame(Frame* root);
+  ~MasterFrame();
+
+  Frame* getRoot() const
+  {
+    return frames[0];
+  }
+
+  void setSize(int width, int height);
+};
+
+class Frame
+{
+  // master frame data
+  friend class MasterFrame;
+  int mr_pos;
+  int mr_moving;
+  bool mr_valid;
+
+  bool _visible;
+  int _x;
+  int _y;
+  int _width;
+  int _height;
+  struct Anchor
+  {
+    enum {hLeft, hCenter, hRight, hWidth, vTop, vCenter, vBottom, vHeight, count};
+    bool active;
+    Frame* rel;
+    int relPoint;
+    int offset;
+  } anchors[8];
+
+  MasterFrame* master;
+  Frame* parent;
   Frame* firstChild;
   Frame* lastChild;
   Frame* prevSibling;
   Frame* nextSibling;
-  StaticRegion** staticRegions;
-  int numStaticRegions;
-  int maxStaticRegions;
-  StaticRegion* addStaticRegion(StaticRegion* r);
+
   void onChangeVisibility();
+protected:
+  virtual void onMove()
+  {
+  }
 public:
   Frame(Frame* parent);
-  ~Frame();
+  virtual ~Frame();
 
+  // hierarchy
   void setParent(Frame* parent);
   Frame* getParent() const
   {
-    return (Frame*) parent;
+    return parent;
   }
-
   Frame* getFirstChild() const
   {
     return firstChild;
@@ -56,38 +103,91 @@ public:
     return nextSibling;
   }
 
+  // visibility
   void show(bool s = true);
-
-  FontStringRegion* createFontString()
+  void hide()
   {
-    return (FontStringRegion*) addStaticRegion(new FontStringRegion(this));
+    show(false);
   }
-  FontStringRegion* createFontString(HFONT font)
+  bool visible() const
   {
-    return (FontStringRegion*) addStaticRegion(new FontStringRegion(this, font));
-  }
-  FontStringRegion* createFontString(String text)
-  {
-    return (FontStringRegion*) addStaticRegion(new FontStringRegion(this, text));
-  }
-  FontStringRegion* createFontString(String text, HFONT font)
-  {
-    return (FontStringRegion*) addStaticRegion(new FontStringRegion(this, text, font));
-  }
-  TextureRegion* createTexture()
-  {
-    return (TextureRegion*) addStaticRegion(new TextureRegion(this));
-  }
-  TextureRegion* createTexture(Image* texture)
-  {
-    return (TextureRegion*) addStaticRegion(new TextureRegion(this, texture));
-  }
-  TextureRegion* createTexture(uint32 color)
-  {
-    return (TextureRegion*) addStaticRegion(new TextureRegion(this, color));
+    return _visible && mr_valid && (parent ? parent->visible() : true);
   }
 
-  virtual void render(HDC hDC);
+  // positioning
+  int left() const
+  {
+    return _x;
+  }
+  int top() const
+  {
+    return _y;
+  }
+  int right() const
+  {
+    return _x + _width;
+  }
+  int bottom() const
+  {
+    return _y + _height;
+  }
+  int width() const
+  {
+    return _width;
+  }
+  int height() const
+  {
+    return _height;
+  }
+  void setWidth(int width)
+  {
+    master->setWidth(this, width);
+  }
+  void setHeight(int height)
+  {
+    master->setHeight(this, height);
+  }
+  void setSize(int width, int height)
+  {
+    setWidth(width);
+    setHeight(height);
+  }
+  void setPoint(int point, Frame* rel, int relPoint, int x, int y)
+  {
+    master->setPoint(this, point, rel, relPoint, x, y);
+  }
+  void setPoint(int point, Frame* rel, int x, int y)
+  {
+    setPoint(point, rel, point, x, y);
+  }
+  void setPoint(int point, int x, int y)
+  {
+    setPoint(point, parent, point, x, y);
+  }
+  void clearAllPoints()
+  {
+    for (int i = 0; i < Anchor::count; i++)
+      anchors[i].active = false;
+    anchors[Anchor::hWidth].active = true;
+    anchors[Anchor::vHeight].active = true;
+    master->deepUpdateFrame(this);
+  }
+  void setAllPoints(Frame* rel)
+  {
+    setPoint(PT_TOPLEFT, rel, PT_TOPLEFT, 0, 0);
+    setPoint(PT_BOTTOMRIGHT, rel, PT_BOTTOMRIGHT, 0, 0);
+  }
+  void setAllPoints()
+  {
+    setPoint(PT_TOPLEFT, parent, PT_TOPLEFT, 0, 0);
+    setPoint(PT_BOTTOMRIGHT, parent, PT_BOTTOMRIGHT, 0, 0);
+  }
+
+  // 0 = unprocessed
+  virtual uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam)
+  {
+    return 0;
+  }
 };
 
 #endif // __FRAMEUI_FRAME_H__

@@ -72,7 +72,9 @@ class StaticFrame : public WindowFrame
 {
 public:
   StaticFrame(Frame* parent, int id = 0, int style = 0, int exStyle = 0);
+  StaticFrame(String text, Frame* parent, int id = 0, int style = 0, int exStyle = 0);
   void setImage(HANDLE image, int type = IMAGE_BITMAP);
+  void resetSize();
 };
 
 class RichEditFrame : public WindowFrame
@@ -102,6 +104,47 @@ class UpDownFrame : public WindowFrame
 {
 public:
   UpDownFrame(Frame* parent, int id = 0, int style = 0);
+};
+
+class TabFrame : public WindowFrame
+{
+protected:
+  Array<Frame*> tabs;
+  void onMove();
+  uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
+public:
+  TabFrame(Frame* parent, int id = 0, int style = 0);
+
+  int numTabs() const
+  {
+    return tabs.length();
+  }
+  Frame* addTab(int pos, String text, Frame* frame = NULL);
+  Frame* getTab(int pos) const
+  {
+    return (pos < 0 || pos >= tabs.length() ? NULL : tabs[pos]);
+  }
+
+  int getCurSel() const
+  {
+    return TabCtrl_GetCurSel(hWnd);
+  }
+};
+
+#include "graphics/image.h"
+
+class ImageFrame : public WindowFrame
+{
+  HDC hDC;
+  HBITMAP hBitmap;
+  Image* image;
+  bool owned;
+  uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
+public:
+  ImageFrame(Frame* parent, Image* img = NULL, bool ownd = true);
+  ~ImageFrame();
+
+  void setImage(Image* img, bool ownd = true);
 };
 
 #endif // __FRAMEUI_CONTROLFRAMES_H__
