@@ -11,7 +11,7 @@
 
 class ClickColor;
 class ComboFrame;
-class SettingsWindow : public TabFrame
+class SettingsWindow : public Frame
 {
   struct SettingsItem
   {
@@ -23,8 +23,10 @@ class SettingsWindow : public TabFrame
   };
   Array<SettingsItem> items;
 
+  TabFrame* tabs;
   ClickColor* chatColors;
   ComboFrame* chatColorMode;
+  ButtonFrame* openWithThis;
 
   WindowFrame* addStringItem(int tab, cfg::ConfigItem* item);
   WindowFrame* addIntItem(int tab, cfg::ConfigItem* item);

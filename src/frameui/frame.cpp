@@ -2,12 +2,13 @@
 #include <memory.h>
 #include "frame.h"
 
-MasterFrame::MasterFrame(Frame* root)
+RootFrame::RootFrame()
+  : Frame(NULL)
 {
   maxFrames = 8;
   numFrames = 1;
   frames = new Frame*[maxFrames * 2];
-  frames[0] = root;
+  frames[0] = this;
   frames[0]->master = this;
   frames[0]->mr_pos = 0;
   moveid = 0;
@@ -18,7 +19,7 @@ MasterFrame::MasterFrame(Frame* root)
   frames[0]->_width = 0;
   frames[0]->_height = 0;
 }
-MasterFrame::~MasterFrame()
+RootFrame::~RootFrame()
 {
   frames[0]->master = NULL;
   for (int i = 1; i < numFrames; i++)
@@ -28,13 +29,13 @@ MasterFrame::~MasterFrame()
   }
   delete[] frames;
 }
-void MasterFrame::setSize(int width, int height)
+void RootFrame::setSize(int width, int height)
 {
   frames[0]->_width = width;
   frames[0]->_height = height;
   deepUpdateFrame(frames[0]);
 }
-void MasterFrame::addFrame(Frame* r)
+void RootFrame::addFrame(Frame* r)
 {
   if (numFrames >= maxFrames)
   {
@@ -47,7 +48,7 @@ void MasterFrame::addFrame(Frame* r)
   r->mr_pos = numFrames;
   frames[numFrames++] = r;
 }
-void MasterFrame::removeFrame(Frame* r)
+void RootFrame::removeFrame(Frame* r)
 {
   for (int i = r->mr_pos + 1; i < numFrames; i++)
   {
@@ -59,7 +60,21 @@ void MasterFrame::removeFrame(Frame* r)
   }
   numFrames--;
 }
-void MasterFrame::setPoint(Frame* r, int point, Frame* rel, int relPoint, int x, int y)
+void RootFrame::setPoint(Frame* r, int point, Frame* rel, int relPoint, int x, int y)
+{
+  uint32 xRel = 0;
+  if ((relPoint & 0x0F) == 0x01) // hCenter
+    xRel = 0x4000;
+  else if ((relPoint & 0x0F) == 0x02) // hRight
+    xRel = 0x8000;
+  uint32 yRel = 0;
+  if ((relPoint & 0xF0) == 0x10) // vCenter
+    yRel = 0x4000;
+  else if ((relPoint & 0xF0) == 0x20) // vBottom
+    yRel = 0x8000;
+  setPointEx(r, point, rel, xRel, yRel, x, y);
+}
+void RootFrame::setPointEx(Frame* r, int point, Frame* rel, uint32 xRel, uint32 yRel, int x, int y)
 {
   if (rel == NULL)
     rel = frames[0];
@@ -118,7 +133,7 @@ void MasterFrame::setPoint(Frame* r, int point, Frame* rel, int relPoint, int x,
     Frame::Anchor& a = r->anchors[Frame::Anchor::hLeft];
     a.active = true;
     a.rel = rel;
-    a.relPoint = relPoint;
+    a.relRatio = xRel;
     a.offset = x;
   }
   else if ((point & 0x0F) == 0x01) // hCenter
@@ -129,7 +144,7 @@ void MasterFrame::setPoint(Frame* r, int point, Frame* rel, int relPoint, int x,
       Frame::Anchor& a = r->anchors[Frame::Anchor::hCenter];
       a.active = true;
       a.rel = rel;
-      a.relPoint = relPoint;
+      a.relRatio = xRel;
       a.offset = x;
     }
   }
@@ -141,7 +156,7 @@ void MasterFrame::setPoint(Frame* r, int point, Frame* rel, int relPoint, int x,
     Frame::Anchor& a = r->anchors[Frame::Anchor::hRight];
     a.active = true;
     a.rel = rel;
-    a.relPoint = relPoint;
+    a.relRatio = xRel;
     a.offset = x;
   }
   if ((point & 0xF0) == 0x00) // vTop
@@ -152,7 +167,7 @@ void MasterFrame::setPoint(Frame* r, int point, Frame* rel, int relPoint, int x,
     Frame::Anchor& a = r->anchors[Frame::Anchor::vTop];
     a.active = true;
     a.rel = rel;
-    a.relPoint = relPoint;
+    a.relRatio = yRel;
     a.offset = y;
   }
   else if ((point & 0xF0) == 0x10) // vCenter
@@ -163,7 +178,7 @@ void MasterFrame::setPoint(Frame* r, int point, Frame* rel, int relPoint, int x,
       Frame::Anchor& a = r->anchors[Frame::Anchor::vCenter];
       a.active = true;
       a.rel = rel;
-      a.relPoint = relPoint;
+      a.relRatio = yRel;
       a.offset = y;
     }
   }
@@ -175,13 +190,14 @@ void MasterFrame::setPoint(Frame* r, int point, Frame* rel, int relPoint, int x,
     Frame::Anchor& a = r->anchors[Frame::Anchor::vBottom];
     a.active = true;
     a.rel = rel;
-    a.relPoint = relPoint;
+    a.relRatio = yRel;
     a.offset = y;
   }
   // update positions
   if (!updating)
   {
     updating = true;
+    uint32 moveData = beginMoving();
     for (int cur = target - count + 1; cur < numFrames; cur++)
     {
       for (int i = 0; i < Frame::Anchor::count && frames[cur]->mr_moving != moveid; i++)
@@ -191,12 +207,13 @@ void MasterFrame::setPoint(Frame* r, int point, Frame* rel, int relPoint, int x,
           frames[cur]->mr_moving = moveid;
       }
       if (frames[cur]->mr_moving == moveid)
-        updateFrame(frames[cur]);
+        updateFrame(frames[cur], moveData);
     }
+    endMoving(moveData);
     updating = false;
   }
 }
-void MasterFrame::setWidth(Frame* r, int width)
+void RootFrame::setWidth(Frame* r, int width)
 {
   if (r->anchors[Frame::Anchor::hLeft].active &&
       r->anchors[Frame::Anchor::hRight].active)
@@ -206,7 +223,7 @@ void MasterFrame::setWidth(Frame* r, int width)
   c.offset = width;
   deepUpdateFrame(r);
 }
-void MasterFrame::setHeight(Frame* r, int height)
+void RootFrame::setHeight(Frame* r, int height)
 {
   if (r->anchors[Frame::Anchor::vTop].active &&
       r->anchors[Frame::Anchor::vBottom].active)
@@ -216,11 +233,12 @@ void MasterFrame::setHeight(Frame* r, int height)
   c.offset = height;
   deepUpdateFrame(r);
 }
-void MasterFrame::deepUpdateFrame(Frame* r)
+void RootFrame::deepUpdateFrame(Frame* r)
 {
   if (!updating)
   {
     updating = true;
+    uint32 moveData = beginMoving();
     moveid++;
     r->mr_moving = moveid;
     for (int cur = r->mr_pos; cur < numFrames; cur++)
@@ -232,30 +250,21 @@ void MasterFrame::deepUpdateFrame(Frame* r)
           frames[cur]->mr_moving = moveid;
       }
       if (frames[cur]->mr_moving == moveid)
-        updateFrame(frames[cur]);
+        updateFrame(frames[cur], moveData);
     }
+    endMoving(moveData);
     updating = false;
   }
 }
-inline int getRegionX(Frame* r, int point)
+inline int getRegionX(Frame* r, uint32 ratio)
 {
-  if ((point & 0x0F) == 0x00)
-    return r->left();
-  else if ((point & 0x0F) == 0x01)
-    return r->left() + r->width() / 2;
-  else
-    return r->left() + r->width();
+  return r->left() + ((r->width() * ratio) >> 15);
 }
-inline int getRegionY(Frame* r, int point)
+inline int getRegionY(Frame* r, uint32 ratio)
 {
-  if ((point & 0xF0) == 0x00)
-    return r->top();
-  else if ((point & 0xF0) == 0x10)
-    return r->top() + r->height() / 2;
-  else
-    return r->top() + r->height();
+  return r->top() + ((r->height() * ratio) >> 15);
 }
-void MasterFrame::updateFrame(Frame* r)
+void RootFrame::updateFrame(Frame* r, uint32 data)
 {
   int oldLeft = r->left();
   int oldTop = r->top();
@@ -268,15 +277,15 @@ void MasterFrame::updateFrame(Frame* r)
     Frame::Anchor& ra = r->anchors[Frame::Anchor::hRight];
     if (la.rel && la.rel->mr_valid && ra.rel && ra.rel->mr_valid)
     {
-      r->_x = getRegionX(la.rel, la.relPoint) + la.offset;
-      r->_width = getRegionX(ra.rel, ra.relPoint) + ra.offset - r->_x;
+      r->_x = getRegionX(la.rel, la.relRatio) + la.offset;
+      r->_width = getRegionX(ra.rel, ra.relRatio) + ra.offset - r->_x;
     }
     else
     {
       if (r->mr_valid)
       {
         r->mr_valid = false;
-        r->onChangeVisibility();
+        r->onChangeVisibility(data);
       }
       return;
     }
@@ -288,17 +297,17 @@ void MasterFrame::updateFrame(Frame* r)
     Frame::Anchor& ra = r->anchors[Frame::Anchor::hRight];
     Frame::Anchor& ca = r->anchors[Frame::Anchor::hCenter];
     if (la.active && la.rel && la.rel->mr_valid)
-      r->_x = getRegionX(la.rel, la.relPoint) + la.offset;
+      r->_x = getRegionX(la.rel, la.relRatio) + la.offset;
     else if (ra.active && ra.rel && ra.rel->mr_valid)
-      r->_x = getRegionX(ra.rel, ra.relPoint) + ra.offset - r->_width;
+      r->_x = getRegionX(ra.rel, ra.relRatio) + ra.offset - r->_width;
     else if (ca.active && ca.rel && ca.rel->mr_valid)
-      r->_x = getRegionX(ca.rel, ca.relPoint) + ca.offset - r->_width / 2;
+      r->_x = getRegionX(ca.rel, ca.relRatio) + ca.offset - r->_width / 2;
     else
     {
       if (r->mr_valid)
       {
         r->mr_valid = false;
-        r->onChangeVisibility();
+        r->onChangeVisibility(data);
       }
       return;
     }
@@ -310,15 +319,15 @@ void MasterFrame::updateFrame(Frame* r)
     Frame::Anchor& ba = r->anchors[Frame::Anchor::vBottom];
     if (ta.rel && ta.rel->mr_valid && ba.rel && ba.rel->mr_valid)
     {
-      r->_y = getRegionY(ta.rel, ta.relPoint) + ta.offset;
-      r->_height = getRegionY(ba.rel, ba.relPoint) + ba.offset - r->_y;
+      r->_y = getRegionY(ta.rel, ta.relRatio) + ta.offset;
+      r->_height = getRegionY(ba.rel, ba.relRatio) + ba.offset - r->_y;
     }
     else
     {
       if (r->mr_valid)
       {
         r->mr_valid = false;
-        r->onChangeVisibility();
+        r->onChangeVisibility(data);
       }
       return;
     }
@@ -330,17 +339,17 @@ void MasterFrame::updateFrame(Frame* r)
     Frame::Anchor& ba = r->anchors[Frame::Anchor::vBottom];
     Frame::Anchor& ca = r->anchors[Frame::Anchor::vCenter];
     if (ta.active && ta.rel && ta.rel->mr_valid)
-      r->_y = getRegionY(ta.rel, ta.relPoint) + ta.offset;
+      r->_y = getRegionY(ta.rel, ta.relRatio) + ta.offset;
     else if (ba.active && ba.rel && ba.rel->mr_valid)
-      r->_y = getRegionY(ba.rel, ba.relPoint) + ba.offset - r->_height;
+      r->_y = getRegionY(ba.rel, ba.relRatio) + ba.offset - r->_height;
     else if (ca.active && ca.rel && ca.rel->mr_valid)
-      r->_y = getRegionY(ca.rel, ca.relPoint) + ca.offset - r->_height / 2;
+      r->_y = getRegionY(ca.rel, ca.relRatio) + ca.offset - r->_height / 2;
     else
     {
       if (r->mr_valid)
       {
         r->mr_valid = false;
-        r->onChangeVisibility();
+        r->onChangeVisibility(data);
       }
       return;
     }
@@ -352,10 +361,10 @@ void MasterFrame::updateFrame(Frame* r)
     if (!r->mr_valid)
     {
       r->mr_valid = true;
-      r->onChangeVisibility();
+      r->onChangeVisibility(data);
     }
     else
-      r->onMove();
+      r->onMove(data);
   }
 }
 
@@ -437,18 +446,55 @@ void Frame::setParent(Frame* _parent)
   }
 }
 
-void Frame::onChangeVisibility()
+void Frame::onChangeVisibility(uint32 data)
 {
-  onMove();
+  onMove(data);
   for (Frame* cur = firstChild; cur; cur = cur->nextSibling)
     if (cur->_visible)
-      cur->onChangeVisibility();
+      cur->onChangeVisibility(data);
 }
 void Frame::show(bool s)
 {
   if (s != _visible)
   {
     _visible = s;
-    onChangeVisibility();
+    uint32 moveData = master->beginMoving();
+    onChangeVisibility(moveData);
+    master->endMoving(moveData);
   }
 }
+uint32 Frame::notify(uint32 message, uint32 wParam, uint32 lParam)
+{
+  Frame* cur = getParent();
+  uint32 result = M_UNHANDLED;
+  while (cur && (result = cur->onMessage(message, wParam, lParam)) == M_UNHANDLED)
+    cur = cur->getParent();
+  return result;
+}
+
+void Frame::setWidth(int width)
+{
+  master->setWidth(this, width);
+}
+void Frame::setHeight(int height)
+{
+  master->setHeight(this, height);
+}
+void Frame::setPoint(int point, Frame* rel, int relPoint, int x, int y)
+{
+  master->setPoint(this, point, rel, relPoint, x, y);
+}
+void Frame::setPointEx(int point, Frame* rel, float xRel, float yRel, int x, int y)
+{
+  master->setPointEx(this, point, rel, uint32(xRel * 0x8000), uint32(yRel * 0x8000), x, y);
+}
+void Frame::clearAllPoints()
+{
+  for (int i = 0; i < Anchor::count; i++)
+    anchors[i].active = false;
+  anchors[Anchor::hWidth].active = true;
+  anchors[Anchor::vHeight].active = true;
+  master->deepUpdateFrame(this);
+}
+
+////////////////////////////////////

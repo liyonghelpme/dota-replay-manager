@@ -98,11 +98,14 @@ W3GItem* W3GInventory::remRecipe(Dota::Recipe* recipe)
   item.flags = 0;
   return &item;
 }
-void W3GInventory::compute(uint32 time, Dota* dota)
+void W3GInventory::compute(uint32 time, Dota* dota, bool combine)
 {
   comb.clear();
   for (int i = 0; i < items.length() && items[i].time <= time; i++)
     comb.push(items[i]);
+
+  if (!combine)
+    return;
 
   for (int i = 0; i < dota->getNumRecipes(); i++)
   {

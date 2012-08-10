@@ -6,7 +6,7 @@
 
 #include "mainwnd.h"
 
-#define SPLITTER_WIDTH      4
+#define SPLITTER_WIDTH      10
 
 MainWnd::MainWnd()
 {
@@ -29,7 +29,7 @@ MainWnd::MainWnd()
   replayTree = new ReplayTree("K:\\Games\\Warcraft III\\Replay", this);
   replayTree->setPoint(PT_TOPLEFT, 10, 10);
   replayTree->setPoint(PT_BOTTOM, 0, -10);
-  replayTree->setPoint(PT_RIGHT, NULL, PT_LEFT, cfg::splitterPos, 0);
+  replayTree->setWidth(cfg::splitterPos - 10);
 
   views[MAINWND_SETTINGS] = new SettingsWindow(this);
   views[MAINWND_REPLAY] = new ReplayWindow(this);
@@ -72,8 +72,6 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
   {
   case WM_DESTROY:
     PostQuitMessage(0);
-    break;
-  case WM_MOVING:
     break;
   case WM_SIZE:
   case WM_MOVE:
@@ -134,7 +132,7 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       if (cfg::splitterPos > rc.right - 200) cfg::splitterPos = rc.right - 200;
       dragPos += cfg::splitterPos - oldSplitterPos;
       if (replayTree)
-        replayTree->setPoint(PT_RIGHT, NULL, PT_LEFT, cfg::splitterPos, 0);
+        replayTree->setWidth(cfg::splitterPos - 10);
     }
     break;
   case WM_LBUTTONUP:
@@ -142,7 +140,7 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       ReleaseCapture();
     break;
   }
-  return 0;
+  return M_UNHANDLED;
 }
 
 Frame* MainWnd::setView(int view)

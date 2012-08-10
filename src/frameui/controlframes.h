@@ -110,7 +110,6 @@ class TabFrame : public WindowFrame
 {
 protected:
   Array<Frame*> tabs;
-  void onMove();
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:
   TabFrame(Frame* parent, int id = 0, int style = 0);
@@ -137,14 +136,36 @@ class ImageFrame : public WindowFrame
 {
   HDC hDC;
   HBITMAP hBitmap;
-  Image* image;
-  bool owned;
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:
-  ImageFrame(Frame* parent, Image* img = NULL, bool ownd = true);
+  ImageFrame(Frame* parent, Image* img = NULL);
   ~ImageFrame();
 
-  void setImage(Image* img, bool ownd = true);
+  void setImage(Image* img);
+};
+
+class TreeViewFrame : public WindowFrame
+{
+public:
+  TreeViewFrame(Frame* parent, int id = 0, int style = 0);
+
+  void setImageList(HIMAGELIST list, int type)
+  {
+    TreeView_SetImageList(hWnd, list, type);
+  }
+  void setItemHeight(int height)
+  {
+    TreeView_SetItemHeight(hWnd, height);
+  }
+
+  HTREEITEM insertItem(TVINSERTSTRUCT* tvis)
+  {
+    return TreeView_InsertItem(hWnd, tvis);
+  }
+  void deleteItem(HTREEITEM item)
+  {
+    TreeView_DeleteItem(hWnd, item);
+  }
 };
 
 #endif // __FRAMEUI_CONTROLFRAMES_H__

@@ -13,39 +13,12 @@
 #define PT_BOTTOM         0x21
 #define PT_BOTTOMRIGHT    0x22
 
-class MasterFrame
-{
-  friend class Frame;
-
-  Frame** frames;
-  int numFrames;
-  int maxFrames;
-  int moveid;
-  bool updating;
-
-  void addFrame(Frame* r);
-  void updateFrame(Frame* r);
-  void deepUpdateFrame(Frame* r);
-  void setPoint(Frame* r, int point, Frame* rel, int relPoint, int x, int y);
-  void setWidth(Frame* r, int width);
-  void setHeight(Frame* r, int height);
-  void removeFrame(Frame* r);
-public:
-  MasterFrame(Frame* root);
-  ~MasterFrame();
-
-  Frame* getRoot() const
-  {
-    return frames[0];
-  }
-
-  void setSize(int width, int height);
-};
+#define M_UNHANDLED       0x80000000
 
 class Frame
 {
   // master frame data
-  friend class MasterFrame;
+  friend class RootFrame;
   int mr_pos;
   int mr_moving;
   bool mr_valid;
@@ -60,22 +33,24 @@ class Frame
     enum {hLeft, hCenter, hRight, hWidth, vTop, vCenter, vBottom, vHeight, count};
     bool active;
     Frame* rel;
-    int relPoint;
+    uint32 relRatio;
     int offset;
   } anchors[8];
 
-  MasterFrame* master;
+  RootFrame* master;
   Frame* parent;
   Frame* firstChild;
   Frame* lastChild;
   Frame* prevSibling;
   Frame* nextSibling;
 
-  void onChangeVisibility();
+  void onChangeVisibility(uint32 data);
 protected:
-  virtual void onMove()
+
+  virtual void onMove(uint32 data)
   {
   }
+  uint32 notify(uint32 message, uint32 wParam, uint32 lParam);
 public:
   Frame(Frame* parent);
   virtual ~Frame();
@@ -139,23 +114,14 @@ public:
   {
     return _height;
   }
-  void setWidth(int width)
-  {
-    master->setWidth(this, width);
-  }
-  void setHeight(int height)
-  {
-    master->setHeight(this, height);
-  }
+  void setWidth(int width);
+  void setHeight(int height);
   void setSize(int width, int height)
   {
     setWidth(width);
     setHeight(height);
   }
-  void setPoint(int point, Frame* rel, int relPoint, int x, int y)
-  {
-    master->setPoint(this, point, rel, relPoint, x, y);
-  }
+  void setPoint(int point, Frame* rel, int relPoint, int x, int y);
   void setPoint(int point, Frame* rel, int x, int y)
   {
     setPoint(point, rel, point, x, y);
@@ -164,14 +130,8 @@ public:
   {
     setPoint(point, parent, point, x, y);
   }
-  void clearAllPoints()
-  {
-    for (int i = 0; i < Anchor::count; i++)
-      anchors[i].active = false;
-    anchors[Anchor::hWidth].active = true;
-    anchors[Anchor::vHeight].active = true;
-    master->deepUpdateFrame(this);
-  }
+  void setPointEx(int point, Frame* rel, float xRel, float yRel, int x, int y);
+  void clearAllPoints();
   void setAllPoints(Frame* rel)
   {
     setPoint(PT_TOPLEFT, rel, PT_TOPLEFT, 0, 0);
@@ -183,11 +143,44 @@ public:
     setPoint(PT_BOTTOMRIGHT, parent, PT_BOTTOMRIGHT, 0, 0);
   }
 
-  // 0 = unprocessed
+  // M_UNHANDLED = unprocessed
   virtual uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam)
+  {
+    return M_UNHANDLED;
+  }
+};
+
+class RootFrame : public Frame
+{
+  friend class Frame;
+
+  Frame** frames;
+  int numFrames;
+  int maxFrames;
+  int moveid;
+  bool updating;
+
+  void addFrame(Frame* r);
+  void updateFrame(Frame* r, uint32 data);
+  void deepUpdateFrame(Frame* r);
+  void setPoint(Frame* r, int point, Frame* rel, int relPoint, int x, int y);
+  void setPointEx(Frame* r, int point, Frame* rel, uint32 xRel, uint32 yRel, int x, int y);
+  void setWidth(Frame* r, int width);
+  void setHeight(Frame* r, int height);
+  void removeFrame(Frame* r);
+protected:
+  virtual uint32 beginMoving()
   {
     return 0;
   }
+  virtual void endMoving(uint32 data)
+  {
+  }
+public:
+  RootFrame();
+  ~RootFrame();
+
+  void setSize(int width, int height);
 };
 
 #endif // __FRAMEUI_FRAME_H__

@@ -3,25 +3,38 @@
 
 #include "replaytree.h"
 #include "frameui/fontsys.h"
+#include "frameui/controlframes.h"
 
 #include "ui/mainwnd.h"
 
+#define IDC_BYDATE          136
+#define IDC_REFRESH         137
+
 ReplayTree::ReplayTree(String thePath, MainWnd* parent)
-  : WindowFrame(parent)
+  : Frame(parent)
 {
   mainWnd = parent;
   tracker = NULL;
-  create(WC_TREEVIEW, "",
-    TVS_HASBUTTONS | TVS_HASLINES | TVS_LINESATROOT | TVS_SHOWSELALWAYS |
-    WS_HSCROLL | WS_TABSTOP | WS_CHILD | WS_VISIBLE, WS_EX_CLIENTEDGE);
 
-  TreeView_SetImageList(hWnd, getApp()->getImageLibrary()->getImageList(), TVSIL_NORMAL);
-  TreeView_SetItemHeight(hWnd, 18);
+  treeView = new TreeViewFrame(this, 0, TVS_HASBUTTONS | TVS_HASLINES |
+    TVS_LINESATROOT | TVS_SHOWSELALWAYS | WS_HSCROLL | WS_TABSTOP);
+  treeView->setImageList(getApp()->getImageLibrary()->getImageList(), TVSIL_NORMAL);
+  treeView->setItemHeight(18);
+
+  byDate = new ButtonFrame("By date", this, IDC_BYDATE, BS_AUTOCHECKBOX);
+  byDate->setSize(100, 23);
+  byDate->setPoint(PT_BOTTOMLEFT, 0, 0);
+  ButtonFrame* refresh = new ButtonFrame("Refresh", this, IDC_REFRESH);
+  refresh->setSize(100, 23);
+  refresh->setPoint(PT_BOTTOMRIGHT, 0, 0);
+
+  treeView->setPoint(PT_TOPLEFT, 0, 0);
+  treeView->setPoint(PT_TOPRIGHT, 0, 0);
+  treeView->setPoint(PT_BOTTOM, refresh, PT_TOP, 0, -6);
 
   replayRoot = NULL;
 
   setPath(thePath);
-  setFont(FontSys::getSysFont());
 }
 
 struct FoundItem
@@ -89,7 +102,7 @@ void ReplayTree::populate(HTREEITEM parent, String thePath)
       tvis.item.iImage = images->getListIndex("IconReplay");
       tvis.item.iSelectedImage = tvis.item.iImage;
     }
-    items[pos].treeItem = TreeView_InsertItem(hWnd, &tvis);
+    items[pos].treeItem = treeView->insertItem(&tvis);
     if (foundItems[i].folder)
       populate(items[pos].treeItem, items[pos].path);
   }
@@ -103,7 +116,7 @@ void ReplayTree::setPath(String thePath)
 }
 void ReplayTree::onDirChange()
 {
-  TreeView_DeleteItem(hWnd, TVI_ROOT);
+  treeView->deleteItem(TVI_ROOT);
 
   String rootName = String::getFileTitle(path);
   items.clear();
@@ -120,13 +133,13 @@ void ReplayTree::onDirChange()
 
   items.push();
   items[0].type = MAINWND_SETTINGS;
-  items[0].treeItem = TreeView_InsertItem(hWnd, &tvis);
+  items[0].treeItem = treeView->insertItem(&tvis);
 
   tvis.item.pszText = rootName.getBuffer();
   tvis.item.iImage = getApp()->getImageLibrary()->getListIndex("IconClosedFolder");
   tvis.item.iSelectedImage = getApp()->getImageLibrary()->getListIndex("IconOpenFolder");
   tvis.item.lParam = 1;
-  replayRoot = TreeView_InsertItem(hWnd, &tvis);
+  replayRoot = treeView->insertItem(&tvis);
 
   items.push();
   items[1].type = MAINWND_FOLDER;
@@ -160,5 +173,5 @@ uint32 ReplayTree::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     }
     break;
   }
-  return 0;
+  return M_UNHANDLED;
 }

@@ -34,6 +34,7 @@ public:
     InvalidateRect(hWnd, NULL, TRUE);
   }
 
+  int getCount() const;
   void insertColumn(int i, String name, int fmt = LVCFMT_LEFT);
   void setColumnWidth(int i, int width);
   int addItem(String name, int image, int data);

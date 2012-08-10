@@ -87,9 +87,9 @@ uint32 ListFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
   if (message == WM_DRAWITEM)
   {
     drawItem((DRAWITEMSTRUCT*) lParam);
-    return 1;
+    return TRUE;
   }
-  return 0;
+  return M_UNHANDLED;
 }
 int ListFrame::getItemTextWidth(HDC hDC, String text, uint32 format)
 {
@@ -330,6 +330,8 @@ void ListFrame::setColumnWidth(int i, int width)
     {
       ListView_GetItemText(hWnd, j, i, buf, sizeof buf);
       int w = getItemTextWidth(hDC, buf, flags);
+      if (i == 0)
+        w += 18;
       if (w > awidth)
         awidth = w;
     }
@@ -361,6 +363,10 @@ void ListFrame::setItemText(int item, int column, String text)
   lvi.mask = LVIF_TEXT;
   lvi.pszText = text.getBuffer();
   ListView_SetItem(hWnd, &lvi);
+}
+int ListFrame::getCount() const
+{
+  return ListView_GetItemCount(hWnd);
 }
 
 //////////////////////////////////////////////
@@ -501,5 +507,5 @@ uint32 ComboFrameEx::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       prevSel = sel;
     }
   }
-  return 0;
+  return M_UNHANDLED;
 }

@@ -264,7 +264,7 @@ uint32 ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam
     {
       if (mapImages[curImage] && popout == NULL)
       {
-        SetCapture(map->getHandle());
+        RootWindow::setCapture(this);
         RECT rc;
         GetClientRect(map->getHandle(), &rc);
         ClientToScreen(map->getHandle(), (POINT*) &rc.left);
@@ -276,7 +276,7 @@ uint32 ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam
         popout = new MapPopout(&rc, mapImages[curImage]);
         ShowWindow(popout->getHandle(), SW_SHOWNA);
       }
-      return TRUE;
+      return 0;
     }
     else if (HIWORD(wParam) == STN_DBLCLK && LOWORD(wParam) == IDC_MAPIMAGE)
     {
@@ -292,7 +292,7 @@ uint32 ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam
         ReleaseDC(map->getHandle(), hDC);
         map->invalidate();
       }
-      return TRUE;
+      return 0;
     }
   }
   else if (message == WM_LBUTTONUP)
@@ -302,10 +302,10 @@ uint32 ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam
       delete popout;
       popout = NULL;
       ReleaseCapture();
-      return TRUE;
+      return 0;
     }
   }
-  return 0;
+  return M_UNHANDLED;
 }
 
 /////////////////////////////////////////////////

@@ -58,7 +58,7 @@ uint32 ClickColor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       SetBkColor(hDC, cfg::chatBg);
       ExtTextOut(hDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
     }
-    break;
+    return TRUE;
   case WM_LBUTTONDOWN:
     SetCapture(hWnd);
     break;
@@ -123,14 +123,14 @@ uint32 ClickColor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     InvalidateRect(hWnd, NULL, TRUE);
     break;
   default:
-    return 0;
+    return M_UNHANDLED;
   }
-  return TRUE;
+  return 0;
 }
 
 void SettingsWindow::addAllItems()
 {
-  Frame* tab = addTab(0, "General");
+  Frame* tab = tabs->addTab(0, "General");
 
   Frame* tip = new StaticFrame("Warcraft III Folder:", tab);
   WindowFrame* item1 = addStringItem(0, &cfg::warPath);
@@ -252,20 +252,20 @@ void SettingsWindow::addAllItems()
   item1->setSize(300, 16);
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 5);
 
-  btn1 = new ButtonFrame("Set this program as default for opening replays",
+  openWithThis = new ButtonFrame("Set this program as default for opening replays",
     tab, IDC_OPENWITHTHIS, BS_AUTOCHECKBOX);
-  btn1->setSize(300, 16);
-  btn1->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 5);
+  openWithThis->setSize(300, 16);
+  openWithThis->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 5);
   String cmd;
   if (getRegString(HKEY_CURRENT_USER, "Software\\Classes\\Warcraft3.Replay\\shell\\open\\command", "", cmd) &&
       cmd == getAppPath(true) + " \"%1\"")
-    btn1->setCheck(true);
+    openWithThis->setCheck(true);
   else
-    btn1->setCheck(false);
+    openWithThis->setCheck(false);
 
   //////////////////////////////////////////////////////////////
 
-  tab = addTab(1, "Replay");
+  tab = tabs->addTab(1, "Replay");
 
   tip = new StaticFrame("Your name(s) in replays:", tab);
   item1 = addStringItem(1, &cfg::ownNames);
@@ -285,7 +285,7 @@ void SettingsWindow::addAllItems()
   item1->setSize(228, 23);
   tip->setPoint(PT_BOTTOMRIGHT, item1, PT_BOTTOMLEFT, -4, -7);
 
-  group = new ButtonFrame("Timeline mode", tab, IDC_TIMELINE, BS_GROUPBOX);
+  group = new ButtonFrame("Timeline mode", tab, IDC_TIMELINE, WS_CLIPSIBLINGS | BS_GROUPBOX);
   group->setPoint(PT_TOP, item1, PT_BOTTOM, 0, 10);
   group->setPoint(PT_LEFT, 50, 0);
   group->setSize(430, 152);
@@ -436,9 +436,7 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
           cfg::replayPath = String::buildFullName(cfg::warPath, "Replay");
         updateKey(&cfg::replayPath);
 
-        HWND hParent = GetParent(hWnd);
-        if (hParent)
-          SendMessage(hParent, WM_UPDATEPATH, 0, 0);
+        notify(WM_UPDATEPATH, 0, 0);
       }
       break;
     case IDC_BROWSEREPLAYPATH:
@@ -450,19 +448,13 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
           cfg::replayPath = replayPath;
           updateKey(&cfg::replayPath);
 
-          HWND hParent = GetParent(hWnd);
-          if (hParent)
-            SendMessage(hParent, WM_UPDATEPATH, 0, 0);
+          notify(WM_UPDATEPATH, 0, 0);
         }
       }
       break;
     case IDC_APPLYREPLAYPATH:
       if (code == BN_CLICKED)
-      {
-        HWND hParent = GetParent(hWnd);
-        if (hParent)
-          SendMessage(hParent, WM_UPDATEPATH, 0, 0);
-      }
+        notify(WM_UPDATEPATH, 0, 0);
       break;
     case IDC_COPYFORMATHELP:
       if (code == BN_CLICKED)
@@ -473,7 +465,7 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
       if (code == BN_CLICKED)
       {
         String cmd = "";
-        if (IsDlgButtonChecked(hWnd, IDC_OPENWITHTHIS))
+        if (openWithThis->checked())
           cmd = getAppPath(true) + " \"%1\"";
         else if (!String(cfg::warPath).isEmpty())
           cmd.printf("\"%s\" -loadfile \"%%1\"", String::buildFullName(cfg::warPath, "War3.exe"));
@@ -513,7 +505,7 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
           LPTSTR pBuffer;
           FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER,
             NULL, result, 0, (LPTSTR) &pBuffer, 4, NULL);
-          MessageBox(hWnd, pBuffer, "Error", MB_ICONERROR | MB_OK);
+          MessageBox(getApp()->getMainWindow(), pBuffer, "Error", MB_ICONERROR | MB_OK);
           LocalFree((HLOCAL) pBuffer);
         }
       }
@@ -526,7 +518,7 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
         CHOOSEFONT cf;
         memset(&cf, 0, sizeof cf);
         cf.lStructSize = sizeof cf;
-        cf.hwndOwner = hWnd;
+        cf.hwndOwner = getApp()->getMainWindow();
         cf.lpLogFont = &lf;
         cf.Flags = CF_EFFECTS | CF_INITTOLOGFONTSTRUCT | CF_NOSCRIPTSEL | CF_SCREENFONTS;
         cf.rgbColors = cfg::chatFg;
@@ -548,7 +540,7 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
         CHOOSECOLOR cc;
         memset(&cc, 0, sizeof cc);
         cc.lStructSize = sizeof cc;
-        cc.hwndOwner = hWnd;
+        cc.hwndOwner = getApp()->getMainWindow();
         cc.rgbResult = cfg::chatBg;
         cc.Flags = CC_FULLOPEN | CC_RGBINIT;
         cc.lpCustColors = custColors;
@@ -567,9 +559,9 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
       }
       break;
     default:
-      return 0;
+      return M_UNHANDLED;
     }
-    return TRUE;
+    return 0;
   }
-  return 0;
+  return M_UNHANDLED;
 }

@@ -7,7 +7,9 @@
 
 class MainWnd;
 
-class ReplayTree : public WindowFrame, public DirChangeHandler
+class TreeViewFrame;
+class ButtonFrame;
+class ReplayTree : public Frame, public DirChangeHandler
 {
   struct TreeItem
   {
@@ -15,10 +17,13 @@ class ReplayTree : public WindowFrame, public DirChangeHandler
     String path;
     HTREEITEM treeItem;
   };
+  TreeViewFrame* treeView;
   Array<TreeItem> items;
   DirChangeTracker* tracker;
   String path;
   MainWnd* mainWnd;
+
+  ButtonFrame* byDate;
 
   HTREEITEM replayRoot;
 

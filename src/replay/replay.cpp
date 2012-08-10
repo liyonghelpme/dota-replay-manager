@@ -454,6 +454,8 @@ void W3GReplay::analyze()
     game->game_mode += " -wtf";
   for (int i = 0; i < numPlayers; i++)
   {
+    if (plist[i]->slot.color > 11 || plist[i]->slot.slot_status == 0)
+      continue;
     Dota::Hero* hero = dota->getHeroById(plist[i]->heroId);
     if (plist[i]->hero == NULL)
     {
@@ -525,7 +527,9 @@ void W3GReplay::analyze()
 
     if (!dotaInfo->item_data && plist[i]->hero)
     {
-      // TODO: add inventory calculation
+      plist[i]->inv.compute(0x7FFFFFFF, dota);
+      for (int j = 0; j < 6; j++)
+        plist[i]->inv.final[j] = plist[i]->inv.computed[j];
     }
   }
   if (game->winner == 0)

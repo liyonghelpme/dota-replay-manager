@@ -87,6 +87,8 @@ private:
   Ability abilities[1024];
   Item items[512];
   Recipe recipes[128];
+  int numItems;
+  int numAbilities;
   int numRecipes;
   enum {iHero = 0x01000000,
         iAbil = 0x02000000,
@@ -113,6 +115,10 @@ public:
   Ability* getAbilityById(uint32 id);
   Item* getItemById(uint32 id);
   int getObjectById(uint32 id, Object* obj);
+
+  Hero* getHeroByName(char const* name);
+  Ability* getAbilityByName(char const* name);
+  Item* getItemByName(char const* name);
 
   int getNumRecipes() const
   {

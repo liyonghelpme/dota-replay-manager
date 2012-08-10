@@ -58,7 +58,7 @@ uint32 LinkFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     uFont = FontSys::changeFlags(FontSys::getFlags(hFont) | FONT_UNDERLINE, hFont);
     if (lParam)
       InvalidateRect(hWnd, NULL, TRUE);
-    break;
+    return 0;
   case WM_PAINT:
     {
       PAINTSTRUCT ps;
@@ -80,7 +80,7 @@ uint32 LinkFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 
       EndPaint(hWnd, &ps);
     }
-    break;
+    return 0;
   case WM_MOUSEMOVE:
     {
       int x = LOWORD(lParam);
@@ -98,7 +98,7 @@ uint32 LinkFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
           InvalidateRect(hWnd, NULL, FALSE);
       }
     }
-    break;
+    return 0;
   case WM_MOUSELEAVE:
     {
       hover = false;
@@ -111,11 +111,11 @@ uint32 LinkFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       if (!pressed)
         InvalidateRect(hWnd, NULL, TRUE);
     }
-    break;
+    return 0;
   case WM_LBUTTONDOWN:
     SetCapture(hWnd);
     pressed = true;
-    break;
+    return 0;
   case WM_LBUTTONUP:
     if (pressed)
     {
@@ -123,11 +123,9 @@ uint32 LinkFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       pressed = false;
       notify(WM_COMMAND, MAKELONG(id(), BN_CLICKED), (uint32) hWnd);
     }
-    break;
-  default:
     return 0;
   }
-  return TRUE;
+  return M_UNHANDLED;
 }
 
 ///////////////////////////////////////////////////////
@@ -337,27 +335,17 @@ Frame* TabFrame::addTab(int pos, String text, Frame* frame)
   TabCtrl_InsertItem(hWnd, pos, &item);
   frame->show(pos == TabCtrl_GetCurSel(hWnd));
 
-  onMove();
+  RECT rc;
+  GetClientRect(hWnd, &rc);
+  int prevWidth = rc.right;
+  int prevHeight = rc.bottom;
+  TabCtrl_AdjustRect(hWnd, FALSE, &rc);
+  frame->setPoint(PT_TOPLEFT, rc.left, rc.top);
+  frame->setPoint(PT_BOTTOMRIGHT, rc.right - prevWidth, rc.bottom - prevHeight);
 
   return frame;
 }
 
-void TabFrame::onMove()
-{
-  WindowFrame::onMove();
-
-  RECT rc;
-  GetClientRect(hWnd, &rc);
-  TabCtrl_AdjustRect(hWnd, FALSE, &rc);
-  for (int i = 0; i < tabs.length(); i++)
-  {
-    if (tabs[i])
-    {
-      tabs[i]->setPoint(PT_TOPLEFT, rc.left, rc.top);
-      tabs[i]->setPoint(PT_BOTTOMRIGHT, rc.right - width(), rc.bottom - height());
-    }
-  }
-}
 uint32 TabFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
   if (message == WM_NOTIFY)
@@ -370,10 +358,10 @@ uint32 TabFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         if (i != sel)
           tabs[i]->hide();
       tabs[sel]->show();
-      return TRUE;
+      return 0;
     }
   }
-  return 0;
+  return M_UNHANDLED;
 }
 
 /////////////////////////////////////
@@ -387,43 +375,48 @@ uint32 ImageFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     if (hBitmap)
       BitBlt(hPaintDC, 0, 0, width(), height(), hDC, 0, 0, SRCCOPY);
     EndPaint(hWnd, &ps);
-    return TRUE;
+    return 0;
   }
-  return 0;
+  return M_UNHANDLED;
 }
-ImageFrame::ImageFrame(Frame* parent, Image* img, bool ownd)
+ImageFrame::ImageFrame(Frame* parent, Image* img)
   : WindowFrame(parent)
 {
   create("", WS_CHILD, 0);
-  image = NULL;
 
   hDC = CreateCompatibleDC(NULL);
   hBitmap = NULL;
-  setImage(img, ownd);
+  setImage(img);
 }
 ImageFrame::~ImageFrame()
 {
   if (hBitmap)
     DeleteObject(hBitmap);
   DeleteDC(hDC);
-  if (owned)
-    delete image;
 }
 
-void ImageFrame::setImage(Image* img, bool ownd)
+void ImageFrame::setImage(Image* image)
 {
-  if (owned)
-    delete image;
   if (hBitmap)
     DeleteObject(hBitmap);
   hBitmap = NULL;
-  image = img;
-  owned = ownd;
   if (image)
   {
     setSize(image->width(), image->height());
-    hBitmap = image->createBitmap(hDC);
+//    hBitmap = CreateCompatibleBitmap(hDC, image->width(), image->height());
+//    image->fillBitmap(hBitmap, hDC);
+    hBitmap = image->createBitmap(NULL);
     SelectObject(hDC, hBitmap);
   }
   invalidate();
+}
+
+////////////////////////////////////
+
+TreeViewFrame::TreeViewFrame(Frame* parent, int id, int style)
+  : WindowFrame(parent)
+{
+  create(WC_TREEVIEW, "", style | WS_CHILD | WS_VISIBLE, WS_EX_CLIENTEDGE);
+  setId(id);
+  setFont(FontSys::getSysFont());
 }

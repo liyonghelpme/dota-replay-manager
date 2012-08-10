@@ -11,6 +11,7 @@
 class MPQArchive;
 class ImageLibrary;
 class DotaLibrary;
+class MainWnd;
 
 class Application
 {
@@ -23,6 +24,7 @@ class Application
   ImageLibrary* imageLibrary;
   Registry* registry;
   DotaLibrary* dotaLibrary;
+  MainWnd* mainWindow;
 
   bool _loaded;
 public:
@@ -53,6 +55,7 @@ public:
   {
     return root;
   }
+  HWND getMainWindow() const;
 
   bool loaded() const
   {

@@ -56,6 +56,7 @@ public:
   {
     showWindow(false);
   }
+  void setRedraw(bool r);
 
   int id() const;
   void setId(int id);

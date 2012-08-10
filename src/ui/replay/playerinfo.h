@@ -12,8 +12,9 @@ class ReplayPlayerInfoTab : public ReplayTab
   ListFrame* skills;
   ListFrame* items;
   ImageFrame* kdIcons[5];
-  StaticFrame* kdText[5];
-  StaticFrame* wardInfo;
+  StaticFrame* kdText[2][5];
+  ImageFrame* wardIcons[2];
+  StaticFrame* wardInfo[2];
   StaticFrame* buildInfo;
   ImageFrame* buildImage;
 

@@ -50,7 +50,7 @@ class ReplayTimelineTab : public ReplayTab
   EditFrame* timeBox;
   void onSetReplay();
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
-  void onMove();
+  void onMove(uint32 data);
 public:
   ReplayTimelineTab(Frame* parent);
   ~ReplayTimelineTab();

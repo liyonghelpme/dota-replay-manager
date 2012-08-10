@@ -11,7 +11,7 @@ class WindowFrame : public Frame, public Window
 {
   HWND ownerWindow;
 protected:
-  void onMove();
+  void onMove(uint32 data);
   uint32 onWndMessage(uint32 message, uint32 wParam, uint32 lParam);
 protected:
   void create(String text, uint32 style, uint32 exStyle);
@@ -20,19 +20,28 @@ protected:
   {
     return ownerWindow;
   }
-  uint32 notify(uint32 message, uint32 wParam, uint32 lParam);
 public:
   WindowFrame(Frame* parent);
 };
 
-class RootWindow : public Frame, public Window
+class RootWindow : public RootFrame, public Window
 {
-  MasterFrame* masterFrame;
   uint32 onControlMessage(HWND hControl, uint32 message, uint32 wParam, uint32 lParam);
   uint32 onWndMessage(uint32 message, uint32 wParam, uint32 lParam);
+
+  uint32 beginMoving();
+  void endMoving(uint32 data);
+
+  friend class WindowFrame;
+  uint32 r_message;
+  Frame* r_frame;
+
+  Frame* c_frame;
 public:
   RootWindow();
   ~RootWindow();
+
+  static void setCapture(Frame* frame);
 };
 
 #endif // __FRAMEUI_FRAMEWND_H__

@@ -31,7 +31,7 @@ TimePicture::TimePicture(Frame* parent)
   w3g = NULL;
   if (WNDCLASSEX* wcx = createclass("TimeLineWnd"))
   {
-    wcx->style |= CS_OWNDC;
+    wcx->style |= CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
     RegisterClassEx(wcx);
   }
   create("", WS_CHILD, WS_EX_CLIENTEDGE);
@@ -114,13 +114,13 @@ uint32 TimePicture::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     }
     break;
   case WM_ERASEBKGND:
-    break;
+    return TRUE;
   case WM_TIMER:
     return notify(message, wParam, lParam);
   default:
-    return 0;
+    return M_UNHANDLED;
   }
-  return TRUE;
+  return 0;
 }
 
 String TimePicture::formatPlayer(W3GPlayer* player)
@@ -659,11 +659,11 @@ void ReplayTimelineTab::onSetReplay()
   }
 }
 
-void ReplayTimelineTab::onMove()
+void ReplayTimelineTab::onMove(uint32 data)
 {
   if (!visible())
     playBox->setCheck(false);
-  ReplayTab::onMove();
+  ReplayTab::onMove(data);
 }
 uint32 ReplayTimelineTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
@@ -692,12 +692,12 @@ uint32 ReplayTimelineTab::onMessage(uint32 message, uint32 wParam, uint32 lParam
       else
         timeBox->setText("");
     }
-    return TRUE;
+    return 0;
   }
   else if (message == WM_COMMAND && HIWORD(wParam) == BN_CLICKED && LOWORD(wParam) == ID_PLAY)
   {
     lastUpdate = GetTickCount();
-    return TRUE;
+    return 0;
   }
   else if (message == WM_NOTIFY)
   {
@@ -710,8 +710,8 @@ uint32 ReplayTimelineTab::onMessage(uint32 message, uint32 wParam, uint32 lParam
       if (speed < -99) speed = -99;
       if (speed > 99) speed = 99;
       speedBox->setText(String::format("%dx", speed));
-      return TRUE;
+      return 0;
     }
   }
-  return 0;
+  return M_UNHANDLED;
 }

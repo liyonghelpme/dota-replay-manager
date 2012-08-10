@@ -24,11 +24,13 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
   resources = NULL;
   imageLibrary = NULL;
   dotaLibrary = NULL;
+  mainWindow = NULL;
   hInstance = _hInstance;
   _loaded = false;
 }
 Application::~Application()
 {
+  delete mainWindow;
   resources->flush();
   delete dotaLibrary;
   delete imageLibrary;
@@ -98,11 +100,11 @@ int Application::run()
 
   imageLibrary = new ImageLibrary(resources);
 
-  MainWnd mainWnd;
+  mainWindow = new MainWnd();
 
   dotaLibrary = new DotaLibrary();
   
-  mainWnd.postLoad();
+  mainWindow->postLoad();
   _loaded = true;
 
   MSG msg;
@@ -113,4 +115,9 @@ int Application::run()
   }
 
   return msg.wParam;
+}
+
+HWND Application::getMainWindow() const
+{
+  return mainWindow->getHandle();
 }

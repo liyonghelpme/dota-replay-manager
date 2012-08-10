@@ -5,11 +5,46 @@
 
 #include "settingswnd.h"
 
-#define ITEM_BASE           157
+#define ITEM_BASE             157
+
+#define IDC_CACHEREPLAYS      130
+#define IDC_RESETSETTINGS     131
+#define IDC_LOOKFORUPDATES    132
+#define IDC_README            133
+#define IDC_ABOUT             134
 
 SettingsWindow::SettingsWindow(Frame* parent)
-  : TabFrame(parent)
+  : Frame(parent)
 {
+  tabs = new TabFrame(this);
+
+  ButtonFrame* btn = new ButtonFrame("Cache all replays", this, IDC_CACHEREPLAYS);
+  btn->setSize(110, 23);
+  btn->setPoint(PT_BOTTOMLEFT, 0, 0);
+
+  ButtonFrame* prev = btn;
+  btn = new ButtonFrame("Reset to default", this, IDC_RESETSETTINGS);
+  btn->setSize(110, 23);
+  btn->setPoint(PT_BOTTOMLEFT, prev, PT_BOTTOMRIGHT, 10, 0);
+
+  btn = new ButtonFrame("About...", this, IDC_ABOUT);
+  btn->setSize(70, 23);
+  btn->setPoint(PT_BOTTOMRIGHT, 0, 0);
+
+  prev = btn;
+  btn = new ButtonFrame("Readme...", this, IDC_README);
+  btn->setSize(70, 23);
+  btn->setPoint(PT_BOTTOMRIGHT, prev, PT_BOTTOMLEFT, -10, 0);
+
+  prev = btn;
+  btn = new ButtonFrame("Look for updates", this, IDC_LOOKFORUPDATES);
+  btn->setSize(100, 23);
+  btn->setPoint(PT_BOTTOMRIGHT, prev, PT_BOTTOMLEFT, -10, 0);
+
+  tabs->setPoint(PT_TOPLEFT, 0, 0);
+  tabs->setPoint(PT_TOPRIGHT, 0, 0);
+  tabs->setPoint(PT_BOTTOM, btn, PT_TOP, 0, -6);
+
   addAllItems();
 }
 
@@ -21,7 +56,7 @@ WindowFrame* SettingsWindow::addStringItem(int tab, cfg::ConfigItem* item)
   cur.type = ITEM_STRING;
   cur.item = item;
   cur.ctrl = NULL;
-  EditFrame* frame = new EditFrame(getTab(tab), ITEM_BASE + pos);
+  EditFrame* frame = new EditFrame(tabs->getTab(tab), ITEM_BASE + pos);
   frame->setText(*(cfg::StringItem*) item);
   cur.ctrl = frame;
   return cur.ctrl;
@@ -34,7 +69,7 @@ WindowFrame* SettingsWindow::addIntItem(int tab, cfg::ConfigItem* item)
   cur.type = ITEM_INT;
   cur.item = item;
   cur.ctrl = NULL;
-  EditFrame* frame = new EditFrame(getTab(tab), ITEM_BASE + pos, ES_AUTOHSCROLL | ES_NUMBER);
+  EditFrame* frame = new EditFrame(tabs->getTab(tab), ITEM_BASE + pos, ES_AUTOHSCROLL | ES_NUMBER);
   frame->setText(String(*(cfg::IntItem*) item));
   cur.ctrl = frame;
   return cur.ctrl;
@@ -48,7 +83,7 @@ WindowFrame* SettingsWindow::addBoolItem(int tab, cfg::ConfigItem* item, int mas
   cur.item = item;
   cur.mask = mask;
   cur.ctrl = NULL;
-  ButtonFrame* frame = new ButtonFrame("", getTab(tab), ITEM_BASE + pos, BS_AUTOCHECKBOX);
+  ButtonFrame* frame = new ButtonFrame("", tabs->getTab(tab), ITEM_BASE + pos, BS_AUTOCHECKBOX);
   frame->setCheck(((*(cfg::IntItem*) item) & mask) != 0);
   cur.ctrl = frame;
   return cur.ctrl;
@@ -57,7 +92,7 @@ WindowFrame* SettingsWindow::addBoolItem(int tab, cfg::ConfigItem* item, int mas
 uint32 SettingsWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
   uint32 result = handleExtra(message, wParam, lParam);
-  if (result)
+  if (result != M_UNHANDLED)
     return result;
   switch (message)
   {
@@ -85,12 +120,12 @@ uint32 SettingsWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
               (((ButtonFrame*) cur.ctrl)->checked() ? cur.mask : 0);
           break;
         }
-        return TRUE;
+        return 0;
       }
     }
     break;
   }
-  return TabFrame::onMessage(message, wParam, lParam);
+  return M_UNHANDLED;
 }
 void SettingsWindow::updateKey(cfg::ConfigItem* item)
 {

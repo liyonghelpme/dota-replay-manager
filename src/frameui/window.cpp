@@ -155,3 +155,10 @@ void Window::invalidate(bool erase)
 {
   InvalidateRect(hWnd, NULL, erase ? TRUE : FALSE);
 }
+
+void Window::setRedraw(bool r)
+{
+  SendMessage(hWnd, WM_SETREDRAW, r ? TRUE : FALSE, 0);
+  if (r)
+    RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
+}

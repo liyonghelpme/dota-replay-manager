@@ -144,7 +144,7 @@ void Image::make_premult()
 }
 void Image::blt(int x, int y, Image const* src, int srcX, int srcY, int srcW, int srcH)
 {
-  if (src->_bits == NULL || src == this) return;
+  if (src == NULL || src->_bits == NULL || src == this) return;
   int startY = _max(0, clipRect.top - y);
   int endY = _min(clipRect.bottom - y, srcH);
   int startX = _max(0, clipRect.left - x);

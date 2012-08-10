@@ -24,7 +24,7 @@ struct W3GInventory
   W3GInventory();
   void addItem(Dota::Item* item, uint32 time);
 
-  void compute(uint32 time, Dota* dota);
+  void compute(uint32 time, Dota* dota, bool combine = true);
 private:
   bool hasRecipe(Dota::Recipe* recipe, uint32& time);
   W3GItem* remRecipe(Dota::Recipe* recipe);

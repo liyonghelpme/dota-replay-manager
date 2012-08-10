@@ -42,8 +42,8 @@ Dota::Dota(uint32 ver, File* file, DotaLibrary* lib)
 
   for (int i = 0; i < MAX_HERO_POINT; i++)
     heroes[i].id = 0;
-  int numItems = 1;
-  int numAbilities = 1;
+  numItems = 1;
+  numAbilities = 1;
   heroes[0].name = "No Hero";
   heroes[0].icon = "Empty";
   items[0].name = "Empty slot";
@@ -281,6 +281,28 @@ int Dota::getObjectById(uint32 id, Object* obj)
   }
   return obj->type;
 }
+Dota::Hero* Dota::getHeroByName(char const* name)
+{
+  for (int i = 0; i < MAX_HERO_POINT; i++)
+    if (heroes[i].name.icompare(name) == 0)
+      return &heroes[i];
+  return NULL;
+}
+Dota::Ability* Dota::getAbilityByName(char const* name)
+{
+  for (int i = 0; i < numAbilities; i++)
+    if (abilities[i].name.icompare(name) == 0)
+      return &abilities[i];
+  return NULL;
+}
+Dota::Item* Dota::getItemByName(char const* name)
+{
+  for (int i = 0; i < numItems; i++)
+    if (items[i].name.icompare(name) == 0)
+      return &items[i];
+  return NULL;
+}
+
 void Dota::release()
 {
   if (this && --ref <= 0)

@@ -15,22 +15,28 @@ WindowFrame::WindowFrame(Frame* parent)
     ownerWindow = NULL;
 }
 
-void WindowFrame::onMove()
+void WindowFrame::onMove(uint32 data)
 {
   if (hWnd)
   {
+    uint32 flags = SWP_NOREPOSITION;
+    HWND hWndInsertAfter = NULL;
     if (visible())
     {
       if (IsWindowVisible(hWnd))
-        SetWindowPos(hWnd, NULL, left(), top(), width(), height(), SWP_NOZORDER);
+        flags |= SWP_NOZORDER;
       else
       {
-        ShowWindow(hWnd, SW_SHOWNA);
-        SetWindowPos(hWnd, HWND_TOP, left(), top(), width(), height(), 0);
+        flags |= SWP_SHOWWINDOW;
+        hWndInsertAfter = HWND_TOP;
       }
     }
     else
-      ShowWindow(hWnd, SW_HIDE);
+      flags |= SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_HIDEWINDOW;
+    if (data)
+      DeferWindowPos((HDWP) data, hWnd, hWndInsertAfter, left(), top(), width(), height(), flags);
+    else
+      SetWindowPos(hWnd, hWndInsertAfter, left(), top(), width(), height(), flags);
   }
 }
 void WindowFrame::create(String text, uint32 style, uint32 exStyle)
@@ -44,38 +50,71 @@ void WindowFrame::create(String wndClass, String text, uint32 style, uint32 exSt
 
 uint32 WindowFrame::onWndMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
-  if (uint32 result = onMessage(message, wParam, lParam))
+  uint32 result;
+  if ((result = onMessage(message, wParam, lParam)) != M_UNHANDLED)
     return result;
-  return Window::onWndMessage(message, wParam, lParam);
-}
-uint32 WindowFrame::notify(uint32 message, uint32 wParam, uint32 lParam)
-{
   Frame* cur = getParent();
-  uint32 result = 0;
-  while (cur && (result = cur->onMessage(message, wParam, lParam)) == 0)
+  while (cur->getParent())
     cur = cur->getParent();
+  RootWindow* frm = dynamic_cast<RootWindow*>(cur);
+  if (frm)
+  {
+    frm->r_message = message;
+    frm->r_frame = getParent();
+  }
+  result = Window::onWndMessage(message, wParam, lParam);
+  if (frm)
+  {
+    frm->r_message = 0;
+    frm->r_frame = NULL;
+  }
   return result;
 }
 
 ///////////////////////////////////////////////////////
 
 RootWindow::RootWindow()
-  : Frame(NULL)
 {
-  masterFrame = new MasterFrame(this);
+  r_message = 0;
+  r_frame = NULL;
+  c_frame = NULL;
 }
 RootWindow::~RootWindow()
 {
-  delete masterFrame;
+}
+
+uint32 RootWindow::beginMoving()
+{
+  return (uint32) BeginDeferWindowPos(32);
+}
+void RootWindow::endMoving(uint32 data)
+{
+  EndDeferWindowPos((HDWP) data);
 }
 
 uint32 RootWindow::onControlMessage(HWND hControl, uint32 message, uint32 wParam, uint32 lParam)
 {
   Frame* cur = dynamic_cast<WindowFrame*>(Window::fromHandle(hControl));
-  uint32 result = 0;
-  while (cur && (result = cur->onMessage(message, wParam, lParam)) == 0)
+  uint32 result = M_UNHANDLED;
+  while (cur && (result = cur->onMessage(message, wParam, lParam)) == M_UNHANDLED)
     cur = cur->getParent();
-  return result;
+  return result == M_UNHANDLED ? 0 : result;
+}
+
+void RootWindow::setCapture(Frame* frame)
+{
+  Frame* cur = frame;
+  while (cur->getParent())
+    cur = cur->getParent();
+  RootWindow* frm = dynamic_cast<RootWindow*>(cur);
+  if (frm)
+  {
+    if (frm->c_frame)
+      frm->c_frame->onMessage(WM_CAPTURECHANGED, 0, 0);
+    else
+      SetCapture(frm->getHandle());
+    frm->c_frame = frame;
+  }
 }
 
 uint32 RootWindow::onWndMessage(uint32 message, uint32 wParam, uint32 lParam)
@@ -91,7 +130,8 @@ uint32 RootWindow::onWndMessage(uint32 message, uint32 wParam, uint32 lParam)
       DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*) lParam;
       if (dis->CtlType != ODT_MENU)
       {
-        if (uint32 result = onControlMessage(dis->hwndItem, message, wParam, lParam))
+        uint32 result;
+        if ((result = onControlMessage(dis->hwndItem, message, wParam, lParam)) != M_UNHANDLED)
           return result;
       }
     }
@@ -100,11 +140,54 @@ uint32 RootWindow::onWndMessage(uint32 message, uint32 wParam, uint32 lParam)
     {
       RECT rc;
       GetClientRect(hWnd, &rc);
-      masterFrame->setSize(rc.right, rc.bottom);
+      setSize(rc.right, rc.bottom);
+    }
+    break;
+  case WM_CAPTURECHANGED:
+  case WM_LBUTTONDBLCLK:
+  case WM_LBUTTONDOWN:
+  case WM_LBUTTONUP:
+  case WM_MBUTTONDBLCLK:
+  case WM_MBUTTONDOWN:
+  case WM_MBUTTONUP:
+  case WM_RBUTTONDBLCLK:
+  case WM_RBUTTONDOWN:
+  case WM_RBUTTONUP:
+  case WM_MOUSEWHEEL:
+  case WM_MOUSEHWHEEL:
+  case WM_XBUTTONDBLCLK:
+  case WM_XBUTTONDOWN:
+  case WM_XBUTTONUP:
+  case WM_MOUSEMOVE:
+    if (c_frame)
+    {
+      if (message != WM_CAPTURECHANGED)
+      {
+        int x = LOWORD(lParam);
+        int y = HIWORD(lParam);
+        x -= c_frame->left();
+        y -= c_frame->top();
+        lParam = MAKELONG(x, y);
+      }
+      uint32 result = c_frame->onMessage(message, wParam, lParam);
+      if (message == WM_CAPTURECHANGED)
+        c_frame = NULL;
+      if (result != M_UNHANDLED)
+        return result;
+      else
+        return 0;
     }
     break;
   }
-  if (uint32 result = onMessage(message, wParam, lParam))
+  uint32 result = M_UNHANDLED;
+  if (message == r_message && r_frame)
+  {
+    Frame* cur = r_frame;
+    while (cur && (result = cur->onMessage(message, wParam, lParam)) == M_UNHANDLED)
+      cur = cur->getParent();
+  } else
+    result = onMessage(message, wParam, lParam);
+  if (result != M_UNHANDLED)
     return result;
   return Window::onWndMessage(message, wParam, lParam);
 }
