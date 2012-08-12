@@ -592,7 +592,10 @@ String String::getFileName(String str)
 String String::getFileTitle(String str)
 {
   int dot = toTheEnd;
-  for (int i = _len(str.buf) - 1; i >= 0; i--)
+  int i = _len(str.buf) - 1;
+  if (str.buf[i] == '/' || str.buf[i] == '\\')
+    dot = i--;
+  for (; i >= 0; i--)
   {
     if (str.buf[i] == '/' || str.buf[i] == '\\')
       return str.substring(i + 1, dot);

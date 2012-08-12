@@ -137,6 +137,10 @@ cfg::StringItem::operator String()
 {
   return String((char*) item->value);
 }
+cfg::StringItem::operator char const*()
+{
+  return (char*) item->value;
+}
 cfg::StringItem& cfg::StringItem::operator = (char const* value)
 {
   item->set(VALUE_STRING, strlen(value) + 1, value);

@@ -116,7 +116,7 @@ uint32 TimePicture::onMessage(uint32 message, uint32 wParam, uint32 lParam)
   case WM_ERASEBKGND:
     return TRUE;
   case WM_TIMER:
-    return notify(message, wParam, lParam);
+    return getParent()->notify(message, wParam, lParam);
   default:
     return M_UNHANDLED;
   }

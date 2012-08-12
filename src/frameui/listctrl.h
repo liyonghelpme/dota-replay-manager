@@ -53,7 +53,7 @@ class ComboFrameEx : public WindowFrame
   Array<BoxItem> items;
   int prevSel;
 
-  void onMove();
+  void onMove(uint32 data);
   int boxHeight;
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:
@@ -73,7 +73,7 @@ public:
   void setBoxHeight(int ht)
   {
     boxHeight = ht;
-    onMove();
+    onMove(0);
   }
 };
 

@@ -7,6 +7,7 @@
 
 class ButtonFrame : public WindowFrame
 {
+  uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:
   ButtonFrame(String text, Frame* parent, int id = 0, int style = BS_PUSHBUTTON);
   void setCheck(bool check)
@@ -52,7 +53,7 @@ public:
 
 class ComboFrame : public WindowFrame
 {
-  void onMove();
+  void onMove(uint32 data);
   int boxHeight;
 public:
   ComboFrame(Frame* parent, int id = 0, int style = CBS_DROPDOWNLIST);
@@ -64,7 +65,7 @@ public:
   void setBoxHeight(int ht)
   {
     boxHeight = ht;
-    onMove();
+    onMove(0);
   }
 };
 
@@ -128,6 +129,7 @@ public:
   {
     return TabCtrl_GetCurSel(hWnd);
   }
+  void setCurSel(int sel);
 };
 
 #include "graphics/image.h"
@@ -166,6 +168,8 @@ public:
   {
     TreeView_DeleteItem(hWnd, item);
   }
+
+  void setItemText(HTREEITEM item, String text);
 };
 
 #endif // __FRAMEUI_CONTROLFRAMES_H__

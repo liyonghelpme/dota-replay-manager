@@ -66,15 +66,21 @@ class ReplayViewItem : public ViewItem
 {
   String path;
   int tab;
+  int player;
 public:
   ReplayViewItem(String replay)
   {
     path = replay;
     tab = 0;
+    player = 0;
   }
   void setTab(int replayTab)
   {
     tab = replayTab;
+  }
+  void setPlayer(int id)
+  {
+    player = id;
   }
   void apply(MainWnd* wnd);
 };

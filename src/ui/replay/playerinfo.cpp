@@ -18,10 +18,10 @@ ReplayPlayerInfoTab::ReplayPlayerInfoTab(Frame* parent)
 
   skills = new ListFrame(this, ID_SKILLLIST);
   skills->setPoint(PT_TOPRIGHT, players, PT_BOTTOM, -3, 22);
-  skills->setPoint(PT_BOTTOMLEFT, 10, -65);
+  skills->setPoint(PT_BOTTOMLEFT, 10, -55);
   items = new ListFrame(this, ID_ITEMLIST);
   items->setPoint(PT_TOPLEFT, players, PT_BOTTOM, 3, 22);
-  items->setPoint(PT_BOTTOMRIGHT, -10, -65);
+  items->setPoint(PT_BOTTOMRIGHT, -10, -55);
 
   skills->insertColumn(0, "Skill");
   skills->insertColumn(1, "");

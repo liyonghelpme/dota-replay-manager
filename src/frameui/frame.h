@@ -46,11 +46,9 @@ class Frame
 
   void onChangeVisibility(uint32 data);
 protected:
-
   virtual void onMove(uint32 data)
   {
   }
-  uint32 notify(uint32 message, uint32 wParam, uint32 lParam);
 public:
   Frame(Frame* parent);
   virtual ~Frame();
@@ -148,6 +146,7 @@ public:
   {
     return M_UNHANDLED;
   }
+  uint32 notify(uint32 message, uint32 wParam, uint32 lParam);
 };
 
 class RootFrame : public Frame

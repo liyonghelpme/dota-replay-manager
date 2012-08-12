@@ -11,12 +11,17 @@
 #define MAINWND_FOLDER        2
 #define MAINWND_NUM_VIEWS     3
 
+class EditFrame;
+
 class MainWnd : public RootWindow
 {
   ReplayTree* replayTree;
 
   Frame* views[MAINWND_NUM_VIEWS];
   ViewItem* history;
+  ButtonFrame* hBack;
+  ButtonFrame* hForward;
+  EditFrame* addressBar;
 
   // splitter
   int dragPos;
@@ -29,6 +34,7 @@ public:
 
   Frame* setView(int view);
   void pushView(ViewItem* item);
+  void setAddress(String text);
 
   void postLoad();
 };

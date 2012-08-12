@@ -23,4 +23,6 @@ bool browseForFolder(String prompt, String& result);
 
 uint32 flip_int(uint32 i);
 
+String format_systime(uint64 time, char const* fmt);
+
 #endif // __BASE_UTILS_H__

@@ -126,7 +126,7 @@ Image::~Image()
 
 void Image::blt(int x, int y, Image const* src)
 {
-  if (src->_bits == NULL || src == this) return;
+  if (src == NULL || src->_bits == NULL || src == this) return;
   blt(x, y, src, 0, 0, src->_width, src->_height);
 }
 void Image::make_premult()

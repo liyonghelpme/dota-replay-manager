@@ -465,7 +465,7 @@ void Frame::show(bool s)
 }
 uint32 Frame::notify(uint32 message, uint32 wParam, uint32 lParam)
 {
-  Frame* cur = getParent();
+  Frame* cur = this;
   uint32 result = M_UNHANDLED;
   while (cur && (result = cur->onMessage(message, wParam, lParam)) == M_UNHANDLED)
     cur = cur->getParent();

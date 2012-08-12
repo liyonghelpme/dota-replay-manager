@@ -5,6 +5,8 @@ cfg_int(wndWidth, CW_USEDEFAULT);
 cfg_int(wndHeight, 0);
 cfg_int(wndShow, SW_SHOWNORMAL);
 
+cfg_int(byDate, 0);
+
 //////////////////////////////////////////////
 
 #ifdef cfg_init

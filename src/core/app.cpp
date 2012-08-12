@@ -38,6 +38,7 @@ Application::~Application()
   delete registry;
   instance = NULL;
   MPQCleanup();
+  OleUninitialize();
 }
 void loadDotaData(MPQLoader* ldr, String path);
 
@@ -52,6 +53,7 @@ int Application::run()
       ICC_TAB_CLASSES | ICC_UPDOWN_CLASS;
   InitCommonControlsEx(&iccex);
   LoadLibrary("Riched20.dll");
+  OleInitialize(NULL);
 
   registry = new Registry();
 

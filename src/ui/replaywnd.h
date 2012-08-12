@@ -30,8 +30,7 @@ public:
     onSetReplay();
   }
   virtual void setPlayer(W3GPlayer* player)
-  {
-  }
+  {}
 };
 
 class ReplayWindow : public TabFrame
@@ -52,6 +51,7 @@ public:
     viewItem = item;
   }
   void setTab(int tab);
+  void setPlayer(int id);
 };
 
 #endif // __UI_REPLAYWND__

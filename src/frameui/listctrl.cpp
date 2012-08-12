@@ -422,22 +422,28 @@ void ComboFrameEx::setCurSel(int sel)
   SendMessage(hWnd, CB_SETCURSEL, sel, 0);
 }
 
-void ComboFrameEx::onMove()
+void ComboFrameEx::onMove(uint32 data)
 {
   if (hWnd)
   {
+    uint32 flags = SWP_NOREPOSITION;
+    HWND hWndInsertAfter = NULL;
     if (visible())
     {
       if (IsWindowVisible(hWnd))
-        SetWindowPos(hWnd, NULL, left(), top(), width(), boxHeight, SWP_NOZORDER);
+        flags |= SWP_NOZORDER;
       else
       {
-        ShowWindow(hWnd, SW_SHOWNA);
-        SetWindowPos(hWnd, HWND_TOP, left(), top(), width(), boxHeight, 0);
+        flags |= SWP_SHOWWINDOW;
+        hWndInsertAfter = HWND_TOP;
       }
     }
     else
-      ShowWindow(hWnd, SW_HIDE);
+      flags |= SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_HIDEWINDOW;
+    if (data)
+      DeferWindowPos((HDWP) data, hWnd, hWndInsertAfter, left(), top(), width(), boxHeight, flags);
+    else
+      SetWindowPos(hWnd, hWndInsertAfter, left(), top(), width(), boxHeight, flags);
   }
 }
 uint32 ComboFrameEx::onMessage(uint32 message, uint32 wParam, uint32 lParam)
@@ -445,6 +451,8 @@ uint32 ComboFrameEx::onMessage(uint32 message, uint32 wParam, uint32 lParam)
   if (message == WM_DRAWITEM)
   {
     DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*) lParam;
+    if (dis->itemID == -1)
+      return TRUE;
     BoxItem& item = items[dis->itemData];
 
     uint32 clrTextSave, clrBkSave;

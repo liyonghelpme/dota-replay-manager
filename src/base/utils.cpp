@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <shlobj.h>
+#include <time.h>
 
 #include "base/string.h"
 
@@ -137,4 +138,13 @@ uint32 flip_int(uint32 i)
          ((i >>  8) & 0x0000FF00) |
          ((i <<  8) & 0x00FF0000) |
          ((i << 24) & 0xFF000000);
+}
+
+String format_systime(uint64 time, char const* fmt)
+{
+  tm temp;
+  char buf[128];
+  _localtime64_s(&temp, (__time64_t*) &time);
+  strftime(buf, sizeof buf, fmt, &temp);
+  return buf;
 }

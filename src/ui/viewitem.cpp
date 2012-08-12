@@ -75,8 +75,11 @@ void FolderViewItem::apply(MainWnd* wnd)
 
 void ReplayViewItem::apply(MainWnd* wnd)
 {
+  wnd->setAddress(path);
   ReplayWindow* r = (ReplayWindow*) wnd->setView(MAINWND_REPLAY);
   r->openReplay(path);
   r->setViewItem(this);
   r->setTab(tab);
+  if (player)
+    r->setPlayer(player);
 }

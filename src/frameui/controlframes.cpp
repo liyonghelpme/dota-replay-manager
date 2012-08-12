@@ -12,6 +12,23 @@ ButtonFrame::ButtonFrame(String text, Frame* parent, int id, int style)
   setFont(FontSys::getSysFont());
   setId(id);
 }
+uint32 ButtonFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+{
+  if (message == WM_ERASEBKGND)
+  {
+    if ((GetWindowLong(hWnd, GWL_STYLE) & BS_TYPEMASK) == BS_GROUPBOX)
+    {
+      HDC hDC = (HDC) wParam;
+      HBRUSH hBrush = (HBRUSH) GetClassLong(GetParent(hWnd), GCL_HBRBACKGROUND);
+      RECT rc;
+      GetClientRect(hWnd, &rc);
+      FillRect(hDC, &rc, hBrush);
+      InvalidateRect(hWnd, NULL, FALSE);
+      return TRUE;
+    }
+  }
+  return M_UNHANDLED;
+}
 
 ///////////////////////////////////////////////////////
 
@@ -140,22 +157,28 @@ EditFrame::EditFrame(Frame* parent, int id, int style)
 
 ///////////////////////////////////////////////////////
 
-void ComboFrame::onMove()
+void ComboFrame::onMove(uint32 data)
 {
   if (hWnd)
   {
+    uint32 flags = SWP_NOREPOSITION;
+    HWND hWndInsertAfter = NULL;
     if (visible())
     {
       if (IsWindowVisible(hWnd))
-        SetWindowPos(hWnd, NULL, left(), top(), width(), boxHeight, SWP_NOZORDER);
+        flags |= SWP_NOZORDER;
       else
       {
-        ShowWindow(hWnd, SW_SHOWNA);
-        SetWindowPos(hWnd, HWND_TOP, left(), top(), width(), boxHeight, 0);
+        flags |= SWP_SHOWWINDOW;
+        hWndInsertAfter = HWND_TOP;
       }
     }
     else
-      ShowWindow(hWnd, SW_HIDE);
+      flags |= SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_HIDEWINDOW;
+    if (data)
+      DeferWindowPos((HDWP) data, hWnd, hWndInsertAfter, left(), top(), width(), boxHeight, flags);
+    else
+      SetWindowPos(hWnd, hWndInsertAfter, left(), top(), width(), boxHeight, flags);
   }
 }
 ComboFrame::ComboFrame(Frame* parent, int id, int style)
@@ -363,6 +386,14 @@ uint32 TabFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
   }
   return M_UNHANDLED;
 }
+void TabFrame::setCurSel(int sel)
+{
+  TabCtrl_SetCurSel(hWnd, sel);
+  for (int i = 0; i < tabs.length(); i++)
+    if (i != sel)
+      tabs[i]->hide();
+  tabs[sel]->show();
+}
 
 /////////////////////////////////////
 
@@ -419,4 +450,13 @@ TreeViewFrame::TreeViewFrame(Frame* parent, int id, int style)
   create(WC_TREEVIEW, "", style | WS_CHILD | WS_VISIBLE, WS_EX_CLIENTEDGE);
   setId(id);
   setFont(FontSys::getSysFont());
+}
+void TreeViewFrame::setItemText(HTREEITEM item, String text)
+{
+  TVITEM tvi;
+  memset(&tvi, 0, sizeof tvi);
+  tvi.hItem = item;
+  tvi.mask = TVIF_TEXT;
+  tvi.pszText = text.getBuffer();
+  TreeView_SetItem(hWnd, &tvi);
 }

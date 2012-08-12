@@ -181,7 +181,11 @@ String ReplayGameChatTab::sanitizeNotify(String str)
 }
 void ReplayGameChatTab::onSetReplay()
 {
-  Registry* reg = getApp()->getRegistry();
+  if (w3g == NULL)
+  {
+    chatFrame->setText("");
+    return;
+  }
   LOGFONT const& chatFont = cfg::chatFont.get<LOGFONT>();
   String text = "{\\rtf1\\ansi{\\fonttbl\\f0\\f";
   if (chatFont.lfPitchAndFamily == FF_DECORATIVE)

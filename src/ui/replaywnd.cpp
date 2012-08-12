@@ -47,8 +47,23 @@ void ReplayWindow::openReplay(String path)
 }
 void ReplayWindow::setTab(int tab)
 {
+  setCurSel(tab);
   if (viewItem)
     viewItem->setTab(tab);
+}
+void ReplayWindow::setPlayer(int id)
+{
+  if (replay)
+  {
+    W3GPlayer* player = replay->getPlayerById(id);
+    if (player)
+    {
+      for (int i = 0; i < numTabs(); i++)
+        ((ReplayTab*) getTab(i))->setPlayer(player);
+    }
+  }
+  if (viewItem)
+    viewItem->setPlayer(id);
 }
 uint32 ReplayWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
@@ -60,8 +75,19 @@ uint32 ReplayWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       W3GPlayer* player = (W3GPlayer*) box->getItemData(box->getCurSel());
       for (int i = 0; i < numTabs(); i++)
         ((ReplayTab*) getTab(i))->setPlayer(player);
+      if (player && viewItem)
+        viewItem->setPlayer(player->player_id);
     }
     return TRUE;
+  }
+  else if (message == WM_NOTIFY && viewItem)
+  {
+    NMHDR* hdr = (NMHDR*) lParam;
+    if (hdr->hwndFrom == hWnd && hdr->code == TCN_SELCHANGE)
+    {
+      if (viewItem)
+        viewItem->setTab(getCurSel());
+    }
   }
   return TabFrame::onMessage(message, wParam, lParam);
 }

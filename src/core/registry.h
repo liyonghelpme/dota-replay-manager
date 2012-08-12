@@ -58,6 +58,7 @@ public:
   {
   public:
     operator String();
+    operator char const*();
     StringItem& operator = (char const* value);
   };
   class BinaryItem : public ConfigItem

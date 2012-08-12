@@ -3,10 +3,17 @@
 #include "ui/settingswnd.h"
 #include "ui/replaywnd.h"
 #include "ui/folderwnd.h"
+#include "frameui/controlframes.h"
 
 #include "mainwnd.h"
 
 #define SPLITTER_WIDTH      10
+
+#define IDC_ADDRESSBAR        741
+#define IDC_BROWSE            742
+#define IDC_OPEN              743
+#define IDC_BACK              744
+#define IDC_FORWARD           745
 
 MainWnd::MainWnd()
 {
@@ -26,21 +33,50 @@ MainWnd::MainWnd()
   create(CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, "DotA Replay Manager",
     WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN, 0);
 
-  replayTree = new ReplayTree("K:\\Games\\Warcraft III\\Replay", this);
+  replayTree = new ReplayTree(cfg::replayPath, this);
   replayTree->setPoint(PT_TOPLEFT, 10, 10);
   replayTree->setPoint(PT_BOTTOM, 0, -10);
   replayTree->setWidth(cfg::splitterPos - 10);
+
+  addressBar = new EditFrame(this, IDC_ADDRESSBAR);
+  addressBar->setHeight(23);
+
+  hForward = new ButtonFrame("Forward", this, IDC_FORWARD);
+  hForward->setPoint(PT_TOPRIGHT, -10, 10);
+  hForward->setSize(60, 23);
+
+  hBack = new ButtonFrame("Back", this, IDC_BACK);
+  hBack->setPoint(PT_BOTTOMRIGHT, hForward, PT_BOTTOMLEFT, -4, 0);
+  hBack->setSize(60, 23);
+
+  StaticFrame* vline = new StaticFrame(this, 0, SS_ETCHEDVERT);
+  vline->setPoint(PT_BOTTOMRIGHT, hBack, PT_BOTTOMLEFT, -3, 0);
+  vline->setSize(2, 23);
+
+  ButtonFrame* bOpen = new ButtonFrame("Open", this, IDC_OPEN);
+  bOpen->setPoint(PT_BOTTOMRIGHT, vline, PT_BOTTOMLEFT, -3, 0);
+  bOpen->setSize(60, 23);
+
+  ButtonFrame* bBrowse = new ButtonFrame("Browse", this, IDC_BROWSE);
+  bBrowse->setPoint(PT_BOTTOMRIGHT, bOpen, PT_BOTTOMLEFT, -4, 0);
+  bBrowse->setSize(60, 23);
+
+  addressBar->setPoint(PT_TOPLEFT, replayTree, PT_TOPRIGHT, SPLITTER_WIDTH, 0);
+  addressBar->setPoint(PT_BOTTOMRIGHT, bBrowse, PT_BOTTOMLEFT, -4, 0);
 
   views[MAINWND_SETTINGS] = new SettingsWindow(this);
   views[MAINWND_REPLAY] = new ReplayWindow(this);
   views[MAINWND_FOLDER] = new FolderWindow(this);
   for (int i = 0; i < MAINWND_NUM_VIEWS; i++)
   {
-    views[i]->setPoint(PT_TOPLEFT, replayTree, PT_TOPRIGHT, SPLITTER_WIDTH, 0);
+    views[i]->setPoint(PT_TOPLEFT, addressBar, PT_BOTTOMLEFT, 0, 10);
     views[i]->setPoint(PT_BOTTOMRIGHT, -10, -10);
     views[i]->hide();
   }
   history = NULL;
+
+  hBack->enable(history && history->hasPrev());
+  hForward->enable(history && history->hasNext());
 }
 MainWnd::~MainWnd()
 {
@@ -92,6 +128,50 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       }
     }
     break;
+  case WM_COMMAND:
+    if (HIWORD(wParam) == BN_CLICKED)
+    {
+      if (LOWORD(wParam) == IDC_BACK || LOWORD(wParam) == IDC_FORWARD)
+      {
+        if (history)
+          history = (LOWORD(wParam) == IDC_BACK ? history->back() : history->forward());
+        if (history)
+          history->apply(this);
+        hBack->enable(history && history->hasPrev());
+        hForward->enable(history && history->hasNext());
+        return 0;
+      }
+      else if (LOWORD(wParam) == IDC_OPEN || LOWORD(wParam) == IDC_BROWSE)
+      {
+        String path;
+        if (LOWORD(wParam) == IDC_BROWSE)
+        {
+          OPENFILENAME ofn;
+          memset(&ofn, 0, sizeof ofn);
+          ofn.lStructSize = sizeof ofn;
+          ofn.hwndOwner = hWnd;
+          ofn.lpstrFilter = "Warcraft III Replay Files (*.w3g)\0*.w3g\0All Files\0*\0\0";
+          char buf[512] = "";
+          ofn.lpstrFile = buf;
+          ofn.nMaxFile = sizeof buf;
+          ofn.lpstrDefExt = "w3g";
+          ofn.lpstrInitialDir = cfg::replayPath;
+          ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
+          ofn.FlagsEx = OFN_EX_NOPLACESBAR;
+          if (!GetOpenFileName(&ofn))
+            return 0;
+          path = buf;
+        }
+        else
+          path = String::fixPath(addressBar->getText());
+        pushView(new ReplayViewItem(path));
+        return 0;
+      }
+    }
+    break;
+  case WM_UPDATEPATH:
+    replayTree->setPath(cfg::replayPath);
+    return 0;
 //////////////////// SPLITTER ////////////////////////
   case WM_SETCURSOR:
     if (LOWORD(lParam) == HTCLIENT)
@@ -115,7 +195,7 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       {
         SetCapture(hWnd);
         dragPos = pt.x;
-        return TRUE;
+        return 0;
       }
     }
     break;
@@ -133,6 +213,7 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       dragPos += cfg::splitterPos - oldSplitterPos;
       if (replayTree)
         replayTree->setWidth(cfg::splitterPos - 10);
+      return 0;
     }
     break;
   case WM_LBUTTONUP:
@@ -153,4 +234,11 @@ void MainWnd::pushView(ViewItem* item)
 {
   history = (history ? history->push(item) : item);
   history->apply(this);
+  hBack->enable(history && history->hasPrev());
+  hForward->enable(history && history->hasNext());
+}
+void MainWnd::setAddress(String text)
+{
+  addressBar->setText(text);
+  replayTree->setCurFile(text);
 }
