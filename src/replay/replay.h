@@ -125,6 +125,7 @@ class W3GReplay
   W3GGame* game;
   DotaInfo* dotaInfo;
   Dota* dota;
+  FileInfo* fileInfo;
 
   W3GPlayer* players[256];
   W3GPlayer* plist[16];
@@ -155,6 +156,7 @@ class W3GReplay
 public:
   static W3GReplay* load(File* replay, bool quick = false);
   static W3GReplay* load(char const* path, bool quick = false);
+  void setPath(char const* path);
   ~W3GReplay();
 
   W3GPlayer* getCaptain(int team);
@@ -213,6 +215,11 @@ public:
   String formatTime(uint32 time, int flags = TIME_SECONDS);
 
   uint32 getLength(bool throne = true);
+
+  FileInfo* getFileInfo()
+  {
+    return fileInfo;
+  }
 };
 
 #endif // __REPLAY_REPLAY_H__

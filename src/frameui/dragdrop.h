@@ -32,7 +32,22 @@ public:
   DropTarget(WindowFrame* window, CLIPFORMAT format, uint32 allowedEffects);
   ~DropTarget();
 };
+class ClipboardReader
+{
+  IDataObject* pDataObj;
+  STGMEDIUM stgmed;
+public:
+  ClipboardReader(CLIPFORMAT format);
+  ~ClipboardReader();
+
+  HGLOBAL getData();
+};
 
 uint32 DoDragDrop(CLIPFORMAT format, HGLOBAL data, uint32 allowedEffects);
+uint32 SetClipboard(CLIPFORMAT format, HGLOBAL data);
+
+char* FileListToString(Array<String> const& files);
+HGLOBAL CreateFileDrop(Array<String> const& files);
+HGLOBAL CreateFileDrop(String file);
 
 #endif // __FRAMEUI_DRAGDROP__

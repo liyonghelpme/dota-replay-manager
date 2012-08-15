@@ -12,6 +12,7 @@ class MPQArchive;
 class ImageLibrary;
 class DotaLibrary;
 class MainWnd;
+class CacheManager;
 
 class Application
 {
@@ -22,9 +23,9 @@ class Application
 
   MPQArchive* resources;
   ImageLibrary* imageLibrary;
-  Registry* registry;
   DotaLibrary* dotaLibrary;
   MainWnd* mainWindow;
+  CacheManager* cache;
 
   bool _loaded;
 public:
@@ -43,13 +44,13 @@ public:
   {
     return imageLibrary;
   }
-  Registry* getRegistry() const
-  {
-    return registry;
-  }
   DotaLibrary* getDotaLibrary() const
   {
     return dotaLibrary;
+  }
+  CacheManager* getCache() const
+  {
+    return cache;
   }
   String getRootPath() const
   {

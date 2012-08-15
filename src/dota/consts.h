@@ -72,6 +72,7 @@
 
 int getModeTime (uint64 mode);
 uint64 parseMode(String mode, String* parsed = NULL);
+String formatMode(uint64 mode);
 
 class Image;
 class File;

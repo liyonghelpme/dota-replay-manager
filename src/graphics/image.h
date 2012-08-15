@@ -117,6 +117,7 @@ public:
 
   HBITMAP createBitmap(HDC hDC = NULL);
   void fillBitmap(HBITMAP hBitmap, HDC hDC);
+  static Image* fromBitmap(HBITMAP hBitmap);
 };
 
 struct BLTInfo

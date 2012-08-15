@@ -1,7 +1,7 @@
 #include "pool.h"
 #include <stdlib.h>
 
-struct MemoryPool::MemoryChunk
+struct FixedMemoryPool::MemoryChunk
 {
   MemoryChunk* next;
   MemoryChunk* nextFree;
@@ -27,7 +27,7 @@ struct MemoryPool::MemoryChunk
   void free(uint8* ptr);
 };
 
-MemoryPool::MemoryChunk::MemoryChunk(uint32 size, uint32 count)
+FixedMemoryPool::MemoryChunk::MemoryChunk(uint32 size, uint32 count)
 {
   next = NULL;
   nextFree = NULL;
@@ -39,12 +39,12 @@ MemoryPool::MemoryChunk::MemoryChunk(uint32 size, uint32 count)
   firstFree = NULL;
   firstUnused = begin;
 }
-MemoryPool::MemoryChunk::~MemoryChunk()
+FixedMemoryPool::MemoryChunk::~MemoryChunk()
 {
   delete[] begin;
 }
 
-uint8* MemoryPool::MemoryChunk::alloc()
+uint8* FixedMemoryPool::MemoryChunk::alloc()
 {
   if (firstFree)
   {
@@ -60,30 +60,25 @@ uint8* MemoryPool::MemoryChunk::alloc()
   }
   return NULL;
 }
-void MemoryPool::MemoryChunk::free(uint8* ptr)
+void FixedMemoryPool::MemoryChunk::free(uint8* ptr)
 {
   *(uint8**) ptr = firstFree;
   firstFree = ptr;
 }
 
-MemoryPool::MemoryPool(uint32 itemSize, uint32 poolGrow)
+FixedMemoryPool::FixedMemoryPool(uint32 itemSize, uint32 poolGrow)
 {
   this->itemSize = itemSize;
   chunkSize = poolGrow / itemSize;
   chunks = NULL;
   freeChunks = NULL;
 }
-MemoryPool::~MemoryPool()
+FixedMemoryPool::~FixedMemoryPool()
 {
-  while (chunks)
-  {
-    MemoryChunk* next = chunks->next;
-    delete chunks;
-    chunks = next;
-  }
+  clear();
 }
 
-void* MemoryPool::alloc()
+void* FixedMemoryPool::alloc()
 {
   if (freeChunks == NULL)
   {
@@ -96,7 +91,7 @@ void* MemoryPool::alloc()
     freeChunks = freeChunks->nextFree;
   return ptr;
 }
-void MemoryPool::free(void* ptr)
+void FixedMemoryPool::free(void* ptr)
 {
   for (MemoryChunk* chunk = chunks; chunk; chunk = chunk->next)
   {
@@ -110,5 +105,71 @@ void MemoryPool::free(void* ptr)
       chunk->free((uint8*) ptr);
       return;
     }
+  }
+}
+void FixedMemoryPool::clear()
+{
+  while (chunks)
+  {
+    MemoryChunk* next = chunks->next;
+    delete chunks;
+    chunks = next;
+  }
+  freeChunks = NULL;
+}
+
+//////////////////////////////////////////////
+
+struct MemoryPool::MemoryChunk
+{
+  uint8* ptr;
+  uint32 left;
+  MemoryChunk* next;
+  uint8* alloc(uint32 size)
+  {
+    if (size <= left)
+    {
+      uint8* result = ptr;
+      ptr += size;
+      left -= size;
+      return result;
+    }
+    return NULL;
+  }
+};
+
+MemoryPool::MemoryPool(uint32 chunk)
+{
+  chunkSize = chunk;
+  chunks = NULL;
+}
+MemoryPool::~MemoryPool()
+{
+  clear();
+}
+
+void* MemoryPool::alloc(uint32 size)
+{
+  void* result = NULL;
+  if (chunks)
+    result = chunks->alloc(size);
+  if (result == NULL)
+  {
+    MemoryChunk* chunk = (MemoryChunk*) malloc(sizeof(MemoryChunk) + chunkSize);
+    chunk->ptr = (uint8*)(chunk + 1);
+    chunk->left = chunkSize;
+    chunk->next = chunks;
+    chunks = chunk;
+    result = chunks->alloc(size);
+  }
+  return result;
+}
+void MemoryPool::clear()
+{
+  while (chunks)
+  {
+    MemoryChunk* next = chunks->next;
+    free(chunks);
+    chunks = next;
   }
 }

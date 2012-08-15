@@ -66,6 +66,7 @@ ReplayGameInfoTab::ReplayGameInfoTab(Frame* parent)
   mapImages[1] = NULL;
   curImage = 0;
   players = new ListFrame(this);
+  players->setColorMode(ListFrame::colorParam);
   players->setPoint(PT_BOTTOMLEFT, 10, -10);
   players->setPoint(PT_BOTTOMRIGHT, -10, -10);
   players->setHeight(250);
@@ -73,7 +74,8 @@ ReplayGameInfoTab::ReplayGameInfoTab(Frame* parent)
   map = new StaticFrame(this, IDC_MAPIMAGE, SS_BITMAP | SS_CENTERIMAGE, WS_EX_CLIENTEDGE);
   map->setPoint(PT_BOTTOMRIGHT, players, PT_TOPRIGHT, 0, -10);
   map->setSize(132, 132);
-  info = new SimpleListFrame(this, 0, WS_DISABLED, WS_EX_STATICEDGE);
+  info = new SimpleListFrame(this, 0, LVS_ALIGNLEFT | LVS_REPORT |
+    LVS_NOCOLUMNHEADER | LVS_NOSCROLL | LVS_SINGLESEL | WS_DISABLED, WS_EX_STATICEDGE);
   info->setPoint(PT_TOPLEFT, 10, 10);
   info->setPoint(PT_BOTTOMRIGHT, map, PT_BOTTOMLEFT, -10, 0);
 
@@ -99,11 +101,14 @@ ReplayGameInfoTab::~ReplayGameInfoTab()
     DeleteObject(mapBitmap);
   delete popout;
 }
-void ReplayGameInfoTab::addInfo(String name, String value)
+void ReplayGameInfoTab::addInfo(String name, String value, bool utf8)
 {
   int pos = info->addItem("");
   info->setItemText(pos, 1, name);
-  info->setItemText(pos, 2, value);
+  if (utf8)
+    info->setItemTextUtf8(pos, 2, value);
+  else
+    info->setItemText(pos, 2, value);
 }
 void ReplayGameInfoTab::onSetReplay()
 {
@@ -125,7 +130,7 @@ void ReplayGameInfoTab::onSetReplay()
     return;
 
   MPQArchive* mapArchive = MPQArchive::open(String::buildFullName(
-    cfg::warPath, w3g->getGameInfo()->map), MPQFILE_READ);
+    cfg.warPath, w3g->getGameInfo()->map), MPQFILE_READ);
   if (mapArchive)
   {
     File* file = mapArchive->openFile("war3mapPreview.tga", MPQFILE_READ);
@@ -170,12 +175,12 @@ void ReplayGameInfoTab::onSetReplay()
   addInfo("Warcraft version", formatVersion(w3g->getVersion()));
   addInfo("Map", String::getFileTitle(w3g->getGameInfo()->map));
   addInfo("Map location", String::getPath(w3g->getGameInfo()->map));
-  addInfo("Game name", w3g->getGameInfo()->name);
+  addInfo("Game name", w3g->getGameInfo()->name, true);
   if (w3g->getDotaInfo())
     addInfo("Game mode", w3g->getGameInfo()->game_mode);
-  addInfo("Host name", w3g->getGameInfo()->creator);
+  addInfo("Host name", w3g->getGameInfo()->creator, true);
   if (W3GPlayer* saver = w3g->getGameInfo()->saver)
-    addInfo("Replay saver", saver->name);
+    addInfo("Replay saver", saver->name, true);
   addInfo("Game length", format_time(w3g->getLength()));
   info->setColumnWidth(2, LVSCW_AUTOSIZE);
 
@@ -186,6 +191,7 @@ void ReplayGameInfoTab::onSetReplay()
   if (DotaInfo const* dotaInfo = w3g->getDotaInfo())
   {
     players->insertColumn(PL_NAME, "Name");
+    players->setColumnUTF8(PL_NAME, true);
     players->insertColumn(PL_LEVEL, "Level", LVCFMT_RIGHT);
     players->insertColumn(PL_ITEM, "Cost", LVCFMT_RIGHT);
     players->insertColumn(PL_KILLS, "Kills", LVCFMT_RIGHT);
@@ -212,13 +218,12 @@ void ReplayGameInfoTab::onSetReplay()
         addPlayer(dotaInfo->teams[1][i]);
     }
 
-    players->setColumnWidth(PL_NAME, 140);
-    for (int i = PL_LEVEL; i <= PL_LEFT; i++)
+    for (int i = 0; i <= PL_LEFT; i++)
     {
       if (dotaInfo->version < makeVersion(6, 53, 0) && (i == PL_ASSISTS || i == PL_NEUTRALS))
         players->setColumnWidth(i, 0);
       else
-        players->setColumnWidth(i, LVSCW_AUTOSIZE_USEHEADER);
+        players->setColumnWidth(i, cfg.giColWidth[i]);
     }
   }
 
@@ -249,7 +254,7 @@ void ReplayGameInfoTab::addPlayer(W3GPlayer* player)
       {
         if (player->inv.final[it])
           items.printf("$%d$", ilib->getListIndex(player->inv.final[it]->icon, "Unknown"));
-        else if (cfg::showEmptySlots)
+        else if (cfg.showEmptySlots)
           items.printf("$%d$", ilib->getListIndex("EmptySlot"));
       }
       players->setItemText(i, PL_ITEMBUILD, items);
@@ -258,7 +263,18 @@ void ReplayGameInfoTab::addPlayer(W3GPlayer* player)
 }
 uint32 ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
-  if (message == WM_COMMAND)
+  if (message == WM_NOTIFY)
+  {
+    NMHDR* hdr = (NMHDR*) lParam;
+    if (hdr->code == HDN_ENDTRACK)
+    {
+      NMHEADER* header = (NMHEADER*) hdr;
+      if (header->iItem >= 0 && header->iItem <= PL_LEFT &&
+          header->pitem && header->pitem->mask & HDI_WIDTH)
+        cfg.giColWidth[header->iItem] = header->pitem->cxy;
+    }
+  }
+  else if (message == WM_COMMAND)
   {
     if (HIWORD(wParam) == STN_CLICKED && LOWORD(wParam) == IDC_MAPIMAGE)
     {

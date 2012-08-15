@@ -258,6 +258,31 @@ void Image::fillBitmap(HBITMAP hBitmap, HDC hDC)
   bi.biClrImportant = 0;
   SetDIBits(hDC, hBitmap, 0, _height, _bits, (BITMAPINFO*) &bi, DIB_RGB_COLORS);
 }
+Image* Image::fromBitmap(HBITMAP hBitmap)
+{
+  BITMAP bm;
+  GetObject(hBitmap, sizeof bm, &bm);
+  Image* image = new Image(bm.bmWidth, bm.bmHeight);
+
+  BITMAPINFOHEADER bi;
+  bi.biSize = sizeof bi;
+  bi.biWidth = bm.bmWidth;
+  bi.biHeight = -bm.bmHeight;
+  bi.biPlanes = 1;
+  bi.biBitCount = 32;
+  bi.biCompression = BI_RGB;
+  bi.biSizeImage = 0;
+  bi.biXPelsPerMeter = 1;
+  bi.biYPelsPerMeter = 1;
+  bi.biClrUsed = 0;
+  bi.biClrImportant = 0;
+  HDC hDC = GetDC(NULL);
+  GetDIBits(hDC, hBitmap, 0, bm.bmHeight, image->_bits, (BITMAPINFO*) &bi, DIB_RGB_COLORS);
+
+  for (int i = 0; i < bm.bmWidth * bm.bmHeight; i++)
+    image->_bits[i] |= 0xFF000000;
+  return image;
+}
 
 //void Image4D::render (CDC* dc, int x, int y, bool opaque)
 //{

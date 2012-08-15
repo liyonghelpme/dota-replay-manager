@@ -17,7 +17,7 @@ class SettingsWindow : public Frame
   {
     int tab;
     int type;
-    cfg::ConfigItem* item;
+    void* item;
     int mask;
     WindowFrame* ctrl;
   };
@@ -28,10 +28,10 @@ class SettingsWindow : public Frame
   ComboFrame* chatColorMode;
   ButtonFrame* openWithThis;
 
-  WindowFrame* addStringItem(int tab, cfg::ConfigItem* item);
-  WindowFrame* addIntItem(int tab, cfg::ConfigItem* item);
-  WindowFrame* addBoolItem(int tab, cfg::ConfigItem* item, int mask = 1);
-  void updateKey(cfg::ConfigItem* item);
+  WindowFrame* addStringItem(int tab, void* item);
+  WindowFrame* addIntItem(int tab, void* item);
+  WindowFrame* addBoolItem(int tab, void* item, int mask = 1);
+  void updateKey(void* item);
 
   void addAllItems();
 

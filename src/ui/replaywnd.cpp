@@ -8,6 +8,7 @@
 #include "ui/replay/gamechat.h"
 #include "ui/replay/timelinewnd.h"
 #include "ui/replay/playerinfo.h"
+#include "ui/replay/actions.h"
 
 ReplayWindow::ReplayWindow(Frame* parent)
   : TabFrame(parent)
@@ -19,6 +20,7 @@ ReplayWindow::ReplayWindow(Frame* parent)
   addTab(REPLAY_GAMECHAT, "Chat log", new ReplayGameChatTab(this));
   addTab(REPLAY_TIMELINE, "Timeline", new ReplayTimelineTab(this));
   addTab(REPLAY_PLAYERINFO, "Player Info", new ReplayPlayerInfoTab(this));
+  addTab(REPLAY_ACTIONS, "Actions", new ReplayActionsTab(this));
 }
 ReplayWindow::~ReplayWindow()
 {

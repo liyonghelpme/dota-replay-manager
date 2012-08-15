@@ -93,7 +93,7 @@ bool W3GHero::fix(int pos)
 {
   for (int i = pos; i < slearn.length(); i++)
   {
-    if (i > 0 && int(slearn[i].time - slearn[i - 1].time) < cfg::repDelay &&
+    if (i > 0 && int(slearn[i].time - slearn[i - 1].time) < cfg.repDelay &&
         slearn[i].skill == slearn[i - 1].skill)
     {
       if (fix(i + 1))

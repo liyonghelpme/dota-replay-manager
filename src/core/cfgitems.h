@@ -1,15 +1,15 @@
-cfg_int(splitterPos, 200);
-cfg_int(wndX, CW_USEDEFAULT);
-cfg_int(wndY, 0);
-cfg_int(wndWidth, CW_USEDEFAULT);
-cfg_int(wndHeight, 0);
-cfg_int(wndShow, SW_SHOWNORMAL);
+regbasic(int, splitterPos, 200);
+regbasic(int, wndX, CW_USEDEFAULT);
+regbasic(int, wndY, 0);
+regbasic(int, wndWidth, CW_USEDEFAULT);
+regbasic(int, wndHeight, 0);
+regbasic(int, wndShow, SW_SHOWNORMAL);
 
-cfg_int(byDate, 0);
+regbasic(int, byDate, 0);
 
 //////////////////////////////////////////////
 
-#ifdef cfg_init
+#ifdef cfginit
 String _warPath = "";
 getRegString(HKEY_CURRENT_USER, "Software\\Blizzard Entertainment\\Warcraft III",
   "InstallPath", _warPath);
@@ -28,40 +28,67 @@ strcpy(_chatFont.lfFaceName, "Georgia");
 _chatFont.lfHeight = -MulDiv(10, GetDeviceCaps(hDC, LOGPIXELSY), 72);
 ReleaseDC(NULL, hDC);
 #endif
-cfg_string(warPath, _warPath)
-cfg_string(replayPath, _replayPath)
-cfg_int(maxFiles, 2000);
-cfg_int(viewWindow, 0);
-cfg_int(autoView, 1);
-cfg_int(autoCopy, 0);
-cfg_string(copyFormat, "Autocopy\\replay<n>");
-cfg_int(showDetails, 0);
-cfg_int(selColumns, 0);
-cfg_int(saveCache, 1);
-cfg_int(useTray, 1);
-cfg_int(enableUrl, 1);
-cfg_int(autoUpdate, 1);
 
-cfg_string(ownNames, "");
-cfg_int(repDelay, 3000);
-cfg_int(repDelayItems, 1000);
-cfg_int(drawWards, 1);
-cfg_int(wardLife, 360);
-cfg_int(drawChat, 1);
-cfg_int(chatStaysOn, 16);
-cfg_int(drawPings, 1);
-cfg_int(drawBuildings, 1);
-cfg_int(showLevels, 1);
-cfg_int(skillColors, 1);
-cfg_int(smoothGold, 1);
-cfg_int(relTime, 1);
-cfg_int(showEmptySlots, 1);
-cfg_int(showAssemble, 1);
-cfg_int(syncSelect, 1);
-cfg_int(chatHeroes, 1);
-cfg_int(chatAssists, 1);
-cfg_binary(chatFont, &_chatFont, sizeof _chatFont);
-cfg_int(chatColors, 1);
-cfg_int(chatBg, 0x000000);
-cfg_int(chatFg, 0xFFFFFF);
-cfg_int(useLog, 0);
+#ifdef cfgconst
+enum {COL_SAVED = 0x01,
+      COL_SIZE = 0x02,
+      COL_NAME = 0x04,
+      COL_RATIO = 0x10,
+      COL_LENGTH = 0x20,
+      COL_MODE = 0x40
+};
+#endif
+
+regstring(warPath, _warPath);
+regstring(replayPath, _replayPath);
+regbasic(int, hideEmpty, 1);
+//regbasic(int, maxFiles, 2000);
+regbasic(int, viewWindow, 0);
+regbasic(int, autoView, 1);
+regbasic(int, autoCopy, 0);
+regstring(copyFormat, "Autocopy\\replay<n>");
+//regbasic(int, showDetails, 0);
+regbasic(int, selColumns, 0);
+regarray(int, colOrder, 7);
+regarray(int, colWidth, 7);
+regarray(int, colSort, 7);
+//regbasic(int, saveCache, 1);
+regbasic(int, useTray, 1);
+regbasic(int, enableUrl, 1);
+regbasic(int, autoUpdate, 1);
+regarray(int, giColWidth, 16);
+
+#ifdef cfginit
+for (int i = 0; i < 7; i++)
+{
+  colOrder[i] = i;
+  colWidth[i] = LVSCW_AUTOSIZE_USEHEADER;
+  colSort[i] = i;
+}
+for (int i = 0; i < 16; i++)
+  giColWidth[i] = LVSCW_AUTOSIZE_USEHEADER;
+#endif
+
+regstring(ownNames, "");
+regbasic(int, repDelay, 3000);
+regbasic(int, repDelayItems, 1000);
+regbasic(int, drawWards, 1);
+regbasic(int, wardLife, 360);
+regbasic(int, drawChat, 1);
+regbasic(int, chatStaysOn, 16);
+regbasic(int, drawPings, 1);
+regbasic(int, drawBuildings, 1);
+regbasic(int, showLevels, 1);
+regbasic(int, skillColors, 1);
+regbasic(int, smoothGold, 1);
+regbasic(int, relTime, 1);
+regbasic(int, showEmptySlots, 1);
+regbasic(int, showAssemble, 1);
+regbasic(int, syncSelect, 1);
+regbasic(int, chatHeroes, 1);
+regbasic(int, chatAssists, 1);
+regbasic(LOGFONT, chatFont, _chatFont);
+regbasic(int, chatColors, 1);
+regbasic(int, chatBg, 0x000000);
+regbasic(int, chatFg, 0xFFFFFF);
+regbasic(int, useLog, 0);

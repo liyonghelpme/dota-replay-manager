@@ -14,3 +14,22 @@ int convert_race (int race)
     return RACE_RANDOM;
   return 0;
 }
+
+const char actionNames[NUM_ACTIONS][256] = {
+  "Right click",
+  "Select / deselect",
+  "Select group hotkey",
+  "Assign group hotkey",
+  "Use ability",
+  "Basic commands",
+  "Select subgroup",
+  "Give item / drop item",
+  "ESC pressed",
+  "Other"
+};
+String action_name(int id)
+{
+  if (id < 0 || id >= NUM_ACTIONS)
+    return String();
+  return actionNames[id];
+}

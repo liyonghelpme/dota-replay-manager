@@ -149,6 +149,7 @@ class DotaLibrary
   String heroPdTag[256];
   String heroPdTagMed[256];
   String heroPdTagWide[256];
+  Dota* latest;
   Dictionary<String> itemPdTag;
   void loadMap(String map, String dest);
 public:
@@ -196,6 +197,10 @@ public:
     return itemPdTag.get(name);
   }
 
+  Dota* getDota()
+  {
+    return latest;
+  }
   Dota* getDota(uint32 version);
   Dota* getDota(uint32 version, String mapPath);
 };

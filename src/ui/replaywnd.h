@@ -10,7 +10,8 @@ class ReplayViewItem;
 #define REPLAY_GAMECHAT         1
 #define REPLAY_TIMELINE         2
 #define REPLAY_PLAYERINFO       3
-#define REPLAY_NUM_TABS         4
+#define REPLAY_ACTIONS          4
+#define REPLAY_NUM_TABS         5
 
 #define ID_PLAYERBOX            378
 

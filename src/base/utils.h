@@ -25,4 +25,12 @@ uint32 flip_int(uint32 i);
 
 String format_systime(uint64 time, char const* fmt);
 
+struct FileInfo
+{
+  String path;
+  uint64 ftime;
+  SYSTEMTIME time;
+};
+void getFileInfo(char const* path, FileInfo& fi);
+
 #endif // __BASE_UTILS_H__

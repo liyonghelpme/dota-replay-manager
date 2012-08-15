@@ -4,13 +4,34 @@
 #include <stdlib.h>
 #include <new.h>
 
-template<class T>
-class Array
+#include "base/types.h"
+
+class ArrayBase
 {
-  static int (*compFunc) (T const& a, T const& b);
-  static int tlCompFunc(void const* a, void const* b)
+public:
+  virtual int length() const = 0;
+  virtual void const* vget(int i) const = 0;
+  virtual void clear() = 0;
+  virtual void* vpush() = 0;
+};
+
+template<class T>
+class Array : public ArrayBase
+{
+  typedef int (*CompFunc) (T const& a, T const& b);
+  struct CompFuncWithArg
   {
-    return compFunc(*(T*) a, *(T*) b);
+    int (*func) (T const& a, T const& b, uint32 arg);
+    uint32 arg;
+  };
+  static int tlCompFunc(void* ctx, void const* a, void const* b)
+  {
+    return ((CompFunc) ctx)(*(T*) a, *(T*) b);
+  }
+  static int tlCompFuncArg(void* ctx, void const* a, void const* b)
+  {
+    CompFuncWithArg* f = (CompFuncWithArg*) ctx;
+    return f->func(*(T*) a, *(T*) b, f->arg);
   }
   int& maxSize()
   {return ((int*) items)[-1];}
@@ -83,6 +104,10 @@ public:
     return size();
   }
 
+  void const* vget(int i) const
+  {
+    return &((T*) items)[i];
+  }
   T const& operator [] (int i) const
   {
     return ((T*) items)[i];
@@ -127,6 +152,13 @@ public:
     while (size() > new_size)
       ((T*) items)[--size()].~T();
   }
+  void* vpush()
+  {
+    splice();
+    reserve(size() + 1);
+    new((T*) items + size()) T;
+    return &((T*) items)[size()++];
+  }
   int push(T const& e)
   {
     splice();
@@ -149,21 +181,32 @@ public:
 
   void sort(int (*comp) (T const& a, T const& b))
   {
-    compFunc = comp;
-    qsort(items, size(), sizeof(T), tlCompFunc);
+    qsort_s(items, size(), sizeof(T), tlCompFunc, comp);
+  }
+  void sort(int (*comp) (T const& a, T const& b, uint32 arg), uint32 arg)
+  {
+    CompFuncWithArg ctx = {comp, arg};
+    qsort_s(items, size(), sizeof(T), tlCompFuncArg, &ctx);
   }
 };
 
 template<class T>
-int (*Array<T>::compFunc) (T const& a, T const& b);
-
-template<class T>
 class PtrArray
 {
-  static int (*compFunc) (T const* a, T const* b);
-  static int tlCompFunc(void const* a, void const* b)
+  typedef int (*CompFunc) (T const& a, T const& b);
+  struct CompFuncWithArg
   {
-    return compFunc(*(T**) a, *(T**) b);
+    int (*func) (T const& a, T const& b, uint32 arg);
+    uint32 arg;
+  };
+  static int tlCompFunc(void* ctx, void const* a, void const* b)
+  {
+    return ((CompFunc) ctx)(*(T**) a, *(T**) b);
+  }
+  static int tlCompFuncArg(void* ctx, void const* a, void const* b)
+  {
+    CompFuncWithArg* f = (CompFuncWithArg*) ctx;
+    return f->func(*(T**) a, *(T**) b, f->arg);
   }
   int& maxSize()
   {return ((int*) items)[-1];}
@@ -302,12 +345,13 @@ public:
 
   void sort(int (*comp) (T const& a, T const& b))
   {
-    compFunc = comp;
-    qsort(items, size(), sizeof(T*), tlCompFunc);
+    qsort_s(items, size(), sizeof(T*), tlCompFunc, comp);
+  }
+  void sort(int (*comp) (T const& a, T const& b, uint32 arg), uint32 arg)
+  {
+    CompFuncWithArg ctx = {comp, arg};
+    qsort_s(items, size(), sizeof(T*), tlCompFuncArg, &ctx);
   }
 };
-
-template<class T>
-int (*PtrArray<T>::compFunc) (T const* a, T const* b);
 
 #endif // __BASE_ARRAY_H__

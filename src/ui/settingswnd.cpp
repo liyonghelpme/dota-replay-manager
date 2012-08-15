@@ -48,7 +48,7 @@ SettingsWindow::SettingsWindow(Frame* parent)
   addAllItems();
 }
 
-WindowFrame* SettingsWindow::addStringItem(int tab, cfg::ConfigItem* item)
+WindowFrame* SettingsWindow::addStringItem(int tab, void* item)
 {
   int pos = items.length();
   SettingsItem& cur = items.push();
@@ -57,11 +57,11 @@ WindowFrame* SettingsWindow::addStringItem(int tab, cfg::ConfigItem* item)
   cur.item = item;
   cur.ctrl = NULL;
   EditFrame* frame = new EditFrame(tabs->getTab(tab), ITEM_BASE + pos);
-  frame->setText(*(cfg::StringItem*) item);
+  frame->setText(*(String*) item);
   cur.ctrl = frame;
   return cur.ctrl;
 }
-WindowFrame* SettingsWindow::addIntItem(int tab, cfg::ConfigItem* item)
+WindowFrame* SettingsWindow::addIntItem(int tab, void* item)
 {
   int pos = items.length();
   SettingsItem& cur = items.push();
@@ -70,11 +70,11 @@ WindowFrame* SettingsWindow::addIntItem(int tab, cfg::ConfigItem* item)
   cur.item = item;
   cur.ctrl = NULL;
   EditFrame* frame = new EditFrame(tabs->getTab(tab), ITEM_BASE + pos, ES_AUTOHSCROLL | ES_NUMBER);
-  frame->setText(String(*(cfg::IntItem*) item));
+  frame->setText(String(*(int*) item));
   cur.ctrl = frame;
   return cur.ctrl;
 }
-WindowFrame* SettingsWindow::addBoolItem(int tab, cfg::ConfigItem* item, int mask)
+WindowFrame* SettingsWindow::addBoolItem(int tab, void* item, int mask)
 {
   int pos = items.length();
   SettingsItem& cur = items.push();
@@ -84,7 +84,7 @@ WindowFrame* SettingsWindow::addBoolItem(int tab, cfg::ConfigItem* item, int mas
   cur.mask = mask;
   cur.ctrl = NULL;
   ButtonFrame* frame = new ButtonFrame("", tabs->getTab(tab), ITEM_BASE + pos, BS_AUTOCHECKBOX);
-  frame->setCheck(((*(cfg::IntItem*) item) & mask) != 0);
+  frame->setCheck(((*(int*) item) & mask) != 0);
   cur.ctrl = frame;
   return cur.ctrl;
 }
@@ -108,15 +108,15 @@ uint32 SettingsWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         {
         case ITEM_STRING:
           if (code == EN_CHANGE)
-            *(cfg::StringItem*) cur.item = cur.ctrl->getText();
+            *(String*) cur.item = cur.ctrl->getText();
           break;
         case ITEM_INT:
           if (code == EN_CHANGE)
-            *(cfg::IntItem*) cur.item = cur.ctrl->getText().toInt();
+            *(int*) cur.item = cur.ctrl->getText().toInt();
           break;
         case ITEM_BOOL:
           if (code == BN_CLICKED)
-            *(cfg::IntItem*) cur.item = ((*(cfg::IntItem*) cur.item) & (~cur.mask)) |
+            *(int*) cur.item = ((*(int*) cur.item) & (~cur.mask)) |
               (((ButtonFrame*) cur.ctrl)->checked() ? cur.mask : 0);
           break;
         }
@@ -127,23 +127,22 @@ uint32 SettingsWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
   }
   return M_UNHANDLED;
 }
-void SettingsWindow::updateKey(cfg::ConfigItem* item)
+void SettingsWindow::updateKey(void* item)
 {
-  Registry* reg = getApp()->getRegistry();
   for (int i = 0; i < items.length(); i++)
   {
-    if (items[i].item == item)
+    if (items[i].item == item || item == NULL)
     {
       switch (items[i].type)
       {
       case ITEM_STRING:
-        items[i].ctrl->setText(*(cfg::StringItem*) item);
+        items[i].ctrl->setText(*(String*) item);
         break;
       case ITEM_INT:
-        items[i].ctrl->setText(String(*(cfg::IntItem*) item));
+        items[i].ctrl->setText(String(*(int*) item));
         break;
       case ITEM_BOOL:
-        ((ButtonFrame*) items[i].ctrl)->setCheck(((*(cfg::IntItem*) item) & items[i].mask) != 0);
+        ((ButtonFrame*) items[i].ctrl)->setCheck(((*(int*) item) & items[i].mask) != 0);
         break;
       }
     }

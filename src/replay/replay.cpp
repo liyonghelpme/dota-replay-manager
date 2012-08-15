@@ -1,6 +1,7 @@
 #include "replay.h"
 #include "base/gzmemory.h"
 #include "core/app.h"
+#include "replay/cache.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -136,12 +137,21 @@ W3GReplay* W3GReplay::load(char const* path, bool quick)
   W3GReplay* replay = (file ? load(file, quick) : NULL);
   delete file;
 
-  // TODO: read file time
+  if (replay)
+    replay->setPath(path);
 
   return replay;
 }
+void W3GReplay::setPath(char const* path)
+{
+  if (fileInfo == NULL)
+    fileInfo = new FileInfo;
+  ::getFileInfo(path, *fileInfo);
+  getApp()->getCache()->addGame(this);
+}
 W3GReplay::W3GReplay(File* unpacked, W3GHeader const& header, bool quick)
 {
+  fileInfo = NULL;
   quickLoad = quick;
   replay = unpacked;
   memcpy(&hdr, &header, sizeof hdr);
@@ -388,7 +398,7 @@ void W3GReplay::analyze()
   if (game->saver == NULL)
   {
     Array<String> names;
-    String(cfg::ownNames).split(names, " ,;");
+    String(cfg.ownNames).split(names, " ,;");
     for (int i = 0; i < numPlayers && game->saver == NULL; i++)
     {
       for (int j = 0; j < names.length(); j++)
@@ -590,7 +600,7 @@ uint32 W3GReplay::getLength(bool throne)
 String W3GReplay::formatTime(uint32 time, int flags)
 {
   long atime = time;
-  if (cfg::relTime && dotaInfo)
+  if (cfg.relTime && dotaInfo)
     atime -= (long) dotaInfo->start_time;
   return format_time(atime, flags);
 }

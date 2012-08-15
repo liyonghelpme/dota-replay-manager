@@ -17,9 +17,11 @@ ReplayPlayerInfoTab::ReplayPlayerInfoTab(Frame* parent)
   players->setWidth(250);
 
   skills = new ListFrame(this, ID_SKILLLIST);
+  skills->setColorMode(ListFrame::colorParam);
   skills->setPoint(PT_TOPRIGHT, players, PT_BOTTOM, -3, 22);
   skills->setPoint(PT_BOTTOMLEFT, 10, -55);
   items = new ListFrame(this, ID_ITEMLIST);
+  items->setColorMode(ListFrame::colorParam);
   items->setPoint(PT_TOPLEFT, players, PT_BOTTOM, 3, 22);
   items->setPoint(PT_BOTTOMRIGHT, -10, -55);
 
@@ -140,18 +142,18 @@ void ReplayPlayerInfoTab::setPlayer(W3GPlayer* player)
   items->setRedraw(false);
   skills->clear();
   items->clear();
-  if (player->hero)
+  if (player && player->hero)
   {
     int levels[5] = {0, 0, 0, 0, 0};
     ImageLibrary* lib = getApp()->getImageLibrary();
     for (int i = 1; i <= player->hero->level; i++)
     {
-      uint32 color = (cfg::skillColors && (i & 1)) ? 0xFFFFFF : 0xFFEEEE;
+      uint32 color = (cfg.skillColors && (i & 1)) ? 0xFFFFFF : 0xFFEEEE;
       int pos;
       if (player->hero->skills[i].skill)
       {
         Dota::Ability* skill = player->hero->skills[i].skill;
-        if (cfg::skillColors)
+        if (cfg.skillColors)
         {
           if (skill->slot == 0)
             color = 0xCCFFCC;
@@ -165,7 +167,7 @@ void ReplayPlayerInfoTab::setPlayer(W3GPlayer* player)
         int level = 0;
         if (skill->slot >= 0 && skill->slot < 5)
           level = ++levels[skill->slot];
-        pos = skills->addItem((cfg::showLevels && level) ?
+        pos = skills->addItem((cfg.showLevels && level) ?
           String::format("%s (level %d)", skill->name, level) : skill->name,
           lib->getListIndex(skill->icon), color);
       }
@@ -208,7 +210,7 @@ void ReplayPlayerInfoTab::setPlayer(W3GPlayer* player)
       kdText[1][i]->hide();
     }
 
-    player->inv.compute(0x7FFFFFFF, w3g->getDotaData(), cfg::showAssemble);
+    player->inv.compute(0x7FFFFFFF, w3g->getDotaData(), cfg.showAssemble);
     int wards[2] = {0, 0};
     int wardGold = 0;
     for (int i = 0; i < player->inv.comb.length(); i++)
@@ -231,7 +233,7 @@ void ReplayPlayerInfoTab::setPlayer(W3GPlayer* player)
           color = 0x80FF80;
         else if (item.flags & ITEM_FLAG_USED)
           color = 0xDDDDDD;
-        else if (cfg::showAssemble)
+        else if (cfg.showAssemble)
           color = 0xFFFFFF;
         else
           color = (items->getCount() & 1 ? 0xFFEEEE : 0xFFFFFF);

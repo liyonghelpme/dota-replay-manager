@@ -8,34 +8,55 @@
 class SimpleListFrame : public WindowFrame
 {
 public:
-  SimpleListFrame(Frame* parent, int id = 0, int style = 0, int styleEx = WS_EX_CLIENTEDGE);
+  SimpleListFrame(Frame* parent, int id = 0, int style = LVS_ALIGNLEFT | LVS_REPORT |
+    LVS_NOCOLUMNHEADER | LVS_NOSCROLL | LVS_SINGLESEL, int styleEx = WS_EX_CLIENTEDGE);
   void clear();
   void setColumns(int numColumns);
   void setColumn(int column, int width, int fmt);
   void setColumnWidth(int column, int width);
+  void setColumn(int column, int width, String text);
   int addItem(String name);
+  int addItem(String name, uint32 param);
   void setItemText(int item, int column, String text);
+  void setItemTextUtf8(int item, int column, String text);
 };
 
 class ListFrame : public WindowFrame
 {
-  bool simpleColors;
-  void drawItemText(HDC hDC, String text, RECT rc, uint32 format);
-  int getItemTextWidth(HDC hDC, String text, uint32 format);
+  int colorMode;
+  Array<bool> colUtf8;
+
+  wchar_t* wcBuf;
+  int wcBufSize;
+  int convertUtf8(String text);
+
+  void drawItemText(HDC hDC, String text, RECT rc, uint32 format, bool utf8);
+  int getItemTextWidth(HDC hDC, String text, uint32 format, bool utf8);
   void drawItem(DRAWITEMSTRUCT* dis);
+protected:
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:
-  ListFrame(Frame* parent, int id = 0, int style = 0, int styleEx = WS_EX_CLIENTEDGE);
+  enum {colorNone, colorStripe, colorParam};
+
+  ListFrame(Frame* parent, int id = 0, int style = LVS_NOSORTHEADER | LVS_SINGLESEL,
+    int styleEx = LVS_EX_GRIDLINES | LVS_EX_FULLROWSELECT);
+  ~ListFrame();
   void clear();
   void clearColumns();
-  void setSimpleColors(bool simple)
+  void setColorMode(int mode)
   {
-    simpleColors = simple;
+    colorMode = mode;
     InvalidateRect(hWnd, NULL, TRUE);
   }
 
+  int getItemParam(int item);
+
   int getCount() const;
   void insertColumn(int i, String name, int fmt = LVCFMT_LEFT);
+  void setColumnUTF8(int i, bool utf8)
+  {
+    colUtf8[i] = utf8;
+  }
   void setColumnWidth(int i, int width);
   int addItem(String name, int image, int data);
   void setItemText(int item, int column, String text);
@@ -48,7 +69,15 @@ class ComboFrameEx : public WindowFrame
     uint32 data;
     uint32 color;
     uint32 icon;
-    String text;
+    wchar_t* wtext;
+    BoxItem()
+    {
+      wtext = NULL;
+    }
+    ~BoxItem()
+    {
+      delete[] wtext;
+    }
   };
   Array<BoxItem> items;
   int prevSel;

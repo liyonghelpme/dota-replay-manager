@@ -31,7 +31,7 @@ Image* ImageLibrary::ImageInfo::getImage(MPQArchive* mpq)
 }
 
 ImageLibrary::ImageLibrary(MPQArchive* _mpq)
-  : images(mapAlNumNoCase)
+  : images(DictionaryMap::alNumNoCase)
 {
   mpq = _mpq;
   list = ImageList_Create(16, 16, ILC_COLOR24, 16, 16);

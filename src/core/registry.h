@@ -6,88 +6,53 @@
 #include "base/dictionary.h"
 #include "base/utils.h"
 
-struct RegistryItem
-{
-  uint8 type;
-  uint32 size;
-  uint8* value;
-  RegistryItem();
-  ~RegistryItem();
-  void set(uint8 t, uint32 s, void const* v);
-};
-class Registry
-{
-  Dictionary<RegistryItem> items;
+#define cfgconst
+#define regbasic(t,n,v)
+#define regstring(n,v)
+#define regarray(t,n,s)
+#define regvararray(t,n)
+#include "cfgitems.h"
+#undef regbasic
+#undef regstring
+#undef regarray
+#undef regvararray
+#undef cfgconst
 
-  friend class cfg;
-  RegistryItem* createItem(char const* name);
-public:
-  Registry();
-  ~Registry();
-};
-
-class cfg
+class Config
 {
-public:
-  class ConfigItem
+  enum {iBasic, iString, iArray};
+  struct ItemData
   {
-  protected:
-    friend class cfg;
-    RegistryItem* item;
-  public:
-  };
-  class IntItem : public ConfigItem
-  {
-  public:
-    operator int();
-    IntItem& operator = (int value);
-  };
-  class Int64Item : public ConfigItem
-  {
-  public:
-    operator uint64();
-    Int64Item& operator = (uint64 value);
-  };
-  class DoubleItem : public ConfigItem
-  {
-  public:
-    operator double();
-    DoubleItem& operator = (double value);
-  };
-  class StringItem : public ConfigItem
-  {
-  public:
-    operator String();
-    operator char const*();
-    StringItem& operator = (char const* value);
-  };
-  class BinaryItem : public ConfigItem
-  {
-  public:
-    uint32 size();
-    uint8 const* data();
-    void set(uint8* data, uint32 size);
-
-    template<class T>
-    T const& get()
+    uint8 type;
+    uint32 size;
+    void* ptr;
+    ItemData()
+    {}
+    ItemData(uint8 t, uint32 s, void* p)
     {
-      return *(T*) data();
+      type = t;
+      size = s;
+      ptr = p;
     }
   };
+  Dictionary<ItemData> items;
+public:
+  Config();
 
-#define cfg_int(n,d)        static IntItem n;
-#define cfg_int64(n,d)      static Int64Item n;
-#define cfg_double(n,d)     static DoubleItem n;
-#define cfg_string(n,d)     static StringItem n;
-#define cfg_binary(n,d,s)   static BinaryItem n;
+  void read();
+  void write();
+  void reset();
+
+#define regbasic(t,n,v)     t n
+#define regstring(n,v)      String n
+#define regarray(t,n,s)     t n[s]
+#define regvararray(t,n)    Array<t> n
 #include "cfgitems.h"
-#undef cfg_int
-#undef cfg_int64
-#undef cfg_double
-#undef cfg_string
-#undef cfg_binary
-
-  static void init(Registry* reg);
+#undef regbasic
+#undef regstring
+#undef regarray
+#undef regvararray
 };
+extern Config cfg;
 
 #endif // __CORE_REGISTRY_H__

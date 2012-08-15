@@ -86,8 +86,8 @@ bool getRegString(HKEY key, char const* subkey, char const* value, String& resul
     return false;
   }
   RegCloseKey(hKey);
-  if (result.getBuffer()[size - 1] != 0)
-    size++;
+  if (result.getBuffer()[size - 1] == 0)
+    size--;
   result.setLength(size);
   return true;
 }
@@ -147,4 +147,20 @@ String format_systime(uint64 time, char const* fmt)
   _localtime64_s(&temp, (__time64_t*) &time);
   strftime(buf, sizeof buf, fmt, &temp);
   return buf;
+}
+
+void getFileInfo(char const* path, FileInfo& fi)
+{
+  fi.path = path;
+  HANDLE hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_DELETE |
+    FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+  if (hFile)
+  {
+    FILETIME ft;
+    GetFileTime(hFile, NULL, NULL, &ft);
+    CloseHandle(hFile);
+    fi.ftime = uint64(ft.dwLowDateTime) | (uint64(ft.dwHighDateTime) << 32);
+    fi.ftime = fi.ftime / 10000000ULL - 11644473600ULL;
+    FileTimeToSystemTime(&ft, &fi.time);
+  }
 }

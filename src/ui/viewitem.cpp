@@ -14,7 +14,7 @@ ViewItem* ViewItem::push(ViewItem* item)
       delete cur;
       cur = temp;
     }
-    if (isPermanent())
+    if (isPermanent() && !item->equal(this))
     {
       next = item;
       item->prev = this;
@@ -65,10 +65,24 @@ void SettingsViewItem::apply(MainWnd* wnd)
 {
   wnd->setView(MAINWND_SETTINGS);
 }
+bool SettingsViewItem::equal(ViewItem* item)
+{
+  SettingsViewItem* other = dynamic_cast<SettingsViewItem*>(item);
+  return (other != NULL);
+}
+
+#include "ui/folderwnd.h"
 
 void FolderViewItem::apply(MainWnd* wnd)
 {
-  wnd->setView(MAINWND_FOLDER);
+  wnd->setAddress(path);
+  FolderWindow* f = (FolderWindow*) wnd->setView(MAINWND_FOLDER);
+  f->setPath(path);
+}
+bool FolderViewItem::equal(ViewItem* item)
+{
+  FolderViewItem* other = dynamic_cast<FolderViewItem*>(item);
+  return (other && path.icompare(other->path) == 0);
 }
 
 #include "ui/replaywnd.h"
@@ -82,4 +96,9 @@ void ReplayViewItem::apply(MainWnd* wnd)
   r->setTab(tab);
   if (player)
     r->setPlayer(player);
+}
+bool ReplayViewItem::equal(ViewItem* item)
+{
+  ReplayViewItem* other = dynamic_cast<ReplayViewItem*>(item);
+  return (other && path.icompare(other->path) == 0);
 }

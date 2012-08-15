@@ -11,6 +11,7 @@
 #include "dota/dotadata.h"
 
 #include "replay/replay.h"
+#include "replay/cache.h"
 
 #include "base/dictionary.h"
 
@@ -20,11 +21,11 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
 {
   MPQInit();
   instance = this;
-  registry = NULL;
   resources = NULL;
   imageLibrary = NULL;
   dotaLibrary = NULL;
   mainWindow = NULL;
+  cache = NULL;
   hInstance = _hInstance;
   _loaded = false;
 }
@@ -35,7 +36,7 @@ Application::~Application()
   delete dotaLibrary;
   delete imageLibrary;
   delete resources;
-  delete registry;
+  delete cache;
   instance = NULL;
   MPQCleanup();
   OleUninitialize();
@@ -55,7 +56,7 @@ int Application::run()
   LoadLibrary("Riched20.dll");
   OleInitialize(NULL);
 
-  registry = new Registry();
+  cfg.read();
 
   String path = String::getPath(getAppPath());
   String resPath = String::buildFullName(path, "resources.mpq");
@@ -102,9 +103,10 @@ int Application::run()
 
   imageLibrary = new ImageLibrary(resources);
 
-  mainWindow = new MainWnd();
-
+  cache = new CacheManager();
   dotaLibrary = new DotaLibrary();
+
+  mainWindow = new MainWnd();
   
   mainWindow->postLoad();
   _loaded = true;
@@ -115,6 +117,8 @@ int Application::run()
     TranslateMessage(&msg);
     DispatchMessage(&msg);
   }
+
+  cfg.write();
 
   return msg.wParam;
 }

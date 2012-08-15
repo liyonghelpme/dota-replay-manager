@@ -12,6 +12,8 @@ W3GActionList::W3GActionList()
   lane_y = 0;
   home_x = 0;
   home_y = 0;
+  memset(hkassign, 0, sizeof hkassign);
+  memset(hkuse, 0, sizeof hkuse);
 }
 
 static float team_x[] = {-6864, 6400};

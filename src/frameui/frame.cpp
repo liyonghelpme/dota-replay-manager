@@ -484,7 +484,7 @@ void Frame::setPoint(int point, Frame* rel, int relPoint, int x, int y)
 {
   master->setPoint(this, point, rel, relPoint, x, y);
 }
-void Frame::setPointEx(int point, Frame* rel, float xRel, float yRel, int x, int y)
+void Frame::setPointEx(int point, Frame* rel, double xRel, double yRel, int x, int y)
 {
   master->setPointEx(this, point, rel, uint32(xRel * 0x8000), uint32(yRel * 0x8000), x, y);
 }

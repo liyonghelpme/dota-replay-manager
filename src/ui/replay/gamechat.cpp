@@ -58,7 +58,7 @@ String ReplayGameChatTab::sanitize(String str)
 String ReplayGameChatTab::sanitizePlayer(W3GPlayer* player)
 {
   String name = sanitize(player->name);
-  if (player->hero && cfg::chatHeroes)
+  if (player->hero && cfg.chatHeroes)
     return String::format("%s (%s)", name, player->hero->hero->shortName);
   else
     return name;
@@ -186,44 +186,43 @@ void ReplayGameChatTab::onSetReplay()
     chatFrame->setText("");
     return;
   }
-  LOGFONT const& chatFont = cfg::chatFont.get<LOGFONT>();
   String text = "{\\rtf1\\ansi{\\fonttbl\\f0\\f";
-  if (chatFont.lfPitchAndFamily == FF_DECORATIVE)
+  if (cfg.chatFont.lfPitchAndFamily == FF_DECORATIVE)
     text += "decor";
-  else if (chatFont.lfPitchAndFamily == FF_MODERN)
+  else if (cfg.chatFont.lfPitchAndFamily == FF_MODERN)
     text += "modern";
-  else if (chatFont.lfPitchAndFamily == FF_ROMAN)
+  else if (cfg.chatFont.lfPitchAndFamily == FF_ROMAN)
     text += "roman";
-  else if (chatFont.lfPitchAndFamily == FF_SCRIPT)
+  else if (cfg.chatFont.lfPitchAndFamily == FF_SCRIPT)
     text += "script";
-  else if (chatFont.lfPitchAndFamily == FF_SWISS)
+  else if (cfg.chatFont.lfPitchAndFamily == FF_SWISS)
     text += "swiss";
   else
     text += "nil";
-  text.printf(" %s;}{\\colortbl;", chatFont.lfFaceName);
+  text.printf(" %s;}{\\colortbl;", cfg.chatFont.lfFaceName);
   for (int i = 0; i < 13; i++)
   {
-    if (cfg::chatColors == 0)
+    if (cfg.chatColors == 0)
       add_color(text, getDefaultColor(i));
-    else if (cfg::chatColors == 1)
+    else if (cfg.chatColors == 1)
       add_color(text, getSlotColor(i));
     else
       add_color(text, getDarkColor(i));
   }
-  add_color(text, cfg::chatFg);
+  add_color(text, cfg.chatFg);
   for (int i = 15; i <= 31; i++)
     add_color(text, getExtraColor(i));
   HDC hDC = GetDC(NULL);
-  int fontSize = -MulDiv(chatFont.lfHeight, 144, GetDeviceCaps(hDC, LOGPIXELSY));
+  int fontSize = -MulDiv(cfg.chatFont.lfHeight, 144, GetDeviceCaps(hDC, LOGPIXELSY));
   ReleaseDC(NULL, hDC);
   text.printf("}\\f0\\cf14\\fs%d\\pard", fontSize);
-  if (chatFont.lfUnderline)
+  if (cfg.chatFont.lfUnderline)
     text += "\\ul";
-  if (chatFont.lfItalic)
+  if (cfg.chatFont.lfItalic)
     text += "\\i";
-  if (chatFont.lfStrikeOut)
+  if (cfg.chatFont.lfStrikeOut)
     text += "\\strike";
-  if (chatFont.lfWeight > 400)
+  if (cfg.chatFont.lfWeight > 400)
     text += "\\b";
   text += "\n";
 
@@ -281,6 +280,6 @@ void ReplayGameChatTab::onSetReplay()
 
   text += "}";
 
-  chatFrame->setBackgroundColor(cfg::chatBg);
+  chatFrame->setBackgroundColor(cfg.chatBg);
   chatFrame->setRichText(text);
 }

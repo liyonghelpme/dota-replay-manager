@@ -356,7 +356,7 @@ class DotaLoader
 
 public:
   DotaLoader(MPQLoader* _loader)
-    : iname(mapAlNumNoCase)
+    : iname(DictionaryMap::alNumNoCase)
   {
     loader = _loader;
     map = NULL;
@@ -372,7 +372,7 @@ public:
   {
     map = MPQArchive::open(path, MPQFILE_READ);
     if (map == NULL)
-      map = MPQArchive::open(String::buildFullName(cfg::warPath, path), MPQFILE_READ);
+      map = MPQArchive::open(String::buildFullName(cfg.warPath, path), MPQFILE_READ);
     if (map == NULL)
       return false;
     loader->addArchive(*map);
@@ -734,10 +734,10 @@ void DotaLibrary::loadMap(String map, String dest)
 {
   MPQArchive* res = getApp()->getResources();
   MPQLoader ldr("Custom_V1");
-  ldr.loadArchive(String::buildFullName(cfg::warPath, "war3.mpq"));
-  ldr.loadArchive(String::buildFullName(cfg::warPath, "war3x.mpq"));
-  ldr.loadArchive(String::buildFullName(cfg::warPath, "war3xlocal.mpq"));
-  ldr.loadArchive(String::buildFullName(cfg::warPath, "war3patch.mpq"));
+  ldr.loadArchive(String::buildFullName(cfg.warPath, "war3.mpq"));
+  ldr.loadArchive(String::buildFullName(cfg.warPath, "war3x.mpq"));
+  ldr.loadArchive(String::buildFullName(cfg.warPath, "war3xlocal.mpq"));
+  ldr.loadArchive(String::buildFullName(cfg.warPath, "war3patch.mpq"));
   DotaLoader loader(&ldr);
   loader.load(map);
   File* file = res->openFile(dest, File::REWRITE);

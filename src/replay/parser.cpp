@@ -40,10 +40,8 @@ ParseState::ParseState(bool quick)
 {
   memset(this, NULL, sizeof ParseState);
 
-  Registry* reg = getApp()->getRegistry();
-  if (!quick && cfg::useLog)
+  if (!quick && cfg.useLog)
     file = File::open("log.txt", File::REWRITE);
-
 }
 ParseState::~ParseState()
 {
@@ -690,7 +688,7 @@ void W3GReplay::parseEndgame(String slot, String stat, uint32 value, void* arg)
       {
         if (!quickLoad && state.last_kill_target == target &&
           state.time - state.last_kill_time < 250 && state.last_kill_player != player &&
-          cfg::chatAssists)
+          cfg.chatAssists)
         {
           W3GMessage& msg = messages[state.last_kill_message];
           if (state.last_kill_first)

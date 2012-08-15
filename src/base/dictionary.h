@@ -3,36 +3,44 @@
 
 #include "base/types.h"
 #include "base/string.h"
+#include "base/pool.h"
 
-extern uint8 const* mapAlNum;
-extern uint8 const* mapAlNumNoCase;
-extern uint8 const* mapAlNumSpace;
+
+class DictionaryMap
+{
+public:
+  static uint8 const* alNum;
+  static uint8 const* alNumNoCase;
+  static uint8 const* alNumSpace;
+  static uint8 const* pathName;
+};
 
 class DictionaryBase
 {
 protected:
+  MemoryPool pool;
+  enum {HashSize = 8};
   struct Node
   {
     Node* parent;
-    int len;
-    uint8* data;
+    Node* next;
     uint8* str;
-    Node* c[1];
+    Node* c[HashSize];
+    uint8 data[1];
   };
   uint8 const* map;
-  int mapMax;
-  virtual Node* newnode(int len) const = NULL;
-  virtual void delnode(Node* n) const = NULL;
+  virtual Node* newnode(int len) = NULL;
+  virtual void delnode(Node* n) = NULL;
   Node* baseadd(uint8 const* key);
   Node* basefind(uint8 const* key) const;
   
   Node* root;
 public:
-  DictionaryBase (uint8 const* map);
+  DictionaryBase(uint8 const* map);
 
-  uint32 enumStart () const;
-  uint32 enumNext (uint32 cur) const;
-  String enumGetKey (uint32 cur) const;
+  uint32 enumStart() const;
+  uint32 enumNext(uint32 cur) const;
+  String enumGetKey(uint32 cur) const;
 
   void clear();
 };
@@ -40,24 +48,27 @@ public:
 template<class T>
 class Dictionary : public DictionaryBase
 {
-  Node* newnode(int len) const
+  Node* newnode(int len)
   {
-    uint32 size = sizeof(Node) + sizeof(Node*) * mapMax + sizeof(T) + len;
-    Node* n = (Node*) malloc(size);
+    uint32 size = sizeof(Node) + sizeof(T) + len + 1;
+    Node* n = (Node*) pool.alloc(size);
     memset(n, 0, size);
-    n->data = ((uint8*) n) + sizeof(Node) + sizeof(Node*) * mapMax;
-    n->str = n->data + sizeof(T);
-    n->len = len;
+    n->str = ((uint8*) (n + 1)) + sizeof(T);
     return n;
   }
-  void delnode(Node* n) const
+  void delnode(Node* n)
   {
-    for (int i = 1; i <= mapMax; i++)
-      if (n->c[i])
+    for (int i = 0; i < HashSize; i++)
+    {
+      while (n->c[i])
+      {
+        Node* next = n->c[i]->next;
         delnode(n->c[i]);
-    if (n->c[0])
-      ((T*) n->data)->~T();
-    free(n);
+        n->c[i] = next;
+      }
+    }
+    if (n->data[0])
+      ((T*) (n->data + 1))->~T();
   }
   T* nil;
 
@@ -79,63 +90,73 @@ public:
   void set(char const* key, T const& value)
   {
     Node* n = baseadd((uint8 const*) key);
-    if (!n->c[0])
+    if (!n->data[0])
     {
-      n->c[0] = n;
-      new(n->data) T(value);
+      n->data[0] = 1;
+      new(n->data + 1) T(value);
     }
     else
-      *((T*) n->data) = value;
+      *((T*) (n->data + 1)) = value;
   }
   T& create(char const* key)
   {
     Node* n = baseadd((uint8 const*) key);
-    if (!n->c[0])
+    if (!n->data[0])
     {
-      n->c[0] = n;
-      new(n->data) T();
+      n->data[0] = 1;
+      new(n->data + 1) T();
     }
-    return *((T*) n->data);
+    return *((T*) (n->data + 1));
   }
   T const& get(char const* key) const
   {
     Node* n = basefind((uint8 const*) key);
-    return n ? *((T*) n->data) : *nil;
+    return (n && n->data[0]) ? *((T*) (n->data + 1)) : *nil;
   }
   T& get (char const* key)
   {
     Node* n = basefind((uint8 const*) key);
-    return n ? *((T*) n->data) : *nil;
+    return (n && n->data[0]) ? *((T*) (n->data + 1)) : *nil;
+  }
+  T const* getptr (char const* key) const
+  {
+    Node* n = basefind((uint8 const*) key);
+    return (n && n->data[0] ? ((T*) (n->data + 1)) : NULL);
+  }
+  T* getptr (char const* key)
+  {
+    Node* n = basefind((uint8 const*) key);
+    return (n && n->data[0] ? ((T*) (n->data + 1)) : NULL);
   }
   bool has(char const* key) const
   {
     Node* n = basefind((uint8 const*) key);
-    return (n && n->c[0]);
+    return (n && n->data[0]);
   }
   void del(char const* key)
   {
     Node* n = basefind((uint8 const*) key);
-    if (n && n->c[0])
+    if (n && n->data[0])
     {
-      ((T*) n->data)->~T();
-      n->c[0] = NULL;
+      ((T*) (n->data + 1))->~T();
+      n->data[0] = NULL;
     }
   }
 
   T const& enumGetValue(uint32 cur) const
   {
     Node* n = (Node*) cur;
-    return *((T*) n->data);
+    return *((T*) (n->data + 1));
   }
   T& enumGetValue(uint32 cur)
   {
     Node* n = (Node*) cur;
-    return *((T*) n->data);
+    return *((T*) (n->data + 1));
   }
   void enumSetValue(uint32 cur, T const& value)
   {
     Node* n = (Node*) cur;
-    *((T*) n->data) = value;
+    *((T*) (n->data + 1)) = value;
   }
 };
 

@@ -4,10 +4,24 @@
 #include "frameui/framewnd.h"
 #include "ui/dirchange.h"
 #include "base/array.h"
+#include "frameui/controlframes.h"
+#include "frameui/dragdrop.h"
+#include "base/utils.h"
 
 class MainWnd;
 
-class DropTreeViewFrame;
+class DropTreeViewFrame : public TreeViewFrame
+{
+protected:
+  DropTarget* target;
+  uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
+public:
+  HTREEITEM highlight;
+  DropTreeViewFrame(Frame* parent, int id = 0, int style = 0);
+};
+
+#define WM_REBUILDTREE      (WM_USER+910)
+
 class ButtonFrame;
 class ReplayTree : public Frame, public DirChangeHandler
 {
@@ -23,17 +37,11 @@ class ReplayTree : public Frame, public DirChangeHandler
   String path;
   MainWnd* mainWnd;
 
-  struct DateItem
-  {
-    String path;
-    uint64 ftime;
-    SYSTEMTIME time;
-  };
-  void enumfiles(Array<DateItem>& files, String path);
-  static int compfiles(DateItem const& a, DateItem const& b);
-  int fillyear(Array<DateItem>& files, int& cur, HTREEITEM parent, TVINSERTSTRUCT& tvis);
-  int fillmonth(Array<DateItem>& files, int& cur, HTREEITEM parent, TVINSERTSTRUCT& tvis);
-  int fillday(Array<DateItem>& files, int& cur, HTREEITEM parent);
+  void enumfiles(Array<FileInfo>& files, String path);
+  static int compfiles(FileInfo const& a, FileInfo const& b);
+  int fillyear(Array<FileInfo>& files, int& cur, HTREEITEM parent, TVINSERTSTRUCT& tvis);
+  int fillmonth(Array<FileInfo>& files, int& cur, HTREEITEM parent, TVINSERTSTRUCT& tvis);
+  int fillday(Array<FileInfo>& files, int& cur, HTREEITEM parent);
 
   ButtonFrame* byDate;
 
@@ -47,6 +55,7 @@ class ReplayTree : public Frame, public DirChangeHandler
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:
   ReplayTree(String path, MainWnd* parent);
+  ~ReplayTree();
   void setPath(String path);
 
   void setCurFile(String path);

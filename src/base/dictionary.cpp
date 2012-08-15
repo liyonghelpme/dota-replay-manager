@@ -1,100 +1,178 @@
 #include "dictionary.h"
+#include <locale>
 
-static uint8 _mapFull[256];
 static uint8 _mapAlNum[256];
-uint8 const* mapAlNum = _mapAlNum;
+uint8 const* DictionaryMap::alNum = _mapAlNum;
 static uint8 _mapAlNumNoCase[256];
-uint8 const* mapAlNumNoCase = _mapAlNumNoCase;
+uint8 const* DictionaryMap::alNumNoCase = _mapAlNumNoCase;
 static uint8 _mapAlNumSpace[256];
-uint8 const* mapAlNumSpace = _mapAlNumSpace;
+uint8 const* DictionaryMap::alNumSpace = _mapAlNumSpace;
+static uint8 _mapPath[256];
+uint8 const* DictionaryMap::pathName = _mapPath;
 static bool _mapInit = false;
 
 DictionaryBase::DictionaryBase(uint8 const* _map)
 {
   if (!_mapInit)
   {
-    for (int i = 0; i < 256; i++)
-      _mapFull[i] = i;
     memset(_mapAlNum, 0, sizeof _mapAlNum);
     memset(_mapAlNumNoCase, 0, sizeof _mapAlNumNoCase);
     memset(_mapAlNumSpace, 0, sizeof _mapAlNumSpace);
+    memset(_mapPath, 0, sizeof _mapPath);
     for (int i = 0; i < 10; i++)
     {
       uint8 c = uint8('0' + i);
-      _mapAlNum[c] = _mapAlNumNoCase[c] = _mapAlNumSpace[c] = i + 1;
+      _mapAlNum[c] = _mapAlNumNoCase[c] = _mapAlNumSpace[c] = c;
     }
     for (int i = 0; i < 26; i++)
     {
       uint8 c = uint8('a' + i);
       uint8 C = uint8('A' + i);
       _mapAlNum[c] = _mapAlNumNoCase[c] = _mapAlNumSpace[c] =
-        _mapAlNumNoCase[C] = _mapAlNumSpace[C] = i + 11;
-      _mapAlNum[C] = i + 37;
+        _mapAlNumNoCase[C] = _mapAlNumSpace[C] = c;
+      _mapAlNum[C] = C;
+    }
+    for (int i = 0; i < 256; i++)
+    {
+      if (i == '/')
+        _mapPath[i] = '\\';
+      else
+        _mapPath[i] = tolower(i);
     }
     _mapInit = true;
   }
   map = _map;
-  if (map == NULL)
-    map = _mapFull;
-  mapMax = 0;
-  for (int i = 0; i < 256; i++)
-    if (map[i] > mapMax)
-      mapMax = map[i];
 }
 void DictionaryBase::clear()
 {
   delnode(root);
+  pool.clear();
   root = newnode(0);
 }
 
 DictionaryBase::Node* DictionaryBase::baseadd(uint8 const* key)
 {
   Node* cur = root;
-  while (*key)
+  if (map)
   {
-    while (*key && map[*key] == 0)
-      key++;
-    if (*key == 0)
-      break;
-    uint8 c = map[*key];
-    if (cur->c[c] == NULL)
+    while (*key)
     {
-      int rem = 0;
-      for (int j = 0; key[j]; j++)
-        if (map[key[j]])
-          rem++;
-      cur->c[c] = newnode(rem);
-      cur->c[c]->parent = cur;
-      cur = cur->c[c];
-      rem = 0;
-      for (; *key; key++)
-        if (map[*key])
-          cur->str[rem++] = *key;
-    }
-    else
-    {
-      cur = cur->c[c];
-      int ni;
-      for (ni = 0; ni < cur->len && *key; ni++, key++)
+      while (*key && map[*key] == 0)
+        key++;
+      if (*key == 0)
+        break;
+      uint8 c = map[*key];
+      Node* child = cur->c[c & (HashSize - 1)];
+      while (child && child->str[0] != c)
+        child = child->next;
+      if (child == NULL)
       {
-        while (*key && map[*key] == 0)
-          key++;
-        if (*key == 0)
-          break;
-        if (map[*key] != map[cur->str[ni]])
-          break;
+        int rem = 0;
+        for (int j = 0; key[j]; j++)
+          if (map[key[j]])
+            rem++;
+        child = newnode(rem);
+        child->next = cur->c[c & (HashSize - 1)];
+        child->parent = cur;
+        cur->c[c & (HashSize - 1)] = child;
+        rem = 0;
+        for (; *key; key++)
+          if (map[*key])
+            child->str[rem++] = map[*key];
+        child->str[rem] = 0;
+        return child;
       }
-      if (ni < cur->len)
+      else
       {
-        Node* n = newnode(ni);
-        n->c[map[cur->str[ni]]] = cur;
-        n->parent = cur->parent;
-        memcpy(n->str, cur->str, ni);
-        cur->str += ni;
-        cur->len -= ni;
-        n->parent->c[map[n->str[0]]] = n;
-        cur->parent = n;
-        cur = n;
+        cur = child;
+        int ni;
+        for (ni = 0; cur->str[ni] && *key; ni++, key++)
+        {
+          while (*key && map[*key] == 0)
+            key++;
+          if (*key == 0)
+            break;
+          if (map[*key] != cur->str[ni])
+            break;
+        }
+        if (cur->str[ni])
+        {
+          Node* n = newnode(ni);
+          n->c[cur->str[ni] & (HashSize - 1)] = cur;
+          n->parent = cur->parent;
+          memcpy(n->str, cur->str, ni);
+          n->str[ni] = 0;
+          cur->str += ni;
+          n->next = cur->next;
+          cur->next = NULL;
+          cur->parent = n;
+
+          uint8 c0 = n->str[0] & (HashSize - 1);
+          Node* t = n->parent->c[c0];
+          if (t == cur)
+            n->parent->c[c0] = n;
+          else
+          {
+            while (t && t->next != cur)
+              t = t->next;
+            if (t)
+              t->next = n;
+          }
+          cur = n;
+        }
+      }
+    }
+  }
+  else
+  {
+    while (*key)
+    {
+      Node* child = cur->c[*key & (HashSize - 1)];
+      while (child && child->str[0] != *key)
+        child = child->next;
+      if (child == NULL)
+      {
+        int rem = 0;
+        while (key[rem])
+          rem++;
+        child = newnode(rem);
+        child->next = cur->c[*key & (HashSize - 1)];
+        child->parent = cur;
+        cur->c[*key & (HashSize - 1)] = child;
+        memcpy(child->str, key, rem);
+        return child;
+      }
+      else
+      {
+        cur = child;
+        int ni;
+        for (ni = 0; cur->str[ni] && *key; ni++, key++)
+          if (*key != cur->str[ni])
+            break;
+        if (cur->str[ni])
+        {
+          Node* n = newnode(ni);
+          n->c[cur->str[ni] & (HashSize - 1)] = cur;
+          n->parent = cur->parent;
+          memcpy(n->str, cur->str, ni);
+          cur->str += ni;
+          n->next = cur->next;
+          cur->next = NULL;
+          cur->parent = n;
+
+          uint8 c0 = n->str[0] & (HashSize - 1);
+          Node* t = n->parent->c[c0];
+          if (t == cur)
+            n->parent->c[c0] = n;
+          else
+          {
+            while (t && t->next != cur)
+              t = t->next;
+            if (t)
+              t->next = n;
+          }
+          cur = n;
+        }
       }
     }
   }
@@ -103,26 +181,49 @@ DictionaryBase::Node* DictionaryBase::baseadd(uint8 const* key)
 DictionaryBase::Node* DictionaryBase::basefind(uint8 const* key) const
 {
   Node* cur = root;
-  while (cur && *key)
+  if (map)
   {
-    for (int ni = 0; ni < cur->len; ni++, key++)
+    while (cur && *key)
     {
+      for (int ni = 0; cur->str[ni]; ni++, key++)
+      {
+        while (*key && map[*key] == 0)
+          key++;
+        if (map[*key] != cur->str[ni])
+          return NULL;
+      }
       while (*key && map[*key] == 0)
         key++;
-      if (map[*key] != map[cur->str[ni]])
-        return NULL;
+      if (*key)
+      {
+        uint8 c = map[*key];
+        cur = cur->c[c & (HashSize - 1)];
+        while (cur && cur->str[0] != c)
+          cur = cur->next;
+      }
     }
-    while (*key && map[*key] == 0)
-      key++;
-    if (*key)
-      cur = cur->c[map[*key]];
+  }
+  else
+  {
+    while (cur && *key)
+    {
+      for (int ni = 0; cur->str[ni]; ni++, key++)
+        if (*key != cur->str[ni])
+          return NULL;
+      if (*key)
+      {
+        cur = cur->c[*key & (HashSize - 1)];
+        while (cur && cur->str[0] != *key)
+          cur = cur->next;
+      }
+    }
   }
   return cur;
 }
 
 uint32 DictionaryBase::enumStart() const
 {
-  if (root->c[0])
+  if (root->data[0])
     return uint32(root);
   else
     return enumNext(uint32(root));
@@ -130,20 +231,29 @@ uint32 DictionaryBase::enumStart() const
 uint32 DictionaryBase::enumNext(uint32 cur) const
 {
   Node* node = (Node*) cur;
-  int ch = 1;
+  uint8 ch = 0;
   bool newNode = false;
-  while (node && (!newNode || !node->c[0]))
+  while (node && (!newNode || !node->data[0]))
   {
-    if (ch > mapMax)
+    if (ch >= HashSize)
     {
-      ch = map[node->str[0]] + 1;
-      node = node->parent;
-      newNode = false;
+      if (node->next)
+      {
+        node = node->next;
+        ch = 0;
+        newNode = true;
+      }
+      else
+      {
+        ch = (node->str[0] & (HashSize - 1)) + 1;
+        node = node->parent;
+        newNode = false;
+      }
     }
     else if (node->c[ch])
     {
       node = node->c[ch];
-      ch = 1;
+      ch = 0;
       newNode = true;
     }
     else
@@ -154,19 +264,9 @@ uint32 DictionaryBase::enumNext(uint32 cur) const
 String DictionaryBase::enumGetKey(uint32 cur) const
 {
   Node* node = (Node*) cur;
-  int len = 0;
+  String key = "";
   for (Node* node = (Node*) cur; node; node = node->parent)
-    len += node->len;
-  String key;
-  key.resize(len);
-  key.setLength(len);
-  int pos = len;
-  for (Node* node = (Node*) cur; node; node = node->parent)
-  {
-    pos -= node->len;
-    if (node->len)
-      memcpy(key.getBuffer() + pos, node->str, node->len);
-  }
+    key = (char*) node->str + key;
   return key;
 }
 

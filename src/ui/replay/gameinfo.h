@@ -19,7 +19,7 @@ public:
 
 class ReplayGameInfoTab : public ReplayTab
 {
-  void addInfo(String name, String value);
+  void addInfo(String name, String value, bool utf8 = false);
   SimpleListFrame* info;
   ListFrame* players;
   StaticFrame* map;

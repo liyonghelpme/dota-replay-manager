@@ -3,7 +3,7 @@
 
 #include "base/types.h"
 
-class MemoryPool
+class FixedMemoryPool
 {
   struct MemoryChunk;
   uint32 itemSize;
@@ -11,11 +11,25 @@ class MemoryPool
   MemoryChunk* chunks;
   MemoryChunk* freeChunks;
 public:
-  MemoryPool(uint32 itemSize, uint32 poolGrow = 65536);
-  ~MemoryPool();
+  FixedMemoryPool(uint32 itemSize, uint32 poolGrow = 65536);
+  ~FixedMemoryPool();
 
   void* alloc();
   void free(void* ptr);
+  void clear();
+};
+
+class MemoryPool
+{
+  struct MemoryChunk;
+  uint32 chunkSize;
+  MemoryChunk* chunks;
+public:
+  MemoryPool(uint32 chunk = 65536);
+  ~MemoryPool();
+
+  void* alloc(uint32 size);
+  void clear();
 };
 
 #endif // __BASE_POOL__

@@ -69,6 +69,10 @@ struct W3GPlayer
 
   String format() const;
   String format_full() const;
+  int apm() const
+  {
+    return time ? num_actions / time : 0;
+  }
 
   W3GPlayer(uint8 id, String name);
   W3GPlayer(File* f);

@@ -60,7 +60,7 @@ uint64 parseMode(String mode, String* parsed)
       {
         if (!strncmp(game_modes[k], mode.c_str() + i, len) && game_modes[k][len] == 0)
         {
-          uint64 mask = (1LL << (uint64(k) / 2));
+          uint64 mask = (1ULL << (uint64(k) / 2));
           if (!(result & mask) && parsed)
             *parsed += game_modes[k & (~1)];
           result |= mask;
@@ -72,6 +72,20 @@ uint64 parseMode(String mode, String* parsed)
       }
     }
   }
+  return result;
+}
+String formatMode(uint64 mode)
+{
+  if (mode == 0)
+    return "Normal mode";
+  else if (mode == MODE_WTF)
+    return "-wtf";
+  String result = "-";
+  for (int i = 0; i < num_modes / 2; i++)
+    if ((mode >> i) & 1)
+      result += game_modes[i * 2];
+  if (mode & MODE_WTF)
+    result += " -wtf";
   return result;
 }
 
@@ -116,7 +130,7 @@ void addMapIcons(Image* image, File* desc)
   if (!_icons.loaded)
   {
     MPQArchive* mpq = MPQArchive::open(
-      String::buildFullName(cfg::warPath, "war3.mpq"), MPQFILE_READ);
+      String::buildFullName(cfg.warPath, "war3.mpq"), MPQFILE_READ);
     if (mpq)
     {
       _icons.img[0] = new Image(TempFile(mpq->openFile(

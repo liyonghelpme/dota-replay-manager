@@ -570,6 +570,19 @@ String String::fixPath(String path)
       result += path[i];
     }
   }
+  if (dots == 2)
+  {
+    int len = result.length() - 3;
+    while (len && result[len - 1] != '\\')
+      len--;
+    if (len == 0)
+      return path;
+    result.setLength(len);
+  }
+  if (result[result.length() - 1] == '\\')
+    result.setLength(result.length() - 1);
+  if (result[result.length() - 1] == ':')
+    result += '\\';
   return result;
 }
 
@@ -699,14 +712,14 @@ void String::parseString(String str, String& cmd, String& args)
 
 wchar_t* String::toWide() const
 {
-  int count = MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, buf, -1, NULL, 0);
-  wchar_t* wide = new wchar_t[count + 5];
-  MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, buf, -1, wide, count + 5);
+  int count = MultiByteToWideChar(CP_UTF8, 0, buf, _len(buf) + 1, NULL, 0);
+  wchar_t* wide = new wchar_t[count];
+  MultiByteToWideChar(CP_UTF8, 0, buf, _len(buf) + 1, wide, count);
   return wide;
 }
 void String::toWide(wchar_t* ptr, int length) const
 {
-  MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, buf, -1, ptr, length);
+  MultiByteToWideChar(CP_UTF8, 0, buf, _len(buf) + 1, ptr, length);
 }
 
 bool String::toClipboard() const

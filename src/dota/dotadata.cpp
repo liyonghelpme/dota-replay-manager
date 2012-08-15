@@ -309,9 +309,10 @@ void Dota::release()
     library->delDota(version);
 }
 DotaLibrary::DotaLibrary()
-  : itemPdTag(mapAlNumNoCase)
+  : itemPdTag(DictionaryMap::alNumNoCase)
 {
-  File* common = getApp()->getResources()->openFile("dota\\common.txt", File::READ);
+  MPQArchive* res = getApp()->getResources();
+  File* common = res->openFile("dota\\common.txt", File::READ);
   if (common)
   {
     enum {cTavern = 1, cShop = 2, cAbbr = 3, cPd = 4, cPdMed = 5, cPdWide = 6, cPdItem = 7};
@@ -386,6 +387,40 @@ DotaLibrary::DotaLibrary()
     }
     delete common;
   }
+
+  latest = NULL;
+  uint32 bestVersion = 0;
+  int bestPos = -1;
+  for (int i = 0; i < res->getHashSize(); i++)
+  {
+    if (res->fileExists(i) && res->getFileName(i))
+    {
+      String name = res->getFileName(i);
+      Array<String> match;
+      if (name.substr(0, 6) == "dota\\6")
+        int asdf = 0;
+      if (name.match("dota\\\\(\\d\\.\\d\\d[b-z]?).txt", &match))
+      {
+        uint32 ver = parseVersion(match[1]);
+        if (bestPos < 0 || ver > bestVersion)
+        {
+          bestPos = i;
+          bestVersion = ver;
+        }
+      }
+    }
+  }
+  if (bestPos >= 0)
+  {
+    File* file = res->openFile(bestPos, File::READ);
+    if (file)
+    {
+      latest = new Dota(bestVersion, file, this);
+      latest->ref++;
+      delete file;
+      versions.set(bestVersion, (uint32) latest);
+    }
+  }
 }
 DotaLibrary::~DotaLibrary()
 {
@@ -411,6 +446,13 @@ Dota* DotaLibrary::getDota(uint32 version)
     }
     else
       return NULL;
+    if (latest == NULL || version > latest->version)
+    {
+      if (latest)
+        latest->release();
+      latest = dota;
+      latest->ref++;
+    }
     versions.set(version, (uint32) dota);
   }
   dota->ref++;
@@ -435,6 +477,13 @@ Dota* DotaLibrary::getDota(uint32 version, String mapPath)
     }
     else
       return NULL;
+    if (latest == NULL || version > latest->version)
+    {
+      if (latest)
+        latest->release();
+      latest = dota;
+      latest->ref++;
+    }
     versions.set(version, (uint32) dota);
   }
   dota->ref++;

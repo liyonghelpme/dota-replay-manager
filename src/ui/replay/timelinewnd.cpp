@@ -125,7 +125,7 @@ uint32 TimePicture::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 
 String TimePicture::formatPlayer(W3GPlayer* player)
 {
-  if (player->hero && cfg::chatHeroes)
+  if (player->hero && cfg.chatHeroes)
     return String::format("%s (%s)", player->name, player->hero->hero->shortName);
   else
     return player->name;
@@ -422,7 +422,7 @@ void TimePicture::paint()
 
       DotaInfo const* dota = w3g->getDotaInfo();
 
-      if (cfg::drawBuildings)
+      if (cfg.drawBuildings)
       {
         DotaBuilding* bld = getBuildings();
         for (int i = NUM_BUILDINGS - 1; i >= 0; i--)
@@ -431,12 +431,12 @@ void TimePicture::paint()
             rect(mapx(bld[i].x) - 6, mapy(bld[i].y) - 6, 12, 12, bld[i].icon);
         }
       }
-      if (cfg::drawWards)
+      if (cfg.drawWards)
       {
         for (int cur = w3g->getFirstWard(time); cur >= 0; cur--)
         {
           W3GWard& ward = w3g->getWard(cur);
-          if (ward.time + 1000 * cfg::wardLife <= time)
+          if (ward.time + 1000 * cfg.wardLife <= time)
             break;
           int x = mapx(ward.x);
           int y = mapy(ward.y);
@@ -502,22 +502,22 @@ void TimePicture::paint()
         }
         glDisable(GL_SCISSOR_TEST);
       }
-      if (cfg::drawChat || cfg::drawPings)
+      if (cfg.drawChat || cfg.drawPings)
       {
         int pos = height() - 5;
         int count = 0;
-        int delay = cfg::chatStaysOn * 1000;
+        int delay = cfg.chatStaysOn * 1000;
         if (delay < 2000) delay = 2000;
         for (int line = w3g->getFirstMessage(time);
           line >= 0 && int(time - w3g->getMessage(line).time) < delay; line--)
         {
           W3GMessage& msg = w3g->getMessage(line);
           W3GPlayer* player = w3g->getPlayerById(msg.id);
-          if (cfg::drawChat && int(time - msg.time) < cfg::chatStaysOn * 1000)
+          if (cfg.drawChat && int(time - msg.time) < cfg.chatStaysOn * 1000)
           {
             int alpha = 255;
-            if (int(time - msg.time) > cfg::chatStaysOn * 750)
-              alpha = int((4 - double(time - msg.time) / double(cfg::chatStaysOn) / 250) * 255.0);
+            if (int(time - msg.time) > cfg.chatStaysOn * 750)
+              alpha = int((4 - double(time - msg.time) / double(cfg.chatStaysOn) / 250) * 255.0);
             if (alpha < 0) alpha = 0;
             if (alpha > 255) alpha = 255;
             String text = "";
@@ -558,7 +558,7 @@ void TimePicture::paint()
               count++;
             }
           }
-          if (cfg::drawPings && msg.mode == CHAT_PING && int(time - msg.time) < 2000)
+          if (cfg.drawPings && msg.mode == CHAT_PING && int(time - msg.time) < 2000)
           {
             int alpha = 255;
             if (int(time - msg.time) > 1000)

@@ -9,8 +9,6 @@
 SimpleListFrame::SimpleListFrame(Frame* parent, int id, int style, int styleEx)
   : WindowFrame(parent)
 {
-  style |= LVS_ALIGNLEFT | LVS_REPORT | LVS_NOCOLUMNHEADER | LVS_NOSCROLL |
-           LVS_SINGLESEL;
   create(WC_LISTVIEW, "", WS_CHILD | WS_TABSTOP | style, styleEx);
   setFont(FontSys::getSysFont());
   setId(id);
@@ -45,6 +43,15 @@ void SimpleListFrame::setColumnWidth(int column, int width)
 {
   ListView_SetColumnWidth(hWnd, column, width);
 }
+void SimpleListFrame::setColumn(int column, int width, String text)
+{
+  LVCOLUMN lvc;
+  memset(&lvc, 0, sizeof lvc);
+  lvc.mask = LVCF_TEXT | LVCF_WIDTH;
+  lvc.cx = width;
+  lvc.pszText = text.getBuffer();
+  ListView_SetColumn(hWnd, column, &lvc);
+}
 int SimpleListFrame::addItem(String name)
 {
   LVITEM lvi;
@@ -52,6 +59,17 @@ int SimpleListFrame::addItem(String name)
   lvi.iItem = ListView_GetItemCount(hWnd);
   lvi.mask = LVIF_TEXT;
   lvi.pszText = name.getBuffer();
+  ListView_InsertItem(hWnd, &lvi);
+  return lvi.iItem;
+}
+int SimpleListFrame::addItem(String name, uint32 param)
+{
+  LVITEM lvi;
+  memset(&lvi, 0, sizeof lvi);
+  lvi.iItem = ListView_GetItemCount(hWnd);
+  lvi.mask = LVIF_TEXT | LVIF_PARAM;
+  lvi.pszText = name.getBuffer();
+  lvi.lParam = param;
   ListView_InsertItem(hWnd, &lvi);
   return lvi.iItem;
 }
@@ -65,20 +83,41 @@ void SimpleListFrame::setItemText(int item, int column, String text)
   lvi.pszText = text.getBuffer();
   ListView_SetItem(hWnd, &lvi);
 }
+void SimpleListFrame::setItemTextUtf8(int item, int column, String text)
+{
+  int size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), text.length() + 1, NULL, 0);
+  wchar_t* buf = new wchar_t[size];
+  MultiByteToWideChar(CP_UTF8, 0, text.c_str(), text.length() + 1, buf, size);
+
+  LVITEMW lvi;
+  memset(&lvi, 0, sizeof lvi);
+  lvi.iItem = item;
+  lvi.iSubItem = column;
+  lvi.mask = LVIF_TEXT;
+  lvi.pszText = buf;
+  SendMessage(hWnd, LVM_SETITEMW, 0, (uint32) &lvi);
+
+  delete[] buf;
+}
 
 ////////////////////////////////////////////////////
 
 ListFrame::ListFrame(Frame* parent, int id, int style, int styleEx)
   : WindowFrame(parent)
 {
-  style |= LVS_ALIGNLEFT | LVS_REPORT | LVS_OWNERDRAWFIXED | LVS_NOSORTHEADER | LVS_SHAREIMAGELISTS |
-           LVS_SINGLESEL;
-  simpleColors = false;
-  create(WC_LISTVIEW, "", WS_CHILD | WS_TABSTOP | WS_HSCROLL | style, styleEx);
+  wcBuf = NULL;
+  wcBufSize = 0;
+  style |= LVS_ALIGNLEFT | LVS_REPORT | LVS_OWNERDRAWFIXED | LVS_SHAREIMAGELISTS;
+  colorMode = colorNone;
+  create(WC_LISTVIEW, "", WS_CHILD | WS_TABSTOP | WS_HSCROLL | style, WS_EX_CLIENTEDGE);
   setFont(FontSys::getSysFont());
   setId(id);
-  ListView_SetExtendedListViewStyle(hWnd, LVS_EX_GRIDLINES | LVS_EX_FULLROWSELECT);
+  ListView_SetExtendedListViewStyle(hWnd, styleEx);
   ListView_SetImageList(hWnd, getApp()->getImageLibrary()->getImageList(), LVSIL_SMALL);
+}
+ListFrame::~ListFrame()
+{
+  delete[] wcBuf;
 }
 //LVS_ALIGNLEFT
 
@@ -91,90 +130,122 @@ uint32 ListFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
   }
   return M_UNHANDLED;
 }
-int ListFrame::getItemTextWidth(HDC hDC, String text, uint32 format)
+int ListFrame::convertUtf8(String text)
 {
-  int prev = 0;
-  int width = 0;
-  HIMAGELIST imgList = ListView_GetImageList(hWnd, LVSIL_SMALL);
-  if (format == DT_LEFT)
+  int size = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), text.length(), NULL, 0);
+  if (wcBufSize < size)
   {
-    for (int cur = 0; cur < text.length(); cur++)
+    delete[] wcBuf;
+    wcBuf = new wchar_t[size];
+    wcBufSize = size;
+  }
+  MultiByteToWideChar(CP_UTF8, 0, text.c_str(), text.length(), wcBuf, size);
+  return size;
+}
+int ListFrame::getItemTextWidth(HDC hDC, String text, uint32 format, bool utf8)
+{
+  int width = 0;
+
+  if (utf8)
+  {
+    int length = convertUtf8(text);
+    SIZE sz;
+    GetTextExtentPoint32W(hDC, wcBuf, length, &sz);
+    width = sz.cx;
+  }
+  else
+  {
+    int prev = 0;
+    HIMAGELIST imgList = ListView_GetImageList(hWnd, LVSIL_SMALL);
+    if (format == DT_LEFT)
     {
-      bool valid = false;
-      int index = 0;
-      int save = cur;
-      if (text[cur] == '$')
+      for (int cur = 0; cur < text.length(); cur++)
       {
-        cur++;
-        while (text[cur] >= '0' && text[cur] <= '9')
-          index = index * 10 + int(text[cur++] - '0');
-        if (text[cur] == '$' && index >= 0 && index < ImageList_GetImageCount(imgList))
-          valid = true;
-        else
-          cur = save;
-      }
-      if (valid)
-      {
-        if (save > prev)
+        bool valid = false;
+        int index = 0;
+        int save = cur;
+        if (text[cur] == '$')
         {
-          SIZE sz;
-          GetTextExtentPoint32(hDC, text.c_str() + prev, save - prev, &sz);
-          width += sz.cx;
+          cur++;
+          while (text[cur] >= '0' && text[cur] <= '9')
+            index = index * 10 + int(text[cur++] - '0');
+          if (text[cur] == '$' && index >= 0 && index < ImageList_GetImageCount(imgList))
+            valid = true;
+          else
+            cur = save;
         }
-        width += 18;
-        prev = cur + 1;
+        if (valid)
+        {
+          if (save > prev)
+          {
+            SIZE sz;
+            GetTextExtentPoint32(hDC, text.c_str() + prev, save - prev, &sz);
+            width += sz.cx;
+          }
+          width += 18;
+          prev = cur + 1;
+        }
       }
     }
-  }
-  if (prev < text.length())
-  {
-    SIZE sz;
-    GetTextExtentPoint32(hDC, text.c_str() + prev, text.length() - prev, &sz);
-    width += sz.cx;
+    if (prev < text.length())
+    {
+      SIZE sz;
+      GetTextExtentPoint32(hDC, text.c_str() + prev, text.length() - prev, &sz);
+      width += sz.cx;
+    }
   }
   return width;
 }
-void ListFrame::drawItemText(HDC hDC, String text, RECT rc, uint32 format)
+void ListFrame::drawItemText(HDC hDC, String text, RECT rc, uint32 format, bool utf8)
 {
-  uint32 FMT = DT_SINGLELINE | DT_NOPREFIX | DT_NOCLIP | DT_VCENTER;
-  HIMAGELIST imgList = ListView_GetImageList(hWnd, LVSIL_SMALL);
-  int prev = 0;
-  if (format == DT_LEFT)
+  uint32 FMT = DT_SINGLELINE | DT_NOPREFIX | DT_VCENTER | DT_END_ELLIPSIS;
+
+  if (utf8)
   {
-    for (int cur = 0; cur < text.length(); cur++)
+    int length = convertUtf8(text);
+    DrawTextW(hDC, wcBuf, length, &rc, format | FMT);
+  }
+  else
+  {
+    HIMAGELIST imgList = ListView_GetImageList(hWnd, LVSIL_SMALL);
+    int prev = 0;
+    if (format == DT_LEFT)
     {
-      bool valid = false;
-      int index = 0;
-      int save = cur;
-      if (text[cur] == '$')
+      for (int cur = 0; cur < text.length(); cur++)
       {
-        cur++;
-        while (text[cur] >= '0' && text[cur] <= '9')
-          index = index * 10 + int(text[cur++] - '0');
-        if (text[cur] == '$' && index >= 0 && index < ImageList_GetImageCount(imgList))
-          valid = true;
-        else
-          cur = save;
-      }
-      if (valid)
-      {
-        if (save > prev)
+        bool valid = false;
+        int index = 0;
+        int save = cur;
+        if (text[cur] == '$')
         {
-          DrawText(hDC, text.c_str() + prev, save - prev, &rc, format | FMT);
-          SIZE sz;
-          GetTextExtentPoint32(hDC, text.c_str() + prev, save - prev, &sz);
-          rc.left += sz.cx;
+          cur++;
+          while (text[cur] >= '0' && text[cur] <= '9')
+            index = index * 10 + int(text[cur++] - '0');
+          if (text[cur] == '$' && index >= 0 && index < ImageList_GetImageCount(imgList))
+            valid = true;
+          else
+            cur = save;
         }
-        if (rc.left < rc.right)
-          ImageList_DrawEx(imgList, index, hDC, rc.left + 1, (rc.top + rc.bottom) / 2 - 8,
-            rc.right - rc.left > 16 ? 16 : rc.right - rc.left, 16, CLR_NONE, CLR_NONE, ILD_NORMAL);
-        rc.left += 18;
-        prev = cur + 1;
+        if (valid)
+        {
+          if (save > prev)
+          {
+            DrawText(hDC, text.c_str() + prev, save - prev, &rc, format | FMT);
+            SIZE sz;
+            GetTextExtentPoint32(hDC, text.c_str() + prev, save - prev, &sz);
+            rc.left += sz.cx;
+          }
+          if (rc.left < rc.right)
+            ImageList_DrawEx(imgList, index, hDC, rc.left + 1, (rc.top + rc.bottom) / 2 - 8,
+              rc.right - rc.left > 16 ? 16 : rc.right - rc.left, 16, CLR_NONE, CLR_NONE, ILD_NORMAL);
+          rc.left += 18;
+          prev = cur + 1;
+        }
       }
     }
+    if (prev < text.length())
+      DrawText(hDC, text.c_str() + prev, text.length() - prev, &rc, format | FMT);
   }
-  if (prev < text.length())
-    DrawText(hDC, text.c_str() + prev, text.length() - prev, &rc, format | FMT);
 }
 void ListFrame::drawItem(DRAWITEMSTRUCT* dis)
 {
@@ -190,7 +261,9 @@ void ListFrame::drawItem(DRAWITEMSTRUCT* dis)
   ListView_GetItem(hWnd, &lvi);
 
   uint32 color;
-  if (simpleColors)
+  if (colorMode == colorNone)
+    color = 0xFFFFFF;
+  else if (colorMode == colorStripe)
     color = (lvi.iItem & 1 ? 0xFFFFFF : 0xFFEEEE);
   else
     color = uint32(lvi.lParam) & 0xFFFFFF;
@@ -214,7 +287,7 @@ void ListFrame::drawItem(DRAWITEMSTRUCT* dis)
   ListView_GetItemRect(hWnd, dis->itemID, &label, LVIR_LABEL);
   ListView_GetItemRect(hWnd, dis->itemID, &icon, LVIR_ICON);
   GetClientRect(hWnd, &wnd);
-  allLabels.right = wnd.right;
+  //allLabels.right = wnd.right;
 
   uint32 clrTextSave, clrBkSave;
   if (selected)
@@ -224,13 +297,18 @@ void ListFrame::drawItem(DRAWITEMSTRUCT* dis)
   }
   else
     clrBkSave = SetBkColor(dis->hDC, color);
+//  if (ListView_GetExtendedListViewStyle(hWnd) & LVS_EX_FULLROWSELECT)
   ExtTextOut(dis->hDC, 0, 0, ETO_OPAQUE, &allLabels, NULL, 0, NULL);
+//  else
+//    ExtTextOut(dis->hDC, 0, 0, ETO_OPAQUE, &label, NULL, 0, NULL);
 
   label.right -= 1;
   RECT item = label;
   item.left += 2;
   item.right -= 2;
-  drawItemText(dis->hDC, lvi.pszText, item, DT_LEFT);
+
+  if ((lvi.state & LVIS_FOCUSED) == 0 || ListView_GetEditControl(hWnd) == NULL)
+    drawItemText(dis->hDC, lvi.pszText, item, DT_LEFT, colUtf8[0]);
 
   HWND header = ListView_GetHeader(hWnd);
 
@@ -267,7 +345,7 @@ void ListFrame::drawItem(DRAWITEMSTRUCT* dis)
     item = label;
     item.left += 6;
     item.right -= 6;
-    drawItemText(dis->hDC, buf, item, flags);
+    drawItemText(dis->hDC, buf, item, flags, colUtf8[order[i]]);
   }
   delete[] order;
 
@@ -284,6 +362,7 @@ void ListFrame::clear()
 }
 void ListFrame::clearColumns()
 {
+  colUtf8.clear();
   for (int i = Header_GetItemCount(ListView_GetHeader(hWnd)) - 1; i >= 0; i--)
     ListView_DeleteColumn(hWnd, i);
 }
@@ -296,6 +375,8 @@ void ListFrame::insertColumn(int i, String name, int fmt)
   lvc.fmt = fmt;
   lvc.pszText = name.getBuffer();
   ListView_InsertColumn(hWnd, i, &lvc);
+  if (colUtf8.length() <= i)
+    colUtf8.resize(i + 1, false);
 }
 void ListFrame::setColumnWidth(int i, int width)
 {
@@ -329,7 +410,7 @@ void ListFrame::setColumnWidth(int i, int width)
     for (int j = ListView_GetItemCount(hWnd) - 1; j >= 0; j--)
     {
       ListView_GetItemText(hWnd, j, i, buf, sizeof buf);
-      int w = getItemTextWidth(hDC, buf, flags);
+      int w = getItemTextWidth(hDC, buf, flags, colUtf8[i]);
       if (i == 0)
         w += 18;
       if (w > awidth)
@@ -368,6 +449,15 @@ int ListFrame::getCount() const
 {
   return ListView_GetItemCount(hWnd);
 }
+int ListFrame::getItemParam(int item)
+{
+  LVITEM lvi;
+  memset(&lvi, 0, sizeof lvi);
+  lvi.iItem = item;
+  lvi.mask = LVIF_PARAM;
+  ListView_GetItem(hWnd, &lvi);
+  return lvi.lParam;
+}
 
 //////////////////////////////////////////////
 
@@ -395,7 +485,8 @@ int ComboFrameEx::addString(String text, uint32 color, char const* icon, uint32 
   item.data = data;
   item.color = color;
   item.icon = (icon ? getApp()->getImageLibrary()->getListIndex(icon) : 0xFFFFFFFF);
-  item.text = text;
+  item.wtext = text.toWide();
+
   int pos = SendMessage(hWnd, CB_ADDSTRING, 0, (uint32) "");
   if (pos != CB_ERR)
     SendMessage(hWnd, CB_SETITEMDATA, pos, id);
@@ -477,8 +568,8 @@ uint32 ComboFrameEx::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       ImageList_Draw(getApp()->getImageLibrary()->getImageList(), item.icon,
         dis->hDC, rc.left, (rc.top + rc.bottom) / 2 - 8, ILD_NORMAL);
     rc.left += 18;
-    DrawText(dis->hDC, item.text.c_str(), item.text.length(), &rc,
-      DT_LEFT | DT_SINGLELINE | DT_VCENTER);
+
+    DrawTextW(dis->hDC, item.wtext, -1, &rc, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
 
     SetTextColor(dis->hDC, clrTextSave);
     SetBkColor(dis->hDC, clrBkSave);

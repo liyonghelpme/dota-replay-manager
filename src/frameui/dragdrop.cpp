@@ -1,4 +1,5 @@
 #include "dragdrop.h"
+#include <shlobj.h>
 
 ////////////////////// DropTarget ///////////////////////////////////////
 
@@ -371,6 +372,7 @@ DataObject::DataObject(CLIPFORMAT format, HGLOBAL data)
 }
 DataObject::~DataObject()
 {
+  GlobalFree(stgmed.hGlobal);
 }
 
 /////////////////////// DropSource //////////////////////////////////////
@@ -442,6 +444,37 @@ DropSource::~DropSource()
 {
 }
 
+//////////////////////////////////////////////////////////////////////
+
+ClipboardReader::ClipboardReader(CLIPFORMAT format)
+{
+  FORMATETC fmtetc;
+  fmtetc.cfFormat = format;
+  fmtetc.ptd = NULL;
+  fmtetc.dwAspect = DVASPECT_CONTENT;
+  fmtetc.lindex = -1;
+  fmtetc.tymed = TYMED_HGLOBAL;
+
+  if (OleGetClipboard(&pDataObj) != S_OK)
+    pDataObj = NULL;
+  if (pDataObj == NULL || pDataObj->GetData(&fmtetc, &stgmed) != S_OK)
+    memset(&stgmed, 0, sizeof stgmed);
+}
+ClipboardReader::~ClipboardReader()
+{
+  if (stgmed.hGlobal)
+    ReleaseStgMedium(&stgmed);
+  if (pDataObj)
+    pDataObj->Release();
+}
+
+HGLOBAL ClipboardReader::getData()
+{
+  return stgmed.hGlobal;
+}
+
+//////////////////////////////////////////////////////////////////////
+
 uint32 DoDragDrop(CLIPFORMAT format, HGLOBAL data, uint32 allowedEffects)
 {
   DropSource source;
@@ -449,4 +482,68 @@ uint32 DoDragDrop(CLIPFORMAT format, HGLOBAL data, uint32 allowedEffects)
   uint32 effect;
   uint32 result = DoDragDrop(&object, &source, allowedEffects, &effect);
   return effect;
+}
+uint32 SetClipboard(CLIPFORMAT format, HGLOBAL data)
+{
+  DataObject* object = new DataObject(format, data);
+  uint32 result = OleSetClipboard(object);
+  object->Release();
+  return result;
+}
+
+char* FileListToString(Array<String> const& files)
+{
+  uint32 length = 1;
+  for (int i = 0; i < files.length(); i++)
+    length += files[i].length() + 1;
+  char* ptr = new char[length];
+  length = 0;
+  for (int i = 0; i < files.length(); i++)
+  {
+    memcpy(ptr + length, files[i].c_str(), files[i].length() + 1);
+    length += files[i].length() + 1;
+  }
+  ptr[length] = 0;
+  return ptr;
+}
+HGLOBAL CreateFileDrop(Array<String> const& files)
+{
+  uint32 length = 0;
+  for (int i = 0; i < files.length(); i++)
+    length += files[i].length() + 1;
+  uint32 size = sizeof(DROPFILES) + length + 1;
+  HGLOBAL data = GlobalAlloc(GMEM_MOVEABLE, size);
+  if (data)
+  {
+    uint8* ptr = (uint8*) GlobalLock(data);
+    DROPFILES* df = (DROPFILES*) ptr;
+    memset(df, 0, sizeof(DROPFILES));
+    df->pFiles = sizeof(DROPFILES);
+    ptr += sizeof(DROPFILES);
+    for (int i = 0; i < files.length(); i++)
+    {
+      memcpy(ptr, files[i].c_str(), files[i].length() + 1);
+      ptr += files[i].length() + 1;
+    }
+    *ptr = 0;
+    GlobalUnlock(data);
+  }
+  return data;
+}
+HGLOBAL CreateFileDrop(String file)
+{
+  uint32 size = sizeof(DROPFILES) + file.length() + 2;
+  HGLOBAL data = GlobalAlloc(GMEM_MOVEABLE, size);
+  if (data)
+  {
+    uint8* ptr = (uint8*) GlobalLock(data);
+    DROPFILES* df = (DROPFILES*) ptr;
+    memset(df, 0, sizeof(DROPFILES));
+    df->pFiles = sizeof(DROPFILES);
+    ptr += sizeof(DROPFILES);
+    memcpy(ptr, file.c_str(), file.length() + 1);
+    ptr[file.length() + 1] = 0;
+    GlobalUnlock(data);
+  }
+  return data;
 }

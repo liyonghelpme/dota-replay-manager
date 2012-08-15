@@ -128,7 +128,11 @@ public:
   {
     setPoint(point, parent, point, x, y);
   }
-  void setPointEx(int point, Frame* rel, float xRel, float yRel, int x, int y);
+  void setPointEx(int point, Frame* rel, double xRel, double yRel, int x, int y);
+  void setPointEx(int point, double xRel, double yRel, int x, int y)
+  {
+    setPointEx(point, parent, xRel, yRel, x, y);
+  }
   void clearAllPoints();
   void setAllPoints(Frame* rel)
   {

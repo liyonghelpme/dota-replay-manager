@@ -20,13 +20,6 @@
 #define IDC_CHATCOLOR           110
 #define IDC_CHATCOLORMODE       111
 
-#define COL_SAVED       0x01
-#define COL_SIZE        0x02
-#define COL_NAME        0x04
-#define COL_RATIO       0x10
-#define COL_LENGTH      0x20
-#define COL_MODE        0x40
-
 class ClickColor : public WindowFrame
 {
   int curSlot;
@@ -41,7 +34,7 @@ ClickColor::ClickColor(Frame* parent, int id)
 {
   curSlot = 0;
   curTime = 5000;
-  hFont = FontSys::getFont(cfg::chatFont.get<LOGFONT>());
+  hFont = FontSys::getFont(cfg.chatFont);
   create("", WS_CHILD, WS_EX_CLIENTEDGE);
   setId(id);
   SetTimer(hWnd, 2345, 1500, NULL);
@@ -55,7 +48,7 @@ uint32 ClickColor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       HDC hDC = (HDC) wParam;
       RECT rc;
       GetClientRect(hWnd, &rc);
-      SetBkColor(hDC, cfg::chatBg);
+      SetBkColor(hDC, cfg.chatBg);
       ExtTextOut(hDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
     }
     return TRUE;
@@ -83,8 +76,8 @@ uint32 ClickColor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       RECT rc;
       GetClientRect(hWnd, &rc);
 
-      SetBkColor(hDC, cfg::chatBg);
-      SetTextColor(hDC, cfg::chatFg);
+      SetBkColor(hDC, cfg.chatBg);
+      SetTextColor(hDC, cfg.chatFg);
       SelectObject(hDC, hFont);
 
       String buf = format_time(curTime);
@@ -97,9 +90,9 @@ uint32 ClickColor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       GetTextExtentPoint32(hDC, buf, buf.length(), &sz);
       rc.left += sz.cx;
 
-      if (cfg::chatColors == 0)
+      if (cfg.chatColors == 0)
         SetTextColor(hDC, getDefaultColor(curSlot));
-      else if (cfg::chatColors == 1)
+      else if (cfg.chatColors == 1)
         SetTextColor(hDC, getSlotColor(curSlot));
       else
         SetTextColor(hDC, getDarkColor(curSlot));
@@ -108,7 +101,7 @@ uint32 ClickColor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       GetTextExtentPoint32(hDC, buf, buf.length(), &sz);
       rc.left += sz.cx;
 
-      SetTextColor(hDC, cfg::chatFg);
+      SetTextColor(hDC, cfg.chatFg);
       buf = "click to change background";
       DrawText(hDC, buf, buf.length(), &rc, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
       GetTextExtentPoint32(hDC, buf, buf.length(), &sz);
@@ -133,7 +126,7 @@ void SettingsWindow::addAllItems()
   Frame* tab = tabs->addTab(0, "General");
 
   Frame* tip = new StaticFrame("Warcraft III Folder:", tab);
-  WindowFrame* item1 = addStringItem(0, &cfg::warPath);
+  WindowFrame* item1 = addStringItem(0, &cfg.warPath);
   item1->setPoint(PT_TOPLEFT, 140, 7);
   item1->setSize(228, 23);
   tip->setPoint(PT_BOTTOMRIGHT, item1, PT_BOTTOMLEFT, -4, -7);
@@ -145,7 +138,7 @@ void SettingsWindow::addAllItems()
   btn2->setSize(60, 23);
 
   tip = new StaticFrame("Replay folder:", tab);
-  WindowFrame* item2 = addStringItem(0, &cfg::replayPath);
+  WindowFrame* item2 = addStringItem(0, &cfg.replayPath);
   item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 5);
   item2->setSize(228, 23);
   tip->setPoint(PT_BOTTOMRIGHT, item2, PT_BOTTOMLEFT, -4, -7);
@@ -159,29 +152,28 @@ void SettingsWindow::addAllItems()
   btn1->setPoint(PT_BOTTOMLEFT, btn2, PT_BOTTOMRIGHT, 4, 0);
   btn1->setSize(60, 23);
 
-  tip = new StaticFrame("Maximum number of files:", tab);
-  item1 = addIntItem(0, &cfg::maxFiles);
+  item1 = addBoolItem(0, &cfg.hideEmpty);
+  item1->setText("Hide empty folders");
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 5);
-  item1->setSize(228, 23);
-  tip->setPoint(PT_BOTTOMRIGHT, item1, PT_BOTTOMLEFT, -4, -7);
+  item1->setSize(228, 16);
 
-  item2 = addBoolItem(0, &cfg::viewWindow);
+  item2 = addBoolItem(0, &cfg.viewWindow);
   item2->setText("View replays in windowed mode");
   item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 5);
   item2->setSize(228, 16);
 
-  item1 = addBoolItem(0, &cfg::autoView);
+  item1 = addBoolItem(0, &cfg.autoView);
   item1->setText("Automatically detect new replays");
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 5);
   item1->setSize(228, 16);
 
-  item2 = addBoolItem(0, &cfg::autoCopy);
+  item2 = addBoolItem(0, &cfg.autoCopy);
   item2->setText("Automatically copy new replays");
   item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 5);
   item2->setSize(228, 16);
 
   tip = new StaticFrame("Copy to file:", tab);
-  item1 = addStringItem(0, &cfg::copyFormat);
+  item1 = addStringItem(0, &cfg.copyFormat);
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 5);
   item1->setSize(292, 23);
   tip->setPoint(PT_BOTTOMRIGHT, item1, PT_BOTTOMLEFT, -4, -7);
@@ -189,21 +181,21 @@ void SettingsWindow::addAllItems()
   btn1->setPoint(PT_BOTTOMLEFT, item1, PT_BOTTOMRIGHT, 4, 0);
   btn1->setSize(60, 23);
 
-  item2 = addBoolItem(0, &cfg::showDetails);
-  item2->setText("Show details in folder view");
-  item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 15);
-  item2->setSize(228, 16);
+  //item2 = addBoolItem(0, &cfg.showDetails);
+  //item2->setText("Show details in folder view");
+  //item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 15);
+  //item2->setSize(228, 16);
 
   ButtonFrame* group = new ButtonFrame("Select columns", tab, IDC_SEL_COL, BS_GROUPBOX);
-  group->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, -50, 5);
-  group->setSize(440, 90);
+  group->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, -50, 10);
+  group->setSize(440, 70);
 
-  item1 = addBoolItem(0, &cfg::selColumns, COL_SAVED);
+  item1 = addBoolItem(0, &cfg.selColumns, COL_SAVED);
   item1->setText("Date saved");
   item1->setSize(80, 16);
   item1->setPoint(PT_TOPLEFT, group, PT_TOPLEFT, 10, 16);
 
-  item2 = addBoolItem(0, &cfg::selColumns, COL_SIZE);
+  item2 = addBoolItem(0, &cfg.selColumns, COL_SIZE);
   item2->setText("File size");
   item2->setSize(82, 16);
   item2->setPoint(PT_BOTTOMLEFT, item1, PT_BOTTOMRIGHT, 4, 0);
@@ -212,42 +204,42 @@ void SettingsWindow::addAllItems()
     " and may slow down viewing.", tab);
   tip->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 2);
 
-  item1 = addBoolItem(0, &cfg::selColumns, COL_NAME);
+  item1 = addBoolItem(0, &cfg.selColumns, COL_NAME);
   item1->setText("Game name");
   item1->setSize(80, 16);
   item1->setPoint(PT_TOPLEFT, tip, PT_BOTTOMLEFT, 0, 2);
 
-  item2 = addBoolItem(0, &cfg::selColumns, COL_RATIO);
-  item2->setText("Game ratio");
+  item2 = addBoolItem(0, &cfg.selColumns, COL_RATIO);
+  item2->setText("Lineup");
   item2->setSize(82, 16);
   item2->setPoint(PT_BOTTOMLEFT, item1, PT_BOTTOMRIGHT, 4, 0);
 
-  item1 = addBoolItem(0, &cfg::selColumns, COL_LENGTH);
+  item1 = addBoolItem(0, &cfg.selColumns, COL_LENGTH);
   item1->setText("Game length");
   item1->setSize(80, 16);
   item1->setPoint(PT_BOTTOMLEFT, item2, PT_BOTTOMRIGHT, 4, 0);
 
-  item2 = addBoolItem(0, &cfg::selColumns, COL_MODE);
+  item2 = addBoolItem(0, &cfg.selColumns, COL_MODE);
   item2->setText("Game mode");
   item2->setSize(82, 16);
   item2->setPoint(PT_BOTTOMLEFT, item1, PT_BOTTOMRIGHT, 4, 0);
 
-  item1 = addBoolItem(0, &cfg::saveCache);
-  item1->setText("Save game cache (speeds up parsing file info)");
-  item1->setSize(300, 16);
-  item1->setPoint(PT_TOPLEFT, tip, PT_BOTTOMLEFT, 0, 22);
+  //item1 = addBoolItem(0, &cfg.saveCache);
+  //item1->setText("Save game cache (speeds up parsing file info)");
+  //item1->setSize(300, 16);
+  //item1->setPoint(PT_TOPLEFT, tip, PT_BOTTOMLEFT, 0, 22);
 
-  item1 = addBoolItem(0, &cfg::useTray);
+  item1 = addBoolItem(0, &cfg.useTray);
   item1->setText("Minimize to system tray");
   item1->setSize(300, 16);
   item1->setPoint(PT_TOPLEFT, group, PT_BOTTOMLEFT, 50, 12);
 
-  item2 = addBoolItem(0, &cfg::enableUrl);
+  item2 = addBoolItem(0, &cfg.enableUrl);
   item2->setText("Enable URL in path bar (make sure to include http://)");
   item2->setSize(300, 16);
   item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 5);
 
-  item1 = addBoolItem(0, &cfg::autoUpdate);
+  item1 = addBoolItem(0, &cfg.autoUpdate);
   item1->setText("Check for updates automatically (once a day)");
   item1->setSize(300, 16);
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 5);
@@ -268,19 +260,19 @@ void SettingsWindow::addAllItems()
   tab = tabs->addTab(1, "Replay");
 
   tip = new StaticFrame("Your name(s) in replays:", tab);
-  item1 = addStringItem(1, &cfg::ownNames);
+  item1 = addStringItem(1, &cfg.ownNames);
   item1->setPoint(PT_TOPLEFT, 240, 7);
   item1->setSize(228, 23);
   tip->setPoint(PT_BOTTOMRIGHT, item1, PT_BOTTOMLEFT, -4, -7);
 
   tip = new StaticFrame("Repeated action delay for skills (ms):", tab);
-  item2 = addIntItem(1, &cfg::repDelay);
+  item2 = addIntItem(1, &cfg.repDelay);
   item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 5);
   item2->setSize(228, 23);
   tip->setPoint(PT_BOTTOMRIGHT, item2, PT_BOTTOMLEFT, -4, -7);
 
   tip = new StaticFrame("Repeated action delay for items (ms):", tab);
-  item1 = addIntItem(1, &cfg::repDelayItems);
+  item1 = addIntItem(1, &cfg.repDelayItems);
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 5);
   item1->setSize(228, 23);
   tip->setPoint(PT_BOTTOMRIGHT, item1, PT_BOTTOMLEFT, -4, -7);
@@ -290,82 +282,82 @@ void SettingsWindow::addAllItems()
   group->setPoint(PT_LEFT, 50, 0);
   group->setSize(430, 152);
 
-  item2 = addBoolItem(1, &cfg::drawWards);
+  item2 = addBoolItem(1, &cfg.drawWards);
   item2->setText("Draw wards");
   item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 22);
   item2->setSize(228, 16);
 
   tip = new StaticFrame("Ward lifetime (seconds):", tab);
-  item1 = addIntItem(1, &cfg::wardLife);
+  item1 = addIntItem(1, &cfg.wardLife);
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 5);
   item1->setSize(228, 23);
   tip->setPoint(PT_BOTTOMRIGHT, item1, PT_BOTTOMLEFT, -4, -7);
 
-  item2 = addBoolItem(1, &cfg::drawChat);
+  item2 = addBoolItem(1, &cfg.drawChat);
   item2->setText("Draw chat");
   item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 5);
   item2->setSize(228, 16);
 
   tip = new StaticFrame("Chat fade time (seconds):", tab);
-  item1 = addIntItem(1, &cfg::chatStaysOn);
+  item1 = addIntItem(1, &cfg.chatStaysOn);
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 5);
   item1->setSize(228, 23);
   tip->setPoint(PT_BOTTOMRIGHT, item1, PT_BOTTOMLEFT, -4, -7);
 
-  item2 = addBoolItem(1, &cfg::drawPings);
+  item2 = addBoolItem(1, &cfg.drawPings);
   item2->setText("Draw minimap pings");
   item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 5);
   item2->setSize(228, 16);
 
-  item1 = addBoolItem(1, &cfg::drawBuildings);
+  item1 = addBoolItem(1, &cfg.drawBuildings);
   item1->setText("Draw buildings");
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 5);
   item1->setSize(228, 16);
 
-  item1 = addBoolItem(1, &cfg::showLevels);
+  item1 = addBoolItem(1, &cfg.showLevels);
   item1->setText("Show skill levels in build view");
   item1->setPoint(PT_TOPLEFT, group, PT_BOTTOMLEFT, 10, 10);
   item1->setSize(180, 16);
   WindowFrame* item3 = item1;
 
-  item2 = addBoolItem(1, &cfg::skillColors);
+  item2 = addBoolItem(1, &cfg.skillColors);
   item2->setText("Color skills in build view");
   item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 4);
   item2->setSize(180, 16);
 
-  item1 = addBoolItem(1, &cfg::smoothGold);
+  item1 = addBoolItem(1, &cfg.smoothGold);
   item1->setText("Smoother gold timeline");
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 4);
   item1->setSize(180, 16);
 
-  item2 = addBoolItem(1, &cfg::relTime);
+  item2 = addBoolItem(1, &cfg.relTime);
   item2->setText("Time relative to creep spawn");
   item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 4);
   item2->setSize(180, 16);
 
-  item1 = addBoolItem(1, &cfg::showEmptySlots);
+  item1 = addBoolItem(1, &cfg.showEmptySlots);
   item1->setText("Show empty slots");
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 4);
   item1->setSize(180, 16);
 
-  item2 = addBoolItem(1, &cfg::showAssemble);
+  item2 = addBoolItem(1, &cfg.showAssemble);
   item2->setText("Show assembled items in itembuild");
   item2->setPoint(PT_BOTTOMLEFT, item3, PT_BOTTOMRIGHT, 0, 0);
   item2->setSize(180, 16);
 
   item3 = item1;
 
-  item1 = addBoolItem(1, &cfg::syncSelect);
+  item1 = addBoolItem(1, &cfg.syncSelect);
   item1->setText("Synchronize selection in build view");
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 4);
   item1->setSize(180, 16);
 
-  item2 = addBoolItem(1, &cfg::chatHeroes);
+  item2 = addBoolItem(1, &cfg.chatHeroes);
   item2->setText("Show hero names in chat");
   item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 4);
   item2->setSize(180, 16);
 
-  item1 = addBoolItem(1, &cfg::chatAssists);
+  item1 = addBoolItem(1, &cfg.chatAssists);
   item1->setText("Show assists in chat");
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 4);
   item1->setSize(180, 16);
@@ -384,14 +376,14 @@ void SettingsWindow::addAllItems()
   chatColorMode->addString("Default");
   chatColorMode->addString("Adapted");
   chatColorMode->addString("Dark");
-  chatColorMode->setCurSel(cfg::chatColors);
+  chatColorMode->setCurSel(cfg.chatColors);
 
   chatColors = new ClickColor(tab, IDC_CHATCOLOR);
   chatColors->setPoint(PT_LEFT, 60, 0);
   chatColors->setPoint(PT_TOP, btn1, PT_BOTTOM, 0, 5);
   chatColors->setSize(408, 50);
 
-  item1 = addBoolItem(1, &cfg::useLog);
+  item1 = addBoolItem(1, &cfg.useLog);
   item1->setText("Log actions to log.txt");
   item1->setPoint(PT_TOPLEFT, chatColors, PT_BOTTOMLEFT, 0, 8);
   item1->setSize(180, 16);
@@ -403,7 +395,6 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
   {
     int id = LOWORD(wParam);
     int code = HIWORD(wParam);
-    Registry* reg = getApp()->getRegistry();
     switch (id)
     {
     case IDC_RESETWARPATH:
@@ -412,8 +403,8 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
         String warPath = "";
         getRegString(HKEY_CURRENT_USER, "Software\\Blizzard Entertainment\\Warcraft III",
           "InstallPath", warPath);
-        cfg::warPath = warPath;
-        updateKey(&cfg::warPath);
+        cfg.warPath = warPath;
+        updateKey(&cfg.warPath);
       }
       break;
     case IDC_BROWSEWARPATH:
@@ -422,19 +413,19 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
         String warPath;
         if (browseForFolder("Select Warcraft III folder", warPath))
         {
-          cfg::warPath = warPath;
-          updateKey(&cfg::warPath);
+          cfg.warPath = warPath;
+          updateKey(&cfg.warPath);
         }
       }
       break;
     case IDC_RESETREPLAYPATH:
       if (code == BN_CLICKED)
       {
-        if (String(cfg::warPath).isEmpty())
-          cfg::replayPath = String::fixPath("");
+        if (String(cfg.warPath).isEmpty())
+          cfg.replayPath = String::fixPath("");
         else
-          cfg::replayPath = String::buildFullName(cfg::warPath, "Replay");
-        updateKey(&cfg::replayPath);
+          cfg.replayPath = String::fixPath(String::buildFullName(cfg.warPath, "Replay"));
+        updateKey(&cfg.replayPath);
 
         notify(WM_UPDATEPATH, 0, 0);
       }
@@ -445,8 +436,8 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
         String replayPath;
         if (browseForFolder("Select replay folder", replayPath))
         {
-          cfg::replayPath = replayPath;
-          updateKey(&cfg::replayPath);
+          cfg.replayPath = replayPath;
+          updateKey(&cfg.replayPath);
 
           notify(WM_UPDATEPATH, 0, 0);
         }
@@ -467,8 +458,8 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
         String cmd = "";
         if (openWithThis->checked())
           cmd = getAppPath(true) + " \"%1\"";
-        else if (!String(cfg::warPath).isEmpty())
-          cmd.printf("\"%s\" -loadfile \"%%1\"", String::buildFullName(cfg::warPath, "War3.exe"));
+        else if (!String(cfg.warPath).isEmpty())
+          cmd.printf("\"%s\" -loadfile \"%%1\"", String::buildFullName(cfg.warPath, "War3.exe"));
         HKEY hKey;
         HRESULT result;
         if (RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\Classes\\Warcraft3.Replay\\shell\\open\\command",
@@ -492,8 +483,8 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
             0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL) == ERROR_SUCCESS)
           {
             String warIcon;
-            if (String(cfg::warPath).isEmpty())
-              warIcon = String::buildFullName(cfg::warPath, "replays.ico");
+            if (String(cfg.warPath).isEmpty())
+              warIcon = String::buildFullName(cfg.warPath, "replays.ico");
             else
               warIcon = getAppPath(true) + ",0";
             RegSetValueEx(hKey, "", 0, REG_SZ, (LPBYTE) warIcon.c_str(), warIcon.length() + 1);
@@ -513,20 +504,17 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
     case IDC_CHATFONT:
       if (code == BN_CLICKED)
       {
-        LOGFONT lf;
-        memcpy(&lf, cfg::chatFont.data(), sizeof lf);
         CHOOSEFONT cf;
         memset(&cf, 0, sizeof cf);
         cf.lStructSize = sizeof cf;
         cf.hwndOwner = getApp()->getMainWindow();
-        cf.lpLogFont = &lf;
+        cf.lpLogFont = &cfg.chatFont;
         cf.Flags = CF_EFFECTS | CF_INITTOLOGFONTSTRUCT | CF_NOSCRIPTSEL | CF_SCREENFONTS;
-        cf.rgbColors = cfg::chatFg;
+        cf.rgbColors = cfg.chatFg;
         if (ChooseFont(&cf))
         {
-          cfg::chatFont.set((uint8*) &lf, sizeof lf);
-          cfg::chatFg = cf.rgbColors;
-          chatColors->setFont(FontSys::getFont(lf));
+          cfg.chatFg = cf.rgbColors;
+          chatColors->setFont(FontSys::getFont(cfg.chatFont));
         }
       }
       break;
@@ -541,12 +529,12 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
         memset(&cc, 0, sizeof cc);
         cc.lStructSize = sizeof cc;
         cc.hwndOwner = getApp()->getMainWindow();
-        cc.rgbResult = cfg::chatBg;
+        cc.rgbResult = cfg.chatBg;
         cc.Flags = CC_FULLOPEN | CC_RGBINIT;
         cc.lpCustColors = custColors;
         if (ChooseColor(&cc))
         {
-          cfg::chatBg = cc.rgbResult;
+          cfg.chatBg = cc.rgbResult;
           InvalidateRect(chatColors->getHandle(), NULL, TRUE);
         }
       }
@@ -554,7 +542,7 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
     case IDC_CHATCOLORMODE:
       if (code == CBN_SELCHANGE)
       {
-        cfg::chatColors = chatColorMode->getCurSel();
+        cfg.chatColors = chatColorMode->getCurSel();
         InvalidateRect(chatColors->getHandle(), NULL, TRUE);
       }
       break;

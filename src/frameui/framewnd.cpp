@@ -94,7 +94,15 @@ void RootWindow::endMoving(uint32 data)
 
 uint32 RootWindow::onControlMessage(HWND hControl, uint32 message, uint32 wParam, uint32 lParam)
 {
-  Frame* cur = dynamic_cast<WindowFrame*>(Window::fromHandle(hControl));
+  Window* control = Window::fromHandle(hControl);
+  while (control == NULL)
+  {
+    hControl = GetParent(hControl);
+    if (hControl == NULL || hControl == hWnd)
+      break;
+    control = Window::fromHandle(hControl);
+  }
+  Frame* cur = dynamic_cast<WindowFrame*>(control);
   uint32 result = M_UNHANDLED;
   while (cur && (result = cur->onMessage(message, wParam, lParam)) == M_UNHANDLED)
     cur = cur->getParent();

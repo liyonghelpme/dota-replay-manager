@@ -52,6 +52,8 @@ int convert_race(int race);
 #define ACTION_OTHER          9
 #define NUM_ACTIONS           10
 
+String action_name(int id);
+
 #define END_TIME              0x7FFFFFFF
 
 #define FLAGS_QUEUE           0x0001

@@ -22,6 +22,16 @@ public:
     return true;
   }
 
+  virtual bool equal(ViewItem* item)
+  {
+    return false;
+  }
+
+  virtual String getTitle() const
+  {
+    return "";
+  }
+
   ViewItem* push(ViewItem* item);
   void free();
 
@@ -45,6 +55,7 @@ class SettingsViewItem : public ViewItem
 {
 public:
   void apply(MainWnd* wnd);
+  bool equal(ViewItem* item);
   bool isPermanent() const
   {
     return false;
@@ -60,6 +71,7 @@ public:
     path = folder;
   }
   void apply(MainWnd* wnd);
+  bool equal(ViewItem* item);
 };
 
 class ReplayViewItem : public ViewItem
@@ -82,7 +94,12 @@ public:
   {
     player = id;
   }
+  String getTitle() const
+  {
+    return String::getFileTitle(path);
+  }
   void apply(MainWnd* wnd);
+  bool equal(ViewItem* item);
 };
 
 #endif // __UI_VIEWITEM__
