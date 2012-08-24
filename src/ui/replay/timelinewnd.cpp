@@ -37,6 +37,8 @@ TimePicture::TimePicture(Frame* parent)
   create("", WS_CHILD, WS_EX_CLIENTEDGE);
 
   cursor = LoadCursor(getApp()->getInstanceHandle(), MAKEINTRESOURCE(IDC_ELFHAND));
+
+  hDC = GetDC(hWnd);
 }
 TimePicture::~TimePicture()
 {
@@ -77,13 +79,13 @@ void TimePicture::setReplay(W3GReplay* replay)
   w3g = replay;
   time = 0;
   //InvalidateRect(hWnd, NULL, FALSE);
-  paint();
+  paint(hDC);
 }
 void TimePicture::setTime(uint32 t)
 {
   time = t;
   //InvalidateRect(hWnd, NULL, FALSE);
-  paint();
+  paint(hDC);
 }
 
 uint32 TimePicture::onMessage(uint32 message, uint32 wParam, uint32 lParam)
@@ -91,7 +93,7 @@ uint32 TimePicture::onMessage(uint32 message, uint32 wParam, uint32 lParam)
   switch (message)
   {
   case WM_CREATE:
-    gl = new OpenGL(hWnd);
+    gl = new OGLPainter(hWnd);
     if (!gl->isOk())
       MessageBox(hWnd, "Error initializing OpenGL!", "Error", MB_OK | MB_ICONERROR);
     else
@@ -103,13 +105,13 @@ uint32 TimePicture::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     break;
   case WM_MOUSEMOVE:
     //InvalidateRect(hWnd, NULL, FALSE);
-    paint();
+    paint(hDC);
     break;
   case WM_PAINT:
     {
       PAINTSTRUCT ps;
       HDC hDC = BeginPaint(hWnd, &ps);
-      paint();
+      paint(hDC);
       EndPaint(hWnd, &ps);
     }
     break;
@@ -393,7 +395,7 @@ void TimePicture::rect(int x, int y, int width, int height, char const* icon, in
     glDisable(GL_TEXTURE_2D);
   }
 }
-void TimePicture::paint()
+void TimePicture::paint(HDC hDC)
 {
   POINT cursor;
   GetCursorPos(&cursor);
@@ -401,7 +403,7 @@ void TimePicture::paint()
 
   if (gl && gl->isOk() && visible())
   {
-    gl->begin();
+    gl->begin(hDC);
 
     if (w3g && w3g->getDotaInfo())
     {

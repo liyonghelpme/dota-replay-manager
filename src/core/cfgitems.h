@@ -92,3 +92,4 @@ regbasic(int, chatColors, 1);
 regbasic(int, chatBg, 0x000000);
 regbasic(int, chatFg, 0xFFFFFF);
 regbasic(int, useLog, 0);
+regbasic(int, useOGL, 0);

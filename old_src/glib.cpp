@@ -340,6 +340,7 @@ void enumTime (EnumStruct& e)
   e.val = 1000;
   e.id = 0;
   e.base = 1000;
+  e.sub = 1000;
 }
 void nextCount (EnumStruct& e)
 {

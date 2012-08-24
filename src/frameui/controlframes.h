@@ -145,6 +145,20 @@ public:
 
   void setImage(Image* img);
 };
+class ColorFrame : public WindowFrame
+{
+  uint32 color;
+  uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
+public:
+  ColorFrame(Frame* parent, uint32 clr);
+  ~ColorFrame();
+
+  void setColor(uint32 clr)
+  {
+    color = clr;
+    invalidate();
+  }
+};
 
 class TreeViewFrame : public WindowFrame
 {

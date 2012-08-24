@@ -6,20 +6,22 @@
 #include "frameui/controlframes.h"
 #include "base/dictionary.h"
 
-class OpenGL;
+class OGLPainter;
 
 class TimePicture : public WindowFrame
 {
-  OpenGL* gl;
+  OGLPainter* gl;
   W3GReplay* w3g;
   uint32 time;
 
   Dictionary<uint32> images;
 
+  HDC hDC;
+
   String formatPlayer(W3GPlayer* player);
   void drawNotify(int alpha, int x, int y, String text);
   void rect(int x, int y, int width, int height, char const* icon, int inset = 0);
-  void paint();
+  void paint(HDC hDC);
 
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:

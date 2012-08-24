@@ -2,6 +2,7 @@
 #define __CORE_APP_H__
 
 #include <windows.h>
+#include <windowsx.h>
 #include <commctrl.h>
 #include "resource.h"
 

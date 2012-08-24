@@ -444,6 +444,38 @@ void ImageFrame::setImage(Image* image)
 
 ////////////////////////////////////
 
+uint32 ColorFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+{
+  if (message == WM_PAINT)
+  {
+    PAINTSTRUCT ps;
+    HDC hDC = BeginPaint(hWnd, &ps);
+    EndPaint(hWnd, &ps);
+    return 0;
+  }
+  else if (message == WM_ERASEBKGND)
+  {
+    HDC hDC = (HDC) wParam;
+    RECT rc;
+    GetClientRect(hWnd, &rc);
+    SetBkColor(hDC, color);
+    ExtTextOut(hDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
+    return TRUE;
+  }
+  return M_UNHANDLED;
+}
+ColorFrame::ColorFrame(Frame* parent, uint32 clr)
+  : WindowFrame(parent)
+{
+  color = clr;
+  create("", WS_CHILD, 0);
+}
+ColorFrame::~ColorFrame()
+{
+}
+
+////////////////////////////////////
+
 TreeViewFrame::TreeViewFrame(Frame* parent, int id, int style)
   : WindowFrame(parent)
 {

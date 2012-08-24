@@ -9,6 +9,8 @@
 #include "ui/replay/timelinewnd.h"
 #include "ui/replay/playerinfo.h"
 #include "ui/replay/actions.h"
+#include "ui/replay/playergold.h"
+#include "ui/replay/playerexp.h"
 
 ReplayWindow::ReplayWindow(Frame* parent)
   : TabFrame(parent)
@@ -21,6 +23,8 @@ ReplayWindow::ReplayWindow(Frame* parent)
   addTab(REPLAY_TIMELINE, "Timeline", new ReplayTimelineTab(this));
   addTab(REPLAY_PLAYERINFO, "Player Info", new ReplayPlayerInfoTab(this));
   addTab(REPLAY_ACTIONS, "Actions", new ReplayActionsTab(this));
+  addTab(REPLAY_PLAYERGOLD, "Gold chart", new ReplayPlayerGoldTab(this));
+  addTab(REPLAY_PLAYEREXP, "Exp chart", new ReplayPlayerExpTab(this));
 }
 ReplayWindow::~ReplayWindow()
 {

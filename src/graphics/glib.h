@@ -17,7 +17,34 @@ class Image;
 #define ALIGN_Y_BOTTOM    0x10
 #define ALIGN_Y_CENTER    0x20
 
-class OpenGL
+class Painter
+{
+public:
+  virtual bool isOk()
+  {
+    return true;
+  };
+
+  virtual void begin(HDC hDC) = 0;
+  virtual void end() = 0;
+
+  virtual void text(int x, int y, char const* str, int mode = 0) = 0;
+
+  virtual void pen(uint32 color, bool dash = false) = 0;
+  virtual void color(uint32 color) = 0;
+  virtual void line(int x0, int y0, int x1, int y1) = 0;
+  virtual void rect(int x0, int y0, int x1, int y1) = 0;
+  virtual void fillrect(int x0, int y0, int x1, int y1) = 0;
+  virtual void point(int x, int y) = 0;
+
+  virtual void erase(HDC hDC, HWND hWnd, uint32 color)
+  {}
+
+  virtual void onSize(int cx, int cy)
+  {}
+};
+
+class OGLPainter : public Painter
 {
   enum {tBase = 1000};
   HWND hWnd;
@@ -30,15 +57,15 @@ class OpenGL
 public:
   int width, height;
 
-  OpenGL(HWND window, uint32 color = 0);
-  ~OpenGL();
+  OGLPainter(HWND window, uint32 color = 0, HFONT hFont = NULL);
+  ~OGLPainter();
 
   bool isOk() const
   {
     return ok;
   }
 
-  void begin();
+  void begin(HDC hDC);
   void end();
 
   int getTextWidth(char const* str);
@@ -46,6 +73,7 @@ public:
 
   void text(int x, int y, char const* str, int mode = 0);
 
+  void pen(uint32 color, bool dash = false);
   void color(uint32 color);
   void color(uint32 color, int alpha);
   void line(int x0, int y0, int x1, int y1);
@@ -56,6 +84,39 @@ public:
   uint32 genTexture(Image const* img);
 
   void onSize(int cx, int cy);
+};
+class GDIPainter : public Painter
+{
+  HDC hDC;
+  HFONT font;
+
+  struct PenInfo
+  {
+    HPEN hPen;
+    uint32 color;
+    bool dash;
+  };
+  Array<PenInfo> pens;
+
+  bool curDash;
+  uint32 curColor;
+public:
+  GDIPainter(HFONT hFont = NULL);
+  ~GDIPainter();
+
+  void begin(HDC hDC);
+  void end();
+
+  void text(int x, int y, char const* str, int mode = 0);
+
+  void pen(uint32 color, bool dash = false);
+  void color(uint32 color);
+  void line(int x0, int y0, int x1, int y1);
+  void rect(int x0, int y0, int x1, int y1);
+  void fillrect(int x0, int y0, int x1, int y1);
+  void point(int x, int y);
+
+  void erase(HDC hDC, HWND hWnd, uint32 color);
 };
 
 struct EnumStruct
@@ -69,32 +130,5 @@ void enumCount(EnumStruct& e);
 void enumTime(EnumStruct& e);
 void nextCount(EnumStruct& e);
 void nextTime(EnumStruct& e);
-
-class DCPaint
-{
-  HPEN pens[256];
-  uint32 penColor[256];
-  bool penDash[256];
-  int numPens;
-  HDC dc;
-  bool cdash;
-  uint32 cclr;
-  HFONT font;
-public:
-  DCPaint(HDC hdc);
-  ~DCPaint();
-  void setDash(bool dash)
-  {
-    cdash = dash;
-    setColor(cclr);
-  }
-  void setColor(uint32 color);
-  void line(int x0, int y0, int x1, int y1)
-  {
-    MoveToEx(dc, x0, y0, NULL);
-    LineTo(dc, x1, y1);
-  }
-  void text(int x, int y, char const* str, int mode = 0);
-};
 
 #endif // __GRAPHICS_GLIB__

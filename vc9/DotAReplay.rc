@@ -82,8 +82,11 @@ IDI_MAIN                ICON                    "K:\\Progs\\DotAReplay\\res\\idr
 // Cursor
 //
 
-IDC_SPLITVERT           CURSOR                  "k:\\progs\\dotareplay\\res\\cursor1.cur"
+IDC_SPLITVERT           CURSOR                  "k:\\progs\\dotareplay\\res\\vsplit.cur"
 IDC_ELFHAND             CURSOR                  "K:\\Progs\\DotAReplay\\res\\sentinel.cur"
+IDC_ZOOM_IN             CURSOR                  "k:\\progs\\dotareplay\\res\\zoomin.cur"
+IDC_ZOOM_OUT            CURSOR                  "k:\\progs\\dotareplay\\res\\zoom_out.cur"
+IDC_HAND_MOVE           CURSOR                  "k:\\progs\\dotareplay\\res\\hmove.cur"
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
 

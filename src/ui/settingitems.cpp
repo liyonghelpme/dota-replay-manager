@@ -372,7 +372,7 @@ void SettingsWindow::addAllItems()
   tip2->setPoint(PT_BOTTOMLEFT, tip, PT_BOTTOMLEFT, 180, 0);
   chatColorMode = new ComboFrame(tab, IDC_CHATCOLORMODE);
   chatColorMode->setPoint(PT_BOTTOMLEFT, tip2, PT_BOTTOMRIGHT, 5, 5);
-  chatColorMode->setPoint(PT_RIGHT, NULL, PT_LEFT, 468, 0);
+  chatColorMode->setPoint(PT_RIGHT, tab, PT_LEFT, 468, 0);
   chatColorMode->addString("Default");
   chatColorMode->addString("Adapted");
   chatColorMode->addString("Dark");

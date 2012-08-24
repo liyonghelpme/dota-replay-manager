@@ -4,10 +4,11 @@
 
 #include "imagelib.h"
 #include "core/app.h"
+#include "frameui/fontsys.h"
 
 #pragma comment (lib, "opengl32.lib")
 
-OpenGL::OpenGL(HWND window, uint32 color)
+OGLPainter::OGLPainter(HWND window, uint32 color, HFONT hFont)
 {
   hWnd = window;
   hdc = NULL;
@@ -26,7 +27,7 @@ OpenGL::OpenGL(HWND window, uint32 color)
     sizeof (PIXELFORMATDESCRIPTOR),
     1,                                     // version number
     PFD_DRAW_TO_WINDOW |                   // format must support Window
-    PFD_SUPPORT_OPENGL |                   // format must support OpenGL
+    PFD_SUPPORT_OPENGL |                   // format must support OGLPainter
     PFD_DOUBLEBUFFER,                      // must support double buffering
     PFD_TYPE_RGBA,                         // request an RGBA format
     32,                                    // select color depth
@@ -73,9 +74,17 @@ OpenGL::OpenGL(HWND window, uint32 color)
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
   int ht = -MulDiv(10, GetDeviceCaps(hdc, LOGPIXELSY), 72);
-  font = CreateFont(ht, 0, 0, 0, FW_LIGHT, 0, 0, 0, ANSI_CHARSET, OUT_DEFAULT_PRECIS,
-    CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Georgia");
-  SelectObject(hdc, font);
+  if (hFont)
+  {
+    font = NULL;
+    SelectObject(hdc, hFont);
+  }
+  else
+  {
+    font = CreateFont(ht, 0, 0, 0, FW_LIGHT, 0, 0, 0, ANSI_CHARSET, OUT_DEFAULT_PRECIS,
+      CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Georgia");
+    SelectObject(hdc, font);
+  }
   if (wglUseFontBitmaps(hdc, 0, 256, tBase) == FALSE)
     return;
   lgen = new uint32[65536 / 32];
@@ -88,7 +97,7 @@ OpenGL::OpenGL(HWND window, uint32 color)
 
   ok = true;
 }
-OpenGL::~OpenGL()
+OGLPainter::~OGLPainter()
 {
   delete[] lgen;
   if (hrc != NULL)
@@ -99,7 +108,7 @@ OpenGL::~OpenGL()
     ReleaseDC(hWnd, hdc);
 }
 
-void OpenGL::begin()
+void OGLPainter::begin(HDC hDC)
 {
   active = true;
   wglMakeCurrent(hdc, hrc);
@@ -112,7 +121,7 @@ void OpenGL::begin()
   glClear(GL_COLOR_BUFFER_BIT);
   glColor3d(1, 1, 1);
 }
-void OpenGL::end()
+void OGLPainter::end()
 {
   glFlush();
   SwapBuffers(hdc);
@@ -120,24 +129,24 @@ void OpenGL::end()
   active = false;
 }
 
-int OpenGL::getTextWidth(char const* str)
+int OGLPainter::getTextWidth(char const* str)
 {
   SIZE sz;
   GetTextExtentPoint32(hdc, str, strlen(str), &sz);
   return sz.cx;
 }
-int OpenGL::getTextHeight(char const* str)
+int OGLPainter::getTextHeight(char const* str)
 {
   SIZE sz;
   GetTextExtentPoint32(hdc, str, strlen(str), &sz);
   return sz.cy;
 }
 
-void OpenGL::text(int x, int y, char const* str, int mode)
+void OGLPainter::text(int x, int y, char const* str, int mode)
 {
-  int length = MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, str, -1, NULL, 0);
-  wchar_t* wide = new wchar_t[length + 5];
-  MultiByteToWideChar(CP_ACP, MB_PRECOMPOSED, str, -1, wide, length + 5);
+  int length = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
+  wchar_t* wide = new wchar_t[length];
+  MultiByteToWideChar(CP_UTF8, 0, str, -1, wide, length);
   length = wcslen(wide);
   SIZE sz;
   GetTextExtentPoint32W(hdc, wide, length, &sz);
@@ -163,7 +172,7 @@ void OpenGL::text(int x, int y, char const* str, int mode)
     y += sz.cy / 4;
     break;
   }
-  glRasterPos2i(x, y);
+  glRasterPos2i(x, y + 2);
   glListBase(tBase);
   for (int i = 0; wide[i]; i++)
   {
@@ -177,28 +186,42 @@ void OpenGL::text(int x, int y, char const* str, int mode)
   glCallLists(length, GL_UNSIGNED_SHORT, wide);
 }
 
-void OpenGL::color(uint32 color)
+void OGLPainter::pen(uint32 color, bool dash)
+{
+  glColor4d(double(color & 0xFF) / 255,
+            double((color >> 8) & 0xFF) / 255,
+            double((color >> 16) & 0xFF) / 255,
+            1.0);
+  if (dash)
+  {
+    glEnable(GL_LINE_STIPPLE);
+    glLineStipple(1, 0x0F0F);
+  }
+  else
+    glDisable(GL_LINE_STIPPLE);
+}
+void OGLPainter::color(uint32 color)
 {
   glColor4d(double(color & 0xFF) / 255,
             double((color >> 8) & 0xFF) / 255,
             double((color >> 16) & 0xFF) / 255,
             double((color >> 24) & 0xFF) / 255);
 }
-void OpenGL::color(uint32 color, int alpha)
+void OGLPainter::color(uint32 color, int alpha)
 {
   glColor4d(double(color & 0xFF) / 255,
             double((color >> 8) & 0xFF) / 255,
             double((color >> 16) & 0xFF) / 255,
             double(alpha) / 255);
 }
-void OpenGL::line(int x0, int y0, int x1, int y1)
+void OGLPainter::line(int x0, int y0, int x1, int y1)
 {
   glBegin(GL_LINES);
   glVertex2i(x0, y0);
   glVertex2i(x1, y1);
   glEnd();
 }
-void OpenGL::rect(int x0, int y0, int x1, int y1)
+void OGLPainter::rect(int x0, int y0, int x1, int y1)
 {
   glBegin(GL_LINE_LOOP);
   glVertex2i(x0, y0);
@@ -207,7 +230,7 @@ void OpenGL::rect(int x0, int y0, int x1, int y1)
   glVertex2i(x0, y1);
   glEnd();
 }
-void OpenGL::fillrect(int x0, int y0, int x1, int y1)
+void OGLPainter::fillrect(int x0, int y0, int x1, int y1)
 {
   glBegin(GL_POLYGON);
   glVertex2i(x0, y0);
@@ -216,20 +239,20 @@ void OpenGL::fillrect(int x0, int y0, int x1, int y1)
   glVertex2i(x0, y1);
   glEnd();
 }
-void OpenGL::point(int x, int y)
+void OGLPainter::point(int x, int y)
 {
   glBegin(GL_POINTS);
   glVertex2i(x, y);
   glEnd();
 }
 
-void OpenGL::onSize(int cx, int cy)
+void OGLPainter::onSize(int cx, int cy)
 {
   width = cx - 1;
   height = cy - 1;
 }
 
-uint32 OpenGL::genTexture(Image const* img)
+uint32 OGLPainter::genTexture(Image const* img)
 {
   if (img == NULL)
     return 0;
@@ -259,65 +282,29 @@ uint32 OpenGL::genTexture(Image const* img)
 
 ///////////////////////////////////////////
 
-void enumCount(EnumStruct& e)
+GDIPainter::GDIPainter(HFONT hFont)
 {
-  e.val = 1;
-  e.id = 0;
-  e.base = 1;
+  hDC = NULL;
+  curDash = false;
+  curColor = 0xFF000000;
+  font = hFont;
 }
-void enumTime(EnumStruct& e)
+GDIPainter::~GDIPainter()
 {
-  e.val = 1000;
-  e.id = 0;
-  e.base = 1000;
-}
-void nextCount(EnumStruct& e)
-{
-  static int factor[3] = {2, 5, 10};
-  e.val = e.base * factor[e.id++];
-  if (e.id >= 3)
-  {
-    e.base = e.val;
-    e.id = 0;
-  }
-  e.sub = e.val / 5;
-}
-void nextTime(EnumStruct& e)
-{
-  static int factor[5] = {2, 5, 10, 30, 60};
-  e.val = e.base * factor[e.id++];
-  if (e.id >= 5)
-  {
-    e.base = e.val;
-    e.id = 0;
-  }
-  e.sub = e.val / 5;
+  for (int i = 0; i < pens.length(); i++)
+    DeleteObject(pens[i].hPen);
 }
 
-//////////////////////////////////
-
-void DCPaint::setColor(uint32 color)
+void GDIPainter::begin(HDC hDC)
 {
-  cclr = color;
-  for (int i = 0; i < numPens; i++)
-  {
-    if (penColor[i] == color && penDash[i] == cdash)
-    {
-      SelectObject(dc, pens[i]);
-      return;
-    }
-  }
-  int index = 0;
-  if (numPens < 255)
-    index = numPens++;
-  else
-    DeleteObject(pens[index]);
-  pens[index] = CreatePen(cdash ? PS_DASH : PS_SOLID, 1, color);
-  penDash[index] = cdash;
-  penColor[index] = color;
-  SelectObject(dc, pens[index]);
+  this->hDC = hDC;
+  SelectObject(hDC, font ? font : FontSys::getSysFont());
 }
-void DCPaint::text(int x, int y, char const* str, int mode)
+void GDIPainter::end()
+{
+}
+
+void GDIPainter::text(int x, int y, char const* str, int mode)
 {
   int len = strlen(str);
   int flags = DT_SINGLELINE;
@@ -358,23 +345,94 @@ void DCPaint::text(int x, int y, char const* str, int mode)
     flags |= DT_VCENTER;
     break;
   }
-  DrawText(dc, str, len, &rc, flags);
+  DrawText(hDC, str, len, &rc, flags);
 }
-DCPaint::DCPaint(HDC hdc)
-{
-  dc = hdc;
-  numPens = 0;
-  cdash = false;
 
-  int ht = -MulDiv(8, GetDeviceCaps(dc, LOGPIXELSY), 72);
-  font = CreateFont(ht, 0, 0, 0, FW_LIGHT, 0, 0, 0, ANSI_CHARSET, OUT_DEFAULT_PRECIS,
-    CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Georgia");
-  SelectObject(dc, font);
-  SetBkMode(dc, TRANSPARENT);
-}
-DCPaint::~DCPaint()
+void GDIPainter::pen(uint32 color, bool dash)
 {
-  DeleteObject(font);
-  for (int i = 0; i < numPens; i++)
-    DeleteObject(pens[i]);
+  color &= 0xFFFFFF;
+  curDash = dash;
+  curColor = color;
+  for (int i = 0; i < pens.length(); i++)
+  {
+    if (pens[i].color == color && pens[i].dash == dash)
+    {
+      SelectObject(hDC, pens[i].hPen);
+      return;
+    }
+  }
+  PenInfo& pi = pens.push();
+  pi.hPen = CreatePen(dash ? PS_DASH : PS_SOLID, 0, color);
+  pi.color = color;
+  pi.dash = dash;
+  SelectObject(hDC, pi.hPen);
+}
+void GDIPainter::color(uint32 color)
+{
+  color &= 0xFFFFFF;
+  curColor = color;
+  pen(color, curDash);
+}
+void GDIPainter::line(int x0, int y0, int x1, int y1)
+{
+  MoveToEx(hDC, x0, y0, NULL);
+  LineTo(hDC, x1, y1);
+}
+void GDIPainter::rect(int x0, int y0, int x1, int y1)
+{
+  Rectangle(hDC, x0, y0, x1, y1);
+}
+void GDIPainter::fillrect(int x0, int y0, int x1, int y1)
+{
+  SetBkColor(hDC, curColor);
+  RECT rc = {x0, y0, x1, y1};
+  ExtTextOut(hDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
+}
+void GDIPainter::point(int x, int y)
+{
+  SetPixel(hDC, x, y, curColor);
+}
+void GDIPainter::erase(HDC hDC, HWND hWnd, uint32 color)
+{
+  SetBkColor(hDC, color);
+  RECT rc;
+  GetClientRect(hWnd, &rc);
+  ExtTextOut(hDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
+}
+
+///////////////////////////////////////////
+
+void enumCount(EnumStruct& e)
+{
+  e.val = 1;
+  e.id = 0;
+  e.base = 1;
+}
+void enumTime(EnumStruct& e)
+{
+  e.val = 1000;
+  e.id = 0;
+  e.base = 1000;
+}
+void nextCount(EnumStruct& e)
+{
+  static int factor[3] = {2, 5, 10};
+  e.val = e.base * factor[e.id++];
+  if (e.id >= 3)
+  {
+    e.base = e.val;
+    e.id = 0;
+  }
+  e.sub = e.val / 5;
+}
+void nextTime(EnumStruct& e)
+{
+  static int factor[5] = {2, 5, 10, 30, 60};
+  e.val = e.base * factor[e.id++];
+  if (e.id >= 5)
+  {
+    e.base = e.val;
+    e.id = 0;
+  }
+  e.sub = e.val / 5;
 }

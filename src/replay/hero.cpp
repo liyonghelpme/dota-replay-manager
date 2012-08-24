@@ -21,7 +21,7 @@ void W3GHero::setPlayer(W3GPlayer* player)
   if (player->level)
   {
     level = player->level;
-    for (int i = 1; i < level; i++)
+    for (int i = 1; i <= level; i++)
       levelTime[i] = player->level_time[i];
     levelTime[1] = 0;
   }
