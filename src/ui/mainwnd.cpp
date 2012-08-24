@@ -73,6 +73,8 @@ MainWnd::MainWnd()
   }
   history = NULL;
 
+  pushView(new FolderViewItem(cfg.replayPath));
+
   hBack->enable(history && history->hasPrev());
   hForward->enable(history && history->hasNext());
 }

@@ -223,6 +223,8 @@ void ReplayTree::rebuild()
   updating = true;
   Dictionary<uint32> openFolders;
   String selected = "";
+  if (items.length() == 0)
+    openFolders.set(String(path).toLower(), 1);
   for (int i = 0; i < items.length(); i++)
   {
     int state = TreeView_GetItemState(treeView->getHandle(), items[i].treeItem, TVIS_EXPANDED | TVIS_SELECTED);
