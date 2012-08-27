@@ -16,7 +16,28 @@ public:
 
   void* alloc();
   void free(void* ptr);
+
   void clear();
+};
+template<class T>
+class TypedMemoryPool : private FixedMemoryPool
+{
+public:
+  TypedMemoryPool(uint32 poolGrow = 65536)
+    : FixedMemoryPool(sizeof(T), poolGrow)
+  {}
+
+  T* alloc()
+  {
+    T* ptr = (T*) FixedMemoryPool::alloc();
+    new(ptr) T();
+    return ptr;
+  }
+  void free(T* ptr)
+  {
+    ptr->~T();
+    FixedMemoryPool::free(ptr);
+  }
 };
 
 class MemoryPool

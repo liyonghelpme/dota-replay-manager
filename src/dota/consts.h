@@ -23,6 +23,7 @@
 #define LANE_MIDDLE           2
 #define LANE_BOTTOM           3
 #define LANE_AFK              4
+String getLaneName(int lane);
 
 #define MODE_AP         0x00000001
 #define MODE_AR         0x00000002

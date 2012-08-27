@@ -476,6 +476,10 @@
 					>
 				</File>
 				<File
+					RelativePath="..\src\frameui\graphwnd.h"
+					>
+				</File>
+				<File
 					RelativePath="..\src\frameui\listctrl.h"
 					>
 				</File>
@@ -509,6 +513,10 @@
 					>
 				</File>
 				<File
+					RelativePath="..\src\frameui\graphwnd.cpp"
+					>
+				</File>
+				<File
 					RelativePath="..\src\frameui\listctrl.cpp"
 					>
 				</File>
@@ -531,10 +539,6 @@
 				</File>
 				<File
 					RelativePath="..\src\ui\folderwnd.h"
-					>
-				</File>
-				<File
-					RelativePath="..\src\ui\graphwnd.h"
 					>
 				</File>
 				<File
@@ -585,6 +589,10 @@
 						>
 					</File>
 					<File
+						RelativePath="..\src\ui\replay\present.h"
+						>
+					</File>
+					<File
 						RelativePath="..\src\ui\replay\timelinewnd.h"
 						>
 					</File>
@@ -604,10 +612,6 @@
 				</File>
 				<File
 					RelativePath="..\src\ui\folderwndfill.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\src\ui\graphwnd.cpp"
 					>
 				</File>
 				<File
@@ -663,6 +667,10 @@
 					</File>
 					<File
 						RelativePath="..\src\ui\replay\playerinfo.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\src\ui\replay\present.cpp"
 						>
 					</File>
 					<File
@@ -3238,6 +3246,40 @@
 							Name="VCCLCompilerTool"
 						/>
 					</FileConfiguration>
+				</File>
+			</Filter>
+		</Filter>
+		<Filter
+			Name="Script"
+			>
+			<Filter
+				Name="Headers"
+				Filter="h;hpp;hxx;hm;inl;inc;xsd"
+				>
+				<File
+					RelativePath="..\src\script\data.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\script\editor.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\script\parser.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Source"
+				Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
+				>
+				<File
+					RelativePath="..\src\script\data.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\script\editor.cpp"
+					>
 				</File>
 			</Filter>
 		</Filter>

@@ -15,11 +15,14 @@
 
 #include "base/dictionary.h"
 
+#include "script/data.h"
+
 Application* Application::instance = NULL;
 
 Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
   MPQInit();
+  ScriptType::initTypes();
   instance = this;
   resources = NULL;
   imageLibrary = NULL;

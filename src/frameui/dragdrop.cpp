@@ -483,6 +483,40 @@ uint32 DoDragDrop(CLIPFORMAT format, HGLOBAL data, uint32 allowedEffects)
   uint32 result = DoDragDrop(&object, &source, allowedEffects, &effect);
   return effect;
 }
+uint32 DoDragDropEx(CLIPFORMAT format, HGLOBAL data, uint32 allowedEffects, HWND hWnd)
+{
+  POINT pt;
+  GetCursorPos(&pt);
+  bool started = false;
+  uint32 startTime = GetTickCount();
+
+  SetCapture(hWnd);
+  while (!started)
+  {
+    if (GetCapture() != hWnd)
+      break;
+    MSG msg;
+    if (PeekMessage(&msg, NULL, WM_MOUSEFIRST, WM_MOUSELAST, PM_REMOVE) ||
+      PeekMessage(&msg, NULL, WM_KEYFIRST, WM_KEYLAST, PM_REMOVE))
+    {
+      if (msg.message == WM_LBUTTONUP || msg.message == WM_RBUTTONUP ||
+          msg.message == WM_LBUTTONDOWN || msg.message == WM_RBUTTONDOWN)
+        break;
+      if (msg.message == WM_KEYDOWN && msg.wParam == VK_ESCAPE)
+        break;
+      if (msg.pt.x < pt.x - 5 || msg.pt.y < pt.y - 5 || msg.pt.x > pt.x + 5 || msg.pt.y + pt.y + 5)
+        started = true;
+    }
+    if (GetTickCount() - startTime > 1000)
+      started = true;
+  }
+  ReleaseCapture();
+  if (started)
+    return DoDragDrop(format, data, allowedEffects);
+  else
+    return DROPEFFECT_NONE;
+}
+
 uint32 SetClipboard(CLIPFORMAT format, HGLOBAL data)
 {
   DataObject* object = new DataObject(format, data);
@@ -543,6 +577,29 @@ HGLOBAL CreateFileDrop(String file)
     ptr += sizeof(DROPFILES);
     memcpy(ptr, file.c_str(), file.length() + 1);
     ptr[file.length() + 1] = 0;
+    GlobalUnlock(data);
+  }
+  return data;
+}
+
+String GetGlobalText(HGLOBAL data)
+{
+  String result;
+  char* ptr = (char*) GlobalLock(data);
+  if (ptr)
+  {
+    result = ptr;
+    GlobalUnlock(data);
+  }
+  return result;
+}
+HGLOBAL CreateGlobalText(String text)
+{
+  HGLOBAL data = GlobalAlloc(GMEM_MOVEABLE, text.length() + 1);
+  char* ptr = (char*) GlobalLock(data);
+  if (ptr)
+  {
+    strcpy(ptr, text.c_str());
     GlobalUnlock(data);
   }
   return data;

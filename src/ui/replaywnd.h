@@ -13,7 +13,8 @@ class ReplayViewItem;
 #define REPLAY_ACTIONS          4
 #define REPLAY_PLAYERGOLD       5
 #define REPLAY_PLAYEREXP        6
-#define REPLAY_NUM_TABS         7
+#define REPLAY_PRESENT          7
+#define REPLAY_NUM_TABS         8
 
 #define ID_PLAYERBOX            378
 

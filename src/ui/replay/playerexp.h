@@ -2,7 +2,7 @@
 #define __UI_REPLAY_PLAYEREXP__
 
 #include "ui/replaywnd.h"
-#include "ui/graphwnd.h"
+#include "frameui/graphwnd.h"
 #include "frameui/controlframes.h"
 
 class ExpGraphWindow;

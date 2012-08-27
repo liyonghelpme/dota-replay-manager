@@ -8,8 +8,6 @@
 
 #include "playerexp.h"
 
-#include <math.h>
-
 #define IDC_ALL_TEAM1         175
 #define IDC_NONE_TEAM1        176
 #define IDC_ALL_TEAM2         177

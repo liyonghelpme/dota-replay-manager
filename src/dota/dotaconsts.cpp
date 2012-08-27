@@ -1,5 +1,11 @@
 #include "consts.h"
 
+static char lane_names[][256] = {"None", "Top", "Mid", "Bot", "AFK?"};
+String getLaneName(int lane)
+{
+  return (lane >= 0 && lane < 4 ? lane_names[lane] : lane_names[4]);
+}
+
 static const char game_modes[][32] = {
   "ap", "allpick",
   "ar", "allrandom",

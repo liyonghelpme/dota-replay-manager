@@ -149,8 +149,8 @@ public:
   {
     write(str.c_str(), str.length() + 1);
   }
-  String gets();
-  int gets(String& str);
+  String gets(bool all = false);
+  int gets(String& str, bool all = false);
 
   void printf(char const* fmt, ...);
 

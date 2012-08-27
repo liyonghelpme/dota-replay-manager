@@ -388,29 +388,30 @@ void File::printf (char const* fmt, ...)
   if (dst != buf)
     delete[] dst;
 }
-int File::gets(String& result)
+int File::gets(String& result, bool all)
 {
   result = "";
   while (int c = getc())
   {
-    result += c;
-    if (c == '\n')
+    if (c != '\r')
+      result += c;
+    if (c == '\n' && !all)
       break;
     if (c == '\r')
     {
+      result += '\n';
       int pos = tell();
-      if (getc() == '\n')
-        result += '\n';
-      else
+      if (getc() != '\n')
         seek(pos, SEEK_SET);
-      break;
+      if (!all)
+        break;
     }
   }
   return result.length();
 }
-String File::gets()
+String File::gets(bool all)
 {
   String result;
-  gets(result);
+  gets(result, all);
   return result;
 }

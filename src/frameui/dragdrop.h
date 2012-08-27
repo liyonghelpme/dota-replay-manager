@@ -44,10 +44,14 @@ public:
 };
 
 uint32 DoDragDrop(CLIPFORMAT format, HGLOBAL data, uint32 allowedEffects);
+uint32 DoDragDropEx(CLIPFORMAT format, HGLOBAL data, uint32 allowedEffects, HWND hWnd);
 uint32 SetClipboard(CLIPFORMAT format, HGLOBAL data);
 
 char* FileListToString(Array<String> const& files);
 HGLOBAL CreateFileDrop(Array<String> const& files);
 HGLOBAL CreateFileDrop(String file);
+
+String GetGlobalText(HGLOBAL data);
+HGLOBAL CreateGlobalText(String text);
 
 #endif // __FRAMEUI_DRAGDROP__

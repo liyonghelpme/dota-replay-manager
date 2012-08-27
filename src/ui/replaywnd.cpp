@@ -11,6 +11,7 @@
 #include "ui/replay/actions.h"
 #include "ui/replay/playergold.h"
 #include "ui/replay/playerexp.h"
+#include "ui/replay/present.h"
 
 ReplayWindow::ReplayWindow(Frame* parent)
   : TabFrame(parent)
@@ -25,6 +26,7 @@ ReplayWindow::ReplayWindow(Frame* parent)
   addTab(REPLAY_ACTIONS, "Actions", new ReplayActionsTab(this));
   addTab(REPLAY_PLAYERGOLD, "Gold chart", new ReplayPlayerGoldTab(this));
   addTab(REPLAY_PLAYEREXP, "Exp chart", new ReplayPlayerExpTab(this));
+  addTab(REPLAY_PRESENT, "Presentation", new ReplayPresentTab(this));
 }
 ReplayWindow::~ReplayWindow()
 {
