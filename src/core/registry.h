@@ -11,16 +11,18 @@
 #define regstring(n,v)
 #define regarray(t,n,s)
 #define regvararray(t,n)
+#define regstrarray(n)
 #include "cfgitems.h"
 #undef regbasic
 #undef regstring
 #undef regarray
 #undef regvararray
+#undef regstrarray
 #undef cfgconst
 
 class Config
 {
-  enum {iBasic, iString, iArray};
+  enum {iBasic, iString, iArray, iStrArray};
   struct ItemData
   {
     uint8 type;
@@ -47,11 +49,13 @@ public:
 #define regstring(n,v)      String n
 #define regarray(t,n,s)     t n[s]
 #define regvararray(t,n)    Array<t> n
+#define regstrarray(n)      Array<String> n
 #include "cfgitems.h"
 #undef regbasic
 #undef regstring
 #undef regarray
 #undef regvararray
+#undef regstrarray
 };
 extern Config cfg;
 

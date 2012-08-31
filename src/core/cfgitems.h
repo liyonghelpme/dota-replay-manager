@@ -93,3 +93,7 @@ regbasic(int, chatBg, 0x000000);
 regbasic(int, chatFg, 0xFFFFFF);
 regbasic(int, useLog, 0);
 regbasic(int, useOGL, 0);
+
+regstrarray(fmtPresets);
+regstring(fmtScript, "");
+regbasic(uint64, fmtGenerator, 0);

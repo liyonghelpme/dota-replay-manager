@@ -8,8 +8,10 @@
 class ScriptEditor : public WindowFrame
 {
   HFONT fonts[3];
-  HCURSOR cursors[2];
+  HCURSOR cursors[3];
+  HPEN linePen;
   Point chSize;
+  int NUMBERS_WIDTH;
 
   friend class ScriptSuggest;
   ScriptSuggest* suggestList;
@@ -26,6 +28,7 @@ class ScriptEditor : public WindowFrame
   };
   Array<HistoryItem> history;
   int historyPos;
+  int origHistory;
 
   struct TextBlock
   {
@@ -79,8 +82,8 @@ class ScriptEditor : public WindowFrame
   int dragop;
 
   String getSelection();
-  String sanitize(String text);
-  String unsanitize(String text);
+  String sanitize(char const* text);
+  String unsanitize(char const* text);
 
   int getWordSize(int pos, int dir);
 
@@ -90,16 +93,30 @@ class ScriptEditor : public WindowFrame
   void updateCaret();
   void doScroll(int horz, int vert);
 
-  uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
-public:
-  ScriptEditor(Frame* parent, HFONT hFont = NULL);
-  ~ScriptEditor();
-
-  int getTextLength() const;
   int posFromScreen(int line, int col) const;
   void posToScreen(int pos, int& line, int& col) const;
 
   void suggest();
+
+  uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
+public:
+  ScriptEditor(Frame* parent, int id = 0, HFONT hFont = NULL);
+  ~ScriptEditor();
+
+  void setCursor(int line, int col);
+
+  int getTextLength() const;
+  bool modified() const
+  {
+    return (origHistory != historyPos);
+  }
+  void setModified(bool mod)
+  {
+    if (mod)
+      origHistory = -1;
+    else
+      origHistory = historyPos;
+  }
 };
 
 #endif // __SCRIPT_EDITOR__

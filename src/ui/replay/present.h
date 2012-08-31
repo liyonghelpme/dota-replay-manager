@@ -7,7 +7,15 @@
 
 class ReplayPresentTab : public ReplayTab
 {
+  static INT_PTR CALLBACK ScriptGenDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
+  ComboFrame* presets;
+  ButtonFrame* savePreset;
+  ButtonFrame* delPreset;
+
   ScriptEditor* editor;
+  EditFrame* result;
+
+  void updateValidity();
 
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
   void onSetReplay();

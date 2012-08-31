@@ -12,6 +12,19 @@
 #include "ui/replay/playergold.h"
 #include "ui/replay/playerexp.h"
 #include "ui/replay/present.h"
+#include "ui/replay/draft.h"
+
+static char tabNames[][64] = {
+  "Game Info",
+  "Chat log",
+  "Timeline",
+  "Player Info",
+  "Actions",
+  "Gold chart",
+  "Exp chart",
+  "Presentation",
+  "Draft Info",
+};
 
 ReplayWindow::ReplayWindow(Frame* parent)
   : TabFrame(parent)
@@ -19,24 +32,51 @@ ReplayWindow::ReplayWindow(Frame* parent)
   replay = NULL;
   viewItem = NULL;
 
-  addTab(REPLAY_GAMEINFO, "Game Info", new ReplayGameInfoTab(this));
-  addTab(REPLAY_GAMECHAT, "Chat log", new ReplayGameChatTab(this));
-  addTab(REPLAY_TIMELINE, "Timeline", new ReplayTimelineTab(this));
-  addTab(REPLAY_PLAYERINFO, "Player Info", new ReplayPlayerInfoTab(this));
-  addTab(REPLAY_ACTIONS, "Actions", new ReplayActionsTab(this));
-  addTab(REPLAY_PLAYERGOLD, "Gold chart", new ReplayPlayerGoldTab(this));
-  addTab(REPLAY_PLAYEREXP, "Exp chart", new ReplayPlayerExpTab(this));
-  addTab(REPLAY_PRESENT, "Presentation", new ReplayPresentTab(this));
+  for (int i = 0; i < REPLAY_NUM_TABS; i++)
+    frametab[i] = -1;
+  frames[REPLAY_GAMEINFO] = new ReplayGameInfoTab(this);
+  frames[REPLAY_GAMECHAT] = new ReplayGameChatTab(this);
+  frames[REPLAY_TIMELINE] = new ReplayTimelineTab(this);
+  frames[REPLAY_PLAYERINFO] = new ReplayPlayerInfoTab(this);
+  frames[REPLAY_ACTIONS] = new ReplayActionsTab(this);
+  frames[REPLAY_PLAYERGOLD] = new ReplayPlayerGoldTab(this);
+  frames[REPLAY_PLAYEREXP] = new ReplayPlayerExpTab(this);
+  frames[REPLAY_PRESENT] = new ReplayPresentTab(this);
+  frames[REPLAY_DRAFT] = new ReplayDraftTab(this);
 }
 ReplayWindow::~ReplayWindow()
 {
   delete replay;
 }
 
+void ReplayWindow::addFrame(int tab)
+{
+  for (int i = 0; i < REPLAY_NUM_TABS; i++)
+    frametab[i] = -1;
+  frametab[tab] = tabs.length();
+  addTab(tabNames[tab], frames[tab]);
+}
 void ReplayWindow::update()
 {
-  for (int i = 0; i < numTabs(); i++)
-    ((ReplayTab*) getTab(i))->setReplay(replay);
+  clear();
+  addFrame(REPLAY_GAMEINFO);
+  if (replay)
+  {
+    addFrame(REPLAY_GAMECHAT);
+    addFrame(REPLAY_TIMELINE);
+    addFrame(REPLAY_PLAYERINFO);
+    addFrame(REPLAY_ACTIONS);
+    addFrame(REPLAY_PLAYERGOLD);
+    addFrame(REPLAY_PLAYEREXP);
+    addFrame(REPLAY_PRESENT);
+
+    DotaInfo const* dotaInfo = replay->getDotaInfo();
+    if (dotaInfo && (dotaInfo->draft.numPool || dotaInfo->draft.numPicks[0] ||
+        dotaInfo->draft.numPicks[1] || dotaInfo->draft.numBans[0] || dotaInfo->draft.numBans[1]))
+      addFrame(REPLAY_DRAFT);
+  }
+  for (int i = 0; i < REPLAY_NUM_TABS; i++)
+    frames[i]->setReplay(replay);
 }
 
 void ReplayWindow::openReplay(File* file)
@@ -55,9 +95,12 @@ void ReplayWindow::openReplay(String path)
 }
 void ReplayWindow::setTab(int tab)
 {
-  setCurSel(tab);
-  if (viewItem)
-    viewItem->setTab(tab);
+  if (frametab[tab] >= 0)
+  {
+    setCurSel(frametab[tab]);
+    if (viewItem)
+      viewItem->setTab(tab);
+  }
 }
 void ReplayWindow::setPlayer(int id)
 {

@@ -147,12 +147,46 @@ uint32 LinkFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 
 ///////////////////////////////////////////////////////
 
+uint32 EditFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+{
+  if (message == WM_CTLCOLOREDIT || message == WM_CTLCOLORSTATIC)
+  {
+    HDC hDC = (HDC) wParam;
+    if ((fgcolor & 0xFF000000) == 0)
+      SetTextColor(hDC, fgcolor);
+    if ((bgcolor & 0xFF000000) == 0)
+      SetBkColor(hDC, bgcolor);
+    return (uint32) background;
+  }
+  return M_UNHANDLED;
+}
 EditFrame::EditFrame(Frame* parent, int id, int style)
   : WindowFrame(parent)
 {
+  bgcolor = 0xFFFFFFFF;
+  fgcolor = 0xFFFFFFFF;
+  background = NULL;
   create("Edit", "", style | WS_CHILD | WS_TABSTOP, WS_EX_CLIENTEDGE);
   setFont(FontSys::getSysFont());
   setId(id);
+}
+EditFrame::~EditFrame()
+{
+  if (background)
+    DeleteObject(background);
+}
+void EditFrame::setFgColor(uint32 color)
+{
+  fgcolor = color & 0xFFFFFF;
+  invalidate();
+}
+void EditFrame::setBgColor(uint32 color)
+{
+  bgcolor = color & 0xFFFFFF;
+  if (background)
+    DeleteObject(background);
+  background = CreateSolidBrush(color);
+  invalidate();
 }
 
 ///////////////////////////////////////////////////////
@@ -196,6 +230,10 @@ int ComboFrame::addString(String text, int data)
   if (id != CB_ERR)
     SendMessage(hWnd, CB_SETITEMDATA, id, data);
   return id;
+}
+void ComboFrame::delString(int pos)
+{
+  SendMessage(hWnd, CB_DELETESTRING, pos, 0);
 }
 int ComboFrame::getItemData(int item) const
 {
@@ -343,13 +381,12 @@ TabFrame::TabFrame(Frame* parent, int id, int style)
   setFont(FontSys::getSysFont());
   setId(id);
 }
-Frame* TabFrame::addTab(int pos, String text, Frame* frame)
+Frame* TabFrame::addTab(String text, Frame* frame)
 {
-  if (pos >= tabs.length())
-    tabs.resize(pos + 1, 0);
   if (frame == NULL)
     frame = new Frame(this);
-  tabs[pos] = frame;
+  int pos = tabs.length();
+  tabs.push(frame);
 
   TCITEM item;
   memset(&item, 0, sizeof item);
@@ -367,6 +404,13 @@ Frame* TabFrame::addTab(int pos, String text, Frame* frame)
   frame->setPoint(PT_BOTTOMRIGHT, rc.right - prevWidth, rc.bottom - prevHeight);
 
   return frame;
+}
+void TabFrame::clear()
+{
+  for (int i = 0; i < tabs.length(); i++)
+    tabs[i]->hide();
+  tabs.clear();
+  TabCtrl_DeleteAllItems(hWnd);
 }
 
 uint32 TabFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)

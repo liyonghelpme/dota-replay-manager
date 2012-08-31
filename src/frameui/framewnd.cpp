@@ -106,7 +106,7 @@ uint32 RootWindow::onControlMessage(HWND hControl, uint32 message, uint32 wParam
   uint32 result = M_UNHANDLED;
   while (cur && (result = cur->onMessage(message, wParam, lParam)) == M_UNHANDLED)
     cur = cur->getParent();
-  return result == M_UNHANDLED ? 0 : result;
+  return result;
 }
 
 void RootWindow::setCapture(Frame* frame)
@@ -129,10 +129,33 @@ uint32 RootWindow::onWndMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
   switch (message)
   {
+  case WM_DESTROY:
+    shutdown();
+    break;
   case WM_NOTIFY:
-    return onControlMessage(((NMHDR*) lParam)->hwndFrom, message, wParam, lParam);
+    {
+      uint32 result = onControlMessage(((NMHDR*) lParam)->hwndFrom, message, wParam, lParam);
+      return result == M_UNHANDLED ? 0 : result;
+    }
+    break;
   case WM_COMMAND:
-    return onControlMessage((HWND) lParam, message, wParam, lParam);
+    {
+      uint32 result = onControlMessage((HWND) lParam, message, wParam, lParam);
+      return result == M_UNHANDLED ? 0 : result;
+    }
+    break;
+  case WM_CTLCOLORBTN:
+  case WM_CTLCOLORDLG:
+  case WM_CTLCOLOREDIT:
+  case WM_CTLCOLORLISTBOX:
+  case WM_CTLCOLORSCROLLBAR:
+  case WM_CTLCOLORSTATIC:
+    {
+      uint32 result = onControlMessage((HWND) lParam, message, wParam, lParam);
+      if (result != M_UNHANDLED)
+        return result;
+    }
+    break;
   case WM_DRAWITEM:
     {
       DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*) lParam;

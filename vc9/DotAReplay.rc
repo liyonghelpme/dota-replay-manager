@@ -46,15 +46,6 @@ END
 
 #endif    // APSTUDIO_INVOKED
 
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Icon
-//
-
-// Icon with lowest ID value placed first to ensure application icon
-// remains consistent on all systems.
-IDI_PLAY                ICON                    "K:\\Progs\\DotAReplay\\res\\play.ico"
 #endif    // Russian resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -76,6 +67,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 // Icon with lowest ID value placed first to ensure application icon
 // remains consistent on all systems.
 IDI_MAIN                ICON                    "K:\\Progs\\DotAReplay\\res\\idr_main.ico"
+IDI_PLAY                ICON                    "K:\\Progs\\DotAReplay\\res\\play.ico"
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -87,6 +79,99 @@ IDC_ELFHAND             CURSOR                  "K:\\Progs\\DotAReplay\\res\\sen
 IDC_ZOOM_IN             CURSOR                  "k:\\progs\\dotareplay\\res\\zoomin.cur"
 IDC_ZOOM_OUT            CURSOR                  "k:\\progs\\dotareplay\\res\\zoom_out.cur"
 IDC_HAND_MOVE           CURSOR                  "k:\\progs\\dotareplay\\res\\hmove.cur"
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_TEXTPROMPT DIALOGEX 0, 0, 278, 55
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Dialog"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,7,34,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,221,34,50,14
+    EDITTEXT        IDC_INPUT,7,16,264,14,ES_AUTOHSCROLL
+    LTEXT           "Static",IDC_PROMPT,7,4,264,8
+END
+
+IDD_SCRIPTGEN DIALOGEX 0, 0, 338, 154
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Generate script"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,7,133,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,281,133,50,14
+    COMBOBOX        IDC_SCRIPTMODE,30,7,87,57,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Mode:",IDC_STATIC,7,9,21,8
+    COMBOBOX        IDC_SCRIPTICONS,146,7,81,65,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    LTEXT           "Icons:",IDC_STATIC,122,9,21,8
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDHORZ,7,22,324,1
+    CONTROL         "Date/time",IDC_SCRIPT_DATE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,26,51,10
+    CONTROL         "Patch",IDC_SCRIPT_PATCH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,62,26,51,10
+    CONTROL         "Map",IDC_SCRIPT_MAP,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,117,26,51,10
+    CONTROL         "Game name",IDC_SCRIPT_NAME,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,172,26,51,10
+    CONTROL         "Game mode",IDC_SCRIPT_MODE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,227,26,51,10
+    CONTROL         "Host",IDC_SCRIPT_HOST,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,282,26,49,10
+    CONTROL         "Saver",IDC_SCRIPT_SAVER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,38,51,10
+    CONTROL         "Length",IDC_SCRIPT_LENGTH,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,62,38,51,10
+    CONTROL         "Players",IDC_SCRIPT_PLAYERS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,117,38,51,10
+    CONTROL         "Score",IDC_SCRIPT_SCORE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,172,38,51,10
+    CONTROL         "Winner",IDC_SCRIPT_WINNER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,282,38,49,10
+    CONTROL         "Observers",IDC_SCRIPT_OBSERVERS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,227,38,51,10
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDHORZ,7,51,323,1
+    CONTROL         "Player list",IDC_SCRIPT_PLAYER_LIST,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,56,51,10
+    CONTROL         "Colored",IDC_SCRIPT_PLAYER_COLORED,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,62,56,51,10
+    CONTROL         "Level",IDC_SCRIPT_PLAYER_LEVEL,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,68,51,10
+    CONTROL         "Kill/death",IDC_SCRIPT_PLAYER_KD,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,62,68,51,10
+    CONTROL         "Creep/deny",IDC_SCRIPT_PLAYER_CS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,117,68,51,10
+    CONTROL         "Gold",IDC_SCRIPT_PLAYER_GOLD,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,172,68,51,10
+    CONTROL         "Lane",IDC_SCRIPT_PLAYER_LANE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,227,68,51,10
+    CONTROL         "APM",IDC_SCRIPT_PLAYER_APM,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,282,68,49,10
+    CONTROL         "Left",IDC_SCRIPT_PLAYER_LEFT,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,81,55,10
+    CONTROL         "Items",IDC_SCRIPT_PLAYER_ITEMS,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,62,81,55,10
+    CONTROL         "Group by lane",IDC_SCRIPT_PLAYER_BYLANE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,117,56,83,10
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDHORZ,7,94,321,1
+    LTEXT           "Detailed report:",IDC_STATIC,7,98,52,8
+    CONTROL         "Sentinel",IDC_SCRIPT_DETAIL_SENTINEL,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,108,51,10
+    CONTROL         "Scourge",IDC_SCRIPT_DETAIL_SCOURGE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,62,108,51,10
+    CONTROL         "Saver",IDC_SCRIPT_DETAIL_SAVER,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,117,108,51,10
+    CONTROL         "Skill build",IDC_SCRIPT_DETAIL_SKILLBUILD,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,120,51,10
+    CONTROL         "Skill time",IDC_SCRIPT_DETAIL_SKILLTIME,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,62,120,43,10
+    CONTROL         "Item build",IDC_SCRIPT_DETAIL_ITEMBUILD,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,117,120,51,10
+    CONTROL         "Item time",IDC_SCRIPT_DETAIL_ITEMTIME,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,172,120,51,10
+    CONTROL         "Item cost",IDC_SCRIPT_DETAIL_ITEMCOST,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,227,120,49,10
+    CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDVERT,112,120,1,9
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO 
+BEGIN
+    IDD_TEXTPROMPT, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 271
+        TOPMARGIN, 4
+        BOTTOMMARGIN, 48
+    END
+
+    IDD_SCRIPTGEN, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 331
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 147
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
 

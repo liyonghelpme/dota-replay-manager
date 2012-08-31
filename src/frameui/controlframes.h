@@ -47,8 +47,15 @@ public:
 
 class EditFrame : public WindowFrame
 {
+  HBRUSH background;
+  uint32 bgcolor;
+  uint32 fgcolor;
+  uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:
   EditFrame(Frame* parent, int id = 0, int style = ES_AUTOHSCROLL);
+  ~EditFrame();
+  void setFgColor(uint32 color);
+  void setBgColor(uint32 color);
 };
 
 class ComboFrame : public WindowFrame
@@ -58,6 +65,7 @@ class ComboFrame : public WindowFrame
 public:
   ComboFrame(Frame* parent, int id = 0, int style = CBS_DROPDOWNLIST);
   int addString(String text, int data = 0);
+  void delString(int pos);
   int getItemData(int item) const;
   void setItemData(int item, int data);
   int getCurSel() const;
@@ -119,11 +127,13 @@ public:
   {
     return tabs.length();
   }
-  Frame* addTab(int pos, String text, Frame* frame = NULL);
+  Frame* addTab(String text, Frame* frame = NULL);
   Frame* getTab(int pos) const
   {
     return (pos < 0 || pos >= tabs.length() ? NULL : tabs[pos]);
   }
+
+  void clear();
 
   int getCurSel() const
   {

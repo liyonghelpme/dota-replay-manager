@@ -546,7 +546,8 @@ int RegExp::Prog::run(char const* text, bool exact, bool (*callback) (_re::Match
   {
     for (int i = 0; i < numStates; i++)
     {
-      if (pos > 0 && states[i].type == _re::State::END && states[i].list >= 0)
+      if (pos > 0 && states[i].type == _re::State::END && states[i].list >= 0 &&
+        (!exact || text[pos] == 0))
       {
         _re::Thread* thread = &threads[cur * maxThreads + states[i].list];
         thread->match.end[0] = text + pos;

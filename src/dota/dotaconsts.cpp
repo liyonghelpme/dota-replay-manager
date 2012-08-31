@@ -1,6 +1,6 @@
 #include "consts.h"
 
-static char lane_names[][256] = {"None", "Top", "Mid", "Bot", "AFK?"};
+static char lane_names[][256] = {"No lane", "Top", "Mid", "Bot", "AFK?"};
 String getLaneName(int lane)
 {
   return (lane >= 0 && lane < 4 ? lane_names[lane] : lane_names[4]);

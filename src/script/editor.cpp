@@ -6,12 +6,7 @@
 #include "frameui/fontsys.h"
 #include "script/data.h"
 
-#define BLOCK_IF          1
-#define BLOCK_ELSEIF      2
-#define BLOCK_ELSE        3
-#define BLOCK_ENDIF       4
-#define BLOCK_FOR         5
-#define BLOCK_ENDFOR      6
+#include "script/parser.h"
 
 enum {tNormal,
       tBlock,
@@ -56,6 +51,7 @@ public:
 
   bool onKey(int key);
   void onString(String str);
+  void tryFinish(String str);
 
   bool visible() const
   {
@@ -171,9 +167,24 @@ void ScriptSuggest::onString(String str)
   selected = 0;
   while (selected < options.length() && options[selected].text.icompare(str) < 0)
     selected++;
-  if (str.isEmpty() || options[selected].text.substring(0, str.length()).icompare(str))
+  if (str.isEmpty() || selected >= options.length() ||
+      options[selected].text.substring(0, str.length()).icompare(str))
     selected = -1;
   invalidate();
+}
+void ScriptSuggest::tryFinish(String str)
+{
+  int option = 0;
+  while (option < options.length() && options[option].text.icompare(str) < 0)
+    option++;
+  if (option < options.length() &&
+     !options[option].text.substring(0, str.length()).icompare(str) &&
+     (option >= options.length() - 1 ||
+      options[option + 1].text.substr(0, str.length()).icompare(str)))
+  {
+    hideWindow();
+    editor->onSuggest(options[option].text);
+  }
 }
 ScriptSuggest::ScriptSuggest(ScriptEditor* wnd)
 {
@@ -218,12 +229,17 @@ void ScriptEditor::suggest()
   int line, col;
   posToScreen(caret, line, col);
   POINT pt;
-  pt.x = (col - scrollPos.x) * chSize.x;
+  pt.x = (col - scrollPos.x) * chSize.x + NUMBERS_WIDTH;
   pt.y = (line - scrollPos.y) * chSize.y + chSize.y;
   RECT rc;
   GetClientRect(hWnd, &rc);
   Position pos = makePosition(caret);
-  if (pos.block && pos.offset > 0 && !isalnum(pos.block->text[pos.offset - 1]))
+  if (pos.block && pos.block->prev && pos.offset == 0)
+  {
+    pos.block = pos.block->prev;
+    pos.offset = pos.block->text.length();
+  }
+  if (pos.block && pos.offset > 0 && pos.block->text[0] == '{')
   {
     Array<String> forVar;
     Array<String> forEnum;
@@ -232,9 +248,9 @@ void ScriptEditor::suggest()
     for (TextBlock* cur = pos.block->prev; cur; cur = cur->prev)
     {
       int kw = getBlockKeyword(cur);
-      if (kw == BLOCK_ENDFOR || kw == BLOCK_ENDIF)
+      if (kw == BLOCK_ENDFOR || kw == BLOCK_ENDIF || kw == BLOCK_ENDALIGN)
         level++;
-      else if (kw == BLOCK_FOR || kw == BLOCK_IF)
+      else if (kw == BLOCK_FOR || kw == BLOCK_IF || kw == BLOCK_ALIGN)
       {
         level--;
         if (level < 0)
@@ -277,33 +293,32 @@ void ScriptEditor::suggest()
       }
     }
 
+    int start = pos.offset;
+    while (start > 0 && (isalnum(pos.block->text[start - 1]) ||
+        pos.block->text[start - 1] == '.' || pos.block->text[start - 1] == '_'))
+      start--;
+    String path = pos.block->text.substring(start, pos.offset);
+
+    int dot = path.lastIndexOf('.');
+    suggestPos -= pos.offset - (start + dot + 1);
+    String curWord = path.substring(dot + 1);
+
     ScriptType* t;
-    if (pos.block->text[pos.offset - 1] != '.')
+    if (dot < 0)
       t = ScriptType::tGlobal;
     else
     {
-      pos.offset--;
-      int end = pos.offset;
-      int start = end;
-      while (pos.offset > 0)
-      {
-        if (isalnum(pos.block->text[pos.offset - 1]) || pos.block->text[pos.offset - 1] == '.')
-          start = pos.offset - 1;
-        else
-          break;
-        pos.offset--;
-      }
-      String ctx = pos.block->text.substring(start, end);
-      t = ScriptType::tGlobal->getSubType(ctx);
+      path.setLength(dot);
+      t = ScriptType::tGlobal->getSubType(path);
       if (t == NULL)
       {
-        int dot = ctx.find('.');
-        String var = ctx.substring(0, dot >= 0 ? dot : String::toTheEnd);
+        dot = path.indexOf('.');
+        String var = path.substring(0, dot >= 0 ? dot : String::toTheEnd);
         if (context.has(var))
         {
           t = context.get(var);
           if (dot >= 0)
-            t = t->getSubType(ctx.substring(dot + 1));
+            t = t->getSubType(path.substring(dot + 1));
         }
       }
     }
@@ -324,6 +339,8 @@ void ScriptEditor::suggest()
 
       ClientToScreen(hWnd, &pt);
       suggestList->display(pt.x - 16, pt.y + 3);
+      if (!curWord.isEmpty())
+        suggestList->tryFinish(curWord);
     }
   }
 }
@@ -346,9 +363,19 @@ String ScriptEditor::getSuggestString()
 }
 void ScriptEditor::onSuggest(String text)
 {
-  if (suggestPos >= 0 && getSuggestString().isAlNum())
+  if (suggestPos >= 0)
   {
-    replace(suggestPos, caret, text);
+    Position pos = makePosition(suggestPos);
+    if (pos.block && pos.block->prev && pos.offset == 0)
+    {
+      pos.block = pos.block->prev;
+      pos.offset = pos.block->text.length();
+    }
+    int suggestEnd = pos.offset;
+    while (isalnum(pos.block->text[suggestEnd]) || pos.block->text[suggestEnd] == '_')
+      suggestEnd++;
+    suggestEnd += suggestPos - pos.offset;
+    replace(suggestPos, suggestEnd, text);
   }
 }
 
@@ -395,7 +422,7 @@ int ScriptEditor::getPosition(Position pos)
 void ScriptEditor::updateExtent()
 {
   extent.x = 0;
-  extent.y = 0;
+  extent.y = 1;
   int col = 0;
   for (TextBlock* block = firstBlock; block; block = block->next)
   {
@@ -427,11 +454,11 @@ void ScriptEditor::updateExtent()
   si.cbSize = sizeof si;
   si.fMask = SIF_PAGE | SIF_RANGE;
   si.nMin = 0;
-  si.nPage = rc.right / chSize.x;
+  si.nPage = (rc.right - NUMBERS_WIDTH) / chSize.x;
   si.nMax = extent.x + 10;
   SetScrollInfo(hWnd, SB_HORZ, &si, TRUE);
   si.nPage = rc.bottom / chSize.y;
-  si.nMax = extent.y + si.nPage - 1;
+  si.nMax = extent.y + si.nPage - 2;
   SetScrollInfo(hWnd, SB_VERT, &si, TRUE);
 }
 
@@ -619,22 +646,34 @@ void ScriptEditor::replace(int ibegin, int iend, String text, HistoryItem* mod, 
         h.text += end.block->text.substr(0, end.offset);
     }
 
+    bool push = true;
     if (historyPos < history.length())
-    {
       history.resize(historyPos);
-      history.push(h);
-    }
     else if (historyPos > 0 && h.text.isEmpty() && h.end == h.begin + 1 && !h.glue)
     {
       HistoryItem& p = history[historyPos - 1];
       if (p.text.isEmpty() && h.begin == p.end)
+      {
+        push = false;
         p.end = h.end;
+      }
+    }
+    if (push)
+    {
+      if (history.length() >= 256)
+      {
+        for (int i = 1; i < history.length(); i++)
+          history[i - 1] = history[i];
+        history[history.length() - 1] = h;
+        if (origHistory >= 0)
+          origHistory--;
+      }
       else
         history.push(h);
     }
-    else
-      history.push(h);
     historyPos = history.length();
+    if (historyPos < origHistory)
+      origHistory = -1;
   }
 
   if (begin.block)
@@ -687,6 +726,9 @@ void ScriptEditor::replace(int ibegin, int iend, String text, HistoryItem* mod, 
 
   updateExtent();
   updateCaret();
+
+  if (id())
+    notify(WM_COMMAND, MAKELONG(id(), EN_CHANGE), (uint32) hWnd);
 }
 
 uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
@@ -698,47 +740,47 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     target = NULL;
     return 0;
   case WM_SETTEXT:
-    replace(0, getTextLength(), (char*) lParam, NULL);
+    replace(0, getTextLength(), sanitize((char*) lParam));
     selStart = caret = 0;
     history.clear();
     historyPos = 0;
+    origHistory = 0;
     updateCaret();
     return TRUE;
   case WM_GETTEXTLENGTH:
     {
-      int length = 0;
+      String text = "";
       for (TextBlock* block = firstBlock; block; block = block->next)
-        length += block->text.length();
-      return length;
+        text += block->text;
+      return unsanitize(text).length();
     }
     break;
   case WM_GETTEXT:
     {
-      int copied = 0;
-      for (TextBlock* block = firstBlock; block && copied < int(wParam) - 1; block = block->next)
-      {
-        int length = block->text.length();
-        if (length > int(wParam) - copied - 1)
-          length = int(wParam) - copied - 1;
-        memcpy((char*) lParam + copied, block->text.c_str(), length);
-        copied += length;
-      }
-      if (copied < int(wParam))
-        ((char*) lParam)[copied] = 0;
-      return copied;
+      String text = "";
+      for (TextBlock* block = firstBlock; block; block = block->next)
+        text += block->text;
+      text = unsanitize(text);
+      int bufSize = wParam;
+      if (bufSize > text.length() + 1)
+        bufSize = text.length() + 1;
+      memcpy((char*) lParam, text.c_str(), bufSize);
+      return bufSize;
     }
     break;
   case WM_SETCURSOR:
     if (LOWORD(lParam) == HTCLIENT)
     {
+      POINT pt;
+      GetCursorPos(&pt);
+      ScreenToClient(hWnd, &pt);
       if (selStart != caret)
       {
         int sela = (selStart < caret ? selStart : caret);
         int selb = (selStart > caret ? selStart : caret);
-        POINT pt;
-        GetCursorPos(&pt);
-        ScreenToClient(hWnd, &pt);
-        pt.x = pt.x / chSize.x + scrollPos.x;
+        if (pt.x < NUMBERS_WIDTH)
+          pt.x = NUMBERS_WIDTH;
+        pt.x = (pt.x - NUMBERS_WIDTH) / chSize.x + scrollPos.x;
         pt.y = pt.y / chSize.y + scrollPos.y;
         int abs = posFromScreen(pt.y, pt.x);
         if (abs >= sela && abs < selb)
@@ -762,8 +804,47 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       PAINTSTRUCT ps;
       HDC hDC = BeginPaint(hWnd, &ps);
 
-      SetBkColor(hDC, 0xFFFFFF);
       SetBkMode(hDC, OPAQUE);
+
+      if (NUMBERS_WIDTH - scrollPos.x * chSize.x > ps.rcPaint.left)
+      {
+        //SelectObject(hDC, linePen);
+        //MoveToEx(hDC, NUMBERS_WIDTH - scrollPos.x - 1, ps.rcPaint.top, NULL);
+        //LineTo(hDC, NUMBERS_WIDTH - scrollPos.x - 1, ps.rcPaint.bottom);
+
+        RECT lineRc;
+        //lineRc.left = NUMBERS_WIDTH - scrollPos.x - 3;
+        //lineRc.right = NUMBERS_WIDTH - scrollPos.x;
+        //lineRc.top = ps.rcPaint.top;
+        //lineRc.bottom = ps.rcPaint.bottom;
+
+        //SetBkColor(hDC, 0xFFFFFF);
+        //ExtTextOut(hDC, 0, 0, ETO_OPAQUE, &lineRc, NULL, 0, NULL);
+
+        SetBkColor(hDC, 0xC0C0C0);
+        lineRc.left = 0;
+        lineRc.right = NUMBERS_WIDTH - scrollPos.x * chSize.x;
+        lineRc.top = 0;
+
+        int selLine, selCol;
+        posToScreen(caret, selLine, selCol);
+
+        for (int y = scrollPos.y; y < extent.y && (y - scrollPos.y) * chSize.y < ps.rcPaint.bottom; y++)
+        {
+          SelectObject(hDC, y == selLine ? fonts[1] : fonts[0]);
+          SetTextColor(hDC, y == selLine ? 0x303030 : 0x505050);
+          lineRc.bottom = lineRc.top + chSize.y;
+          DrawText(hDC, String::format("%3d", y + 1), -1, &lineRc, DT_RIGHT);
+          lineRc.top = lineRc.bottom;
+        }
+        if (lineRc.top < ps.rcPaint.bottom)
+        {
+          lineRc.bottom = ps.rcPaint.bottom;
+          ExtTextOut(hDC, 0, 0, ETO_OPAQUE, &lineRc, NULL, 0, NULL);
+        }
+      }
+
+      SetBkColor(hDC, 0xFFFFFF);
 
       uint32 selBkColor = 0x6A240A;
       uint32 selFgColor = 0xFFFFFF;
@@ -776,7 +857,7 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       Position sela = makePosition(selStart < caret ? selStart : caret);
       Position selb = makePosition(selStart > caret ? selStart : caret);
       RECT rcLine;
-      rcLine.left = -scrollPos.x * chSize.x;
+      rcLine.left = -scrollPos.x * chSize.x + NUMBERS_WIDTH;
       rcLine.top = -scrollPos.y * chSize.y;
       rcLine.right = rcLine.left;
       rcLine.bottom = rcLine.top + chSize.y;
@@ -854,7 +935,7 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
             }
             rcLine.top = rcLine.bottom;
             rcLine.bottom = rcLine.top + chSize.y;
-            rcLine.left = -scrollPos.x * chSize.x;
+            rcLine.left = -scrollPos.x * chSize.x + NUMBERS_WIDTH;
           }
           else
             break;
@@ -874,7 +955,7 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       }
       if (rcLine.bottom < ps.rcPaint.bottom)
       {
-        rcLine.left = ps.rcPaint.left;
+        rcLine.left = -scrollPos.x * chSize.x + NUMBERS_WIDTH;
         rcLine.right = ps.rcPaint.right;
         rcLine.top = rcLine.bottom;
         rcLine.bottom = ps.rcPaint.bottom;
@@ -893,10 +974,27 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     DestroyCaret();
     updateCaret();
     return 0;
+  case WM_LBUTTONDBLCLK:
+    {
+      suggestList->hideWindow();
+      int x = GET_X_LPARAM(lParam);
+      if (x < NUMBERS_WIDTH)
+        x = NUMBERS_WIDTH;
+      x = (x - NUMBERS_WIDTH + chSize.x / 2) / chSize.x + scrollPos.x;
+      int y = GET_Y_LPARAM(lParam) / chSize.y + scrollPos.y;
+      int abs = posFromScreen(y, x);
+      caret = abs + getWordSize(abs, 1);
+      selStart = caret - getWordSize(caret, -1);
+      updateCaret();
+    }
+    return 0;
   case WM_LBUTTONDOWN:
     {
       suggestList->hideWindow();
-      int x = GET_X_LPARAM(lParam) / chSize.x + scrollPos.x;
+      int x = GET_X_LPARAM(lParam);
+      if (x < NUMBERS_WIDTH)
+        x = NUMBERS_WIDTH;
+      x = (x - NUMBERS_WIDTH + chSize.x / 2) / chSize.x + scrollPos.x;
       int y = GET_Y_LPARAM(lParam) / chSize.y + scrollPos.y;
       int abs = posFromScreen(y, x);
       int sela = (selStart < caret ? selStart : caret);
@@ -924,7 +1022,10 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
   case WM_MOUSEMOVE:
     if (GetCapture() == hWnd && (wParam & MK_LBUTTON))
     {
-      int x = GET_X_LPARAM(lParam) / chSize.x + scrollPos.x;
+      int x = GET_X_LPARAM(lParam);
+      if (x < NUMBERS_WIDTH)
+        x = NUMBERS_WIDTH;
+      x = (x - NUMBERS_WIDTH + chSize.x / 2) / chSize.x + scrollPos.x;
       int y = GET_Y_LPARAM(lParam) / chSize.y + scrollPos.y;
       int abs = posFromScreen(y, x);
       caret = abs;
@@ -963,26 +1064,30 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     case VK_HOME:
       {
         if (GetAsyncKeyState(VK_CONTROL) & 0x8000)
-          selStart = caret = 0;
+          caret = 0;
         else
         {
           int line, col;
           posToScreen(caret, line, col);
-          selStart = caret = posFromScreen(line, 0);
+          caret = posFromScreen(line, 0);
         }
+        if (!(GetAsyncKeyState(VK_SHIFT) & 0x8000))
+          selStart = caret;
         updateCaret();
       }
       break;
     case VK_END:
       {
         if (GetAsyncKeyState(VK_CONTROL) & 0x8000)
-          selStart = caret = getTextLength();
+          caret = getTextLength();
         else
         {
           int line, col;
           posToScreen(caret, line, col);
-          selStart = caret = posFromScreen(line, 100000);
+          caret = posFromScreen(line, 100000);
         }
+        if (!(GetAsyncKeyState(VK_SHIFT) & 0x8000))
+          selStart = caret;
         updateCaret();
       }
       break;
@@ -1188,8 +1293,7 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
           int pos = (selStart < caret ? selStart : caret);
           String text = sanitize(GetGlobalText(reader.getData()));
           replace(selStart, caret, text);
-          selStart = pos;
-          caret = pos + text.length();
+          selStart = caret = pos + text.length();
           updateCaret();
         }
       }
@@ -1300,7 +1404,9 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     {
       int x = GET_X_LPARAM(lParam);
       int y = GET_Y_LPARAM(lParam);
-      dropPos = posFromScreen(y / chSize.y + scrollPos.y, x / chSize.x + scrollPos.x);
+      if (x < NUMBERS_WIDTH) x = NUMBERS_WIDTH;
+      dropPos = posFromScreen(y / chSize.y + scrollPos.y,
+        (x - NUMBERS_WIDTH + chSize.x / 2) / chSize.x + scrollPos.x);
 
       RECT rc;
       GetClientRect(hWnd, &rc);
@@ -1319,7 +1425,7 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       int line, col;
       posToScreen(dropPos, line, col);
       CreateCaret(hWnd, NULL, 2, chSize.y);
-      SetCaretPos((col - scrollPos.x) * chSize.x - 1, (line - scrollPos.y) * chSize.y);
+      SetCaretPos((col - scrollPos.x) * chSize.x + NUMBERS_WIDTH - 1, (line - scrollPos.y) * chSize.y);
       ShowCaret(hWnd);
     }
     return 0;
@@ -1358,7 +1464,7 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
   }
   return M_UNHANDLED;
 }
-String ScriptEditor::sanitize(String text)
+String ScriptEditor::sanitize(char const* text)
 {
   String result = "";
   for (int i = 0; text[i]; i++)
@@ -1368,7 +1474,7 @@ String ScriptEditor::sanitize(String text)
   }
   return result;
 }
-String ScriptEditor::unsanitize(String text)
+String ScriptEditor::unsanitize(char const* text)
 {
   String result = "";
   for (int i = 0; text[i]; i++)
@@ -1400,6 +1506,10 @@ int ScriptEditor::getBlockKeyword(TextBlock* block)
     return BLOCK_FOR;
   else if (!keyword.icompare("endfor"))
     return BLOCK_ENDFOR;
+  else if (!keyword.icompare("align"))
+    return BLOCK_ALIGN;
+  else if (!keyword.icompare("endalign"))
+    return BLOCK_ENDALIGN;
   return 0;
 }
 void ScriptEditor::placeCaret()
@@ -1412,7 +1522,7 @@ void ScriptEditor::placeCaret()
       CreateCaret(hWnd, NULL, 1, chSize.y);
     else
       CreateCaret(hWnd, NULL, chSize.x, chSize.y);
-    SetCaretPos((col - scrollPos.x) * chSize.x, (line - scrollPos.y) * chSize.y);
+    SetCaretPos((col - scrollPos.x) * chSize.x + NUMBERS_WIDTH, (line - scrollPos.y) * chSize.y);
     ShowCaret(hWnd);
   }
 }
@@ -1421,13 +1531,13 @@ void ScriptEditor::doScroll(int horz, int vert)
   SCROLLINFO si;
   memset(&si, 0, sizeof si);
   si.cbSize = sizeof si;
-  si.fMask = SIF_RANGE;
+  si.fMask = SIF_RANGE | SIF_PAGE;
   GetScrollInfo(hWnd, SB_HORZ, &si);
   if (horz < si.nMin) horz = si.nMin;
-  if (horz > si.nMax) horz = si.nMax;
+  if (horz > si.nMax - si.nPage + 1) horz = si.nMax - si.nPage + 1;
   GetScrollInfo(hWnd, SB_VERT, &si);
   if (vert < si.nMin) vert = si.nMin;
-  if (vert > si.nMax) vert = si.nMax;
+  if (vert > si.nMax - si.nPage + 1) vert = si.nMax - si.nPage + 1;
   si.fMask = SIF_POS;
   if (horz != scrollPos.x)
   {
@@ -1451,7 +1561,7 @@ void ScriptEditor::doScroll(int horz, int vert)
     {
       int line, col;
       posToScreen(caret, line, col);
-      SetCaretPos((col - scrollPos.x) * chSize.x, (line - scrollPos.y) * chSize.y);
+      SetCaretPos((col - scrollPos.x) * chSize.x + NUMBERS_WIDTH, (line - scrollPos.y) * chSize.y);
     }
   }
 }
@@ -1495,18 +1605,19 @@ void ScriptEditor::updateCaret()
       firstPair = pos.block;
       pos.block->nextPair = NULL;
       int level = 0;
-      if (kw != BLOCK_IF && kw != BLOCK_FOR)
+      if (kw != BLOCK_IF && kw != BLOCK_FOR && kw != BLOCK_ALIGN)
       {
         for (TextBlock* cur = pos.block->prev; cur && level >= 0; cur = cur->prev)
         {
           int okw = getBlockKeyword(cur);
-          if (okw == BLOCK_ENDIF || okw == BLOCK_ENDFOR)
+          if (okw == BLOCK_ENDIF || okw == BLOCK_ENDFOR || okw == BLOCK_ENDALIGN)
             level++;
           else if (okw != 0)
           {
             if (level == 0)
             {
-              if ((kw <= BLOCK_ENDIF) == (okw <= BLOCK_ENDIF))
+              if (((kw <= BLOCK_ENDIF) == (okw <= BLOCK_ENDIF)) &&
+                  ((kw <= BLOCK_ENDFOR) == (okw <= BLOCK_ENDFOR)))
               {
                 cur->nextPair = firstPair;
                 firstPair = cur;
@@ -1517,7 +1628,7 @@ void ScriptEditor::updateCaret()
                 break;
               }
             }
-            if (okw == BLOCK_IF || okw == BLOCK_FOR)
+            if (okw == BLOCK_IF || okw == BLOCK_FOR || okw == BLOCK_ALIGN)
               level--;
           }
         }
@@ -1526,18 +1637,19 @@ void ScriptEditor::updateCaret()
       }
       TextBlock* lastPair = pos.block;
       level = 0;
-      if (kw != BLOCK_ENDIF && kw != BLOCK_ENDFOR)
+      if (kw != BLOCK_ENDIF && kw != BLOCK_ENDFOR && kw != BLOCK_ENDALIGN)
       {
         for (TextBlock* cur = pos.block->next; cur && level >= 0; cur = cur->next)
         {
           int okw = getBlockKeyword(cur);
-          if (okw == BLOCK_IF || okw == BLOCK_FOR)
+          if (okw == BLOCK_IF || okw == BLOCK_FOR || okw == BLOCK_ALIGN)
             level++;
           else if (okw != 0)
           {
             if (level == 0)
             {
-              if ((kw <= BLOCK_ENDIF) == (okw <= BLOCK_ENDIF))
+              if (((kw <= BLOCK_ENDIF) == (okw <= BLOCK_ENDIF)) &&
+                  ((kw <= BLOCK_ENDFOR) == (okw <= BLOCK_ENDFOR)))
               {
                 lastPair->nextPair = cur;
                 cur->nextPair = NULL;
@@ -1549,7 +1661,7 @@ void ScriptEditor::updateCaret()
                 break;
               }
             }
-            if (okw == BLOCK_ENDIF || okw == BLOCK_ENDFOR)
+            if (okw == BLOCK_ENDIF || okw == BLOCK_ENDFOR || okw == BLOCK_ENDALIGN)
               level--;
           }
         }
@@ -1566,7 +1678,7 @@ void ScriptEditor::updateCaret()
   }
   invalidate();
 }
-ScriptEditor::ScriptEditor(Frame* parent, HFONT hFont)
+ScriptEditor::ScriptEditor(Frame* parent, int id, HFONT hFont)
   : WindowFrame(parent)
 {
   if (hFont == NULL)
@@ -1575,6 +1687,7 @@ ScriptEditor::ScriptEditor(Frame* parent, HFONT hFont)
   fonts[1] = FontSys::changeFlags(FONT_BOLD, hFont);
   fonts[2] = FontSys::changeFlags(FONT_ITALIC, hFont);
   chSize = FontSys::getTextSize(fonts[0], " ");
+  NUMBERS_WIDTH = chSize.x * 3;
   firstBlock = NULL;
   lastBlock = NULL;
   firstPair = NULL;
@@ -1593,8 +1706,16 @@ ScriptEditor::ScriptEditor(Frame* parent, HFONT hFont)
   suggestPos = -1;
   cursors[0] = LoadCursor(NULL, MAKEINTRESOURCE(IDC_IBEAM));
   cursors[1] = LoadCursor(NULL, MAKEINTRESOURCE(IDC_ARROW));
+  linePen = CreatePen(PS_SOLID, 0, 0x808080);
+  origHistory = 0;
 
+  if (WNDCLASSEX* wcx = createclass("ScriptEditorWindow"))
+  {
+    wcx->style |= CS_DBLCLKS;
+    RegisterClassEx(wcx);
+  }
   create("", WS_CHILD | WS_TABSTOP | WS_HSCROLL | WS_VSCROLL, WS_EX_CLIENTEDGE);
+  setId(id);
 
   target = new DropTarget(this, CF_TEXT, DROPEFFECT_COPY | DROPEFFECT_MOVE);
 }
@@ -1606,6 +1727,7 @@ ScriptEditor::~ScriptEditor()
     pool.free(firstBlock);
     firstBlock = next;
   }
+  DeleteObject(linePen);
   delete suggestList;
 }
 
@@ -1738,4 +1860,10 @@ int ScriptEditor::getWordSize(int pos, int dir)
     pos += dir;
   }
   return count;
+}
+
+void ScriptEditor::setCursor(int line, int col)
+{
+  selStart = caret = posFromScreen(line - 1, col - 1);
+  updateCaret();
 }

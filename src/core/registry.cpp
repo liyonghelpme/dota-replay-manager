@@ -11,12 +11,13 @@ Config::Config()
 #define regstring(n,v)      items.set(#n,ItemData(iString,0,&n))
 #define regarray(t,n,s)     items.set(#n,ItemData(iBasic,sizeof(t)*s,n))
 #define regvararray(t,n)    items.set(#n,ItemData(iArray,sizeof(t),&n))
+#define regstrarray(n)      items.set(#n,ItemData(iStrArray,0,&n))
 #include "cfgitems.h"
-#undef regconst
 #undef regbasic
 #undef regstring
 #undef regarray
 #undef regvararray
+#undef regstrarray
   reset();
 }
 
@@ -27,6 +28,7 @@ void Config::reset()
 #define regstring(n,v)      n = v
 #define regarray(t,n,s)
 #define regvararray(t,n)
+#define regstrarray(n)
 #include "cfgitems.h"
 #undef regconst
 #undef regbasic
@@ -65,6 +67,14 @@ void Config::read()
             for (int i = 0; i < count; i++)
               file->read(a->vpush(), it->size);
           }
+          else if (it->type == iStrArray)
+          {
+            int count = file->read_int32();
+            Array<String>* a = (Array<String>*) it->ptr;
+            a->clear();
+            for (int i = 0; i < count; i++)
+              a->push(file->readString());
+          }
         }
         else
         {
@@ -76,6 +86,12 @@ void Config::read()
           {
             int count = file->read_int32();
             file->seek(size * count, SEEK_CUR);
+          }
+          else if (type == iStrArray)
+          {
+            int count = file->read_int32();
+            for (int i = 0; i < count; i++)
+              file->readString();
           }
         }
       }
@@ -107,6 +123,13 @@ void Config::write()
         file->write_int32(a->length());
         for (int i = 0; i < a->length(); i++)
           file->write(a->vget(i), it.size);
+      }
+      else if (it.type == iStrArray)
+      {
+        Array<String>* a = (Array<String>*) it.ptr;
+        file->write_int32(a->length());
+        for (int i = 0; i < a->length(); i++)
+          file->writeString((*a)[i]);
       }
       count++;
     }

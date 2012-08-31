@@ -50,7 +50,7 @@ public:
   ~MemoryPool();
 
   void* alloc(uint32 size);
-  void clear();
+  virtual void clear();
 };
 
 #endif // __BASE_POOL__

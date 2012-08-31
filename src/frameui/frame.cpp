@@ -29,6 +29,11 @@ RootFrame::~RootFrame()
   }
   delete[] frames;
 }
+void RootFrame::shutdown()
+{
+  for (int i = 0; i < numFrames; i++)
+    frames[i]->onMessage(FM_SHUTDOWN, 0, 0);
+}
 void RootFrame::setSize(int width, int height)
 {
   frames[0]->_width = width;

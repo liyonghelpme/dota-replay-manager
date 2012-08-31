@@ -6,16 +6,18 @@
 
 class ReplayViewItem;
 
-#define REPLAY_GAMEINFO         0
-#define REPLAY_GAMECHAT         1
-#define REPLAY_TIMELINE         2
-#define REPLAY_PLAYERINFO       3
-#define REPLAY_ACTIONS          4
-#define REPLAY_PLAYERGOLD       5
-#define REPLAY_PLAYEREXP        6
-#define REPLAY_PRESENT          7
-#define REPLAY_NUM_TABS         8
+enum {REPLAY_GAMEINFO,
+      REPLAY_GAMECHAT,
+      REPLAY_TIMELINE,
+      REPLAY_PLAYERINFO,
+      REPLAY_ACTIONS,
+      REPLAY_PLAYERGOLD,
+      REPLAY_PLAYEREXP,
+      REPLAY_PRESENT,
+      REPLAY_DRAFT,
 
+      REPLAY_NUM_TABS
+};
 #define ID_PLAYERBOX            378
 
 class ReplayTab : public Frame
@@ -39,6 +41,10 @@ public:
 
 class ReplayWindow : public TabFrame
 {
+  int frametab[REPLAY_NUM_TABS];
+  ReplayTab* frames[REPLAY_NUM_TABS];
+  void addFrame(int tab);
+
   W3GReplay* replay;
   ReplayViewItem* viewItem;
 

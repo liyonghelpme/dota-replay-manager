@@ -5,11 +5,17 @@
 #include "dota/colors.h"
 #include "dota/dotadata.h"
 
+ScriptType* ScriptType::first = NULL;
+ScriptType* ScriptType::tBasic = NULL;
+ScriptType* ScriptType::tPlayer = NULL;
+ScriptType* ScriptType::tGlobal = NULL;
+
 ScriptType::ScriptType(int t)
 {
   type = t;
   enumType = NULL;
-  ref = 0;
+  next = first;
+  first = this;
 
   if (type == tEnum)
     addElement("count", tBasic);
@@ -19,28 +25,17 @@ ScriptType::ScriptType(ScriptType* t)
   for (uint32 cur = t->dir.enumStart(); cur; cur = t->dir.enumNext(cur))
     dir.set(t->dir.enumGetKey(cur), t->dir.enumGetValue(cur));
   for (int i = 0; i < t->types.length(); i++)
-  {
     types.push(t->types[i]);
-    t->types[i]->ref++;
-  }
   enumType = t->enumType;
-  if (enumType)
-    enumType->ref++;
   type = t->type;
-  ref = 0;
+  next = first;
+  first = this;
 
   if (type == tEnum)
     addElement("count", tBasic);
 }
 ScriptType::~ScriptType()
 {
-  for (int i = 0; i < types.length(); i++)
-  {
-    if (--types[i]->ref == 0)
-      delete types[i];
-  }
-  if (enumType && --enumType->ref == 0)
-    delete enumType;
 }
 void ScriptType::addElement(char const* name, ScriptType* element)
 {
@@ -48,7 +43,6 @@ void ScriptType::addElement(char const* name, ScriptType* element)
   {
     dir.set(name, types.length());
     types.push(element);
-    element->ref++;
   }
 }
 ScriptType* ScriptType::addElement(char const* name, int t)
@@ -60,30 +54,28 @@ ScriptType* ScriptType::addElement(char const* name, int t)
     dir.set(name, types.length());
     ScriptType* element = new ScriptType(t);
     types.push(element);
-    element->ref++;
     return element;
   }
 }
 void ScriptType::setEnumType(ScriptType* t)
 {
-  if (enumType && --enumType->ref == 0)
-    delete enumType;
   enumType = t;
-  enumType->ref++;
   enumType->addElement("first", tBasic);
   enumType->addElement("last", tBasic);
   enumType->addElement("odd", tBasic);
   enumType->addElement("even", tBasic);
+  enumType->addElement("index", tBasic);
 }
 
-ScriptValue::ScriptValue(ScriptType* t)
+ScriptValue::ScriptValue(ScriptType* t, ScriptGlobal* g, ScriptValue* n)
 {
+  global = g;
+  next = n;
   type = t;
   elements = new ScriptValue*[t->getNumElements()];
   memset(elements, 0, sizeof(ScriptValue*) * t->getNumElements());
-  ref = 0;
 
-  if (type->getType() == ScriptType::tEnum)
+  if (type->getType() == ScriptType::tEnum && global)
     addElement("count")->setValue(value = "0");
   //for (int i = 0; i < t->getNumElements(); i++)
   //  elements[i] = new ScriptValue(t->getElement(i));
@@ -91,42 +83,39 @@ ScriptValue::ScriptValue(ScriptType* t)
 void ScriptValue::addEnum(ScriptValue* element)
 {
   if (list.length() == 0)
-    element->getElement("first")->setValue("true");
+    element->addElement("first")->setValue("true");
   else
   {
-    element->getElement("first")->setValue("false");
+    element->addElement("first")->setValue("false");
     list[list.length() - 1]->getElement("last")->setValue("false");
   }
-  element->getElement("last")->setValue("true");
-  element->getElement("odd")->setValue(list.length() & 1 ? "false" : "true");
-  element->getElement("even")->setValue(list.length() & 1 ? "true" : "false");
+  element->addElement("last")->setValue("true");
+  element->addElement("odd")->setValue(list.length() & 1 ? "false" : "true");
+  element->addElement("even")->setValue(list.length() & 1 ? "true" : "false");
+  element->addElement("index")->setValue(list.length() + 1);
   list.push(element);
   getElement("count")->setValue(value = String(list.length()));
 }
 ScriptValue* ScriptValue::addEnum()
 {
-  ScriptValue* value = new ScriptValue(type->getEnumType());
+  ScriptValue* value = global->alloc(type->getEnumType());
   addEnum(value);
   return value;
 }
 
 ScriptValue::~ScriptValue()
 {
-  for (int i = 0; i < type->getNumElements(); i++)
-    if (elements[i] && --elements[i]->ref == 0)
-      delete elements[i];
   delete[] elements;
 }
 void ScriptValue::addElement(char const* name, ScriptValue* value)
 {
   elements[type->getElementPos(name)] = value;
-  value->ref++;
 }
 ScriptValue* ScriptValue::addElement(char const* name)
 {
   int pos = type->getElementPos(name);
-  elements[pos] = new ScriptValue(type->getElement(pos));
-  elements[pos]->ref++;
+  if (elements[pos] == NULL)
+    elements[pos] = global->alloc(type->getElement(pos));
   return elements[pos];
 }
 
@@ -157,14 +146,9 @@ ScriptType* ScriptType::getSubType(char const* name)
   return cur;
 }
 
-static ScriptType oBasic(ScriptType::tValue);
-static ScriptType oGlobal(ScriptType::tStruct);
-ScriptType* ScriptType::tBasic = &oBasic;
-ScriptType* ScriptType::tPlayer = NULL;
-ScriptType* ScriptType::tGlobal = &oGlobal;
 void ScriptType::initTypes()
 {
-  oBasic.ref++;
+  tBasic = new ScriptType(ScriptType::tValue);
 
   ScriptType* tString = new ScriptType(tValue);
   tString->addElement("lower", tBasic);
@@ -262,8 +246,9 @@ void ScriptType::initTypes()
   tGlobalLane->addElement("sentinel", tPlayers);
   tGlobalLane->addElement("scourge", tPlayers);
 
+  tTeam->addElement("name", tString);
   tTeam->addElement("players", tPlayers);
-  tTeam->addElement("color", tBasic);
+  tTeam->addElement("color", tString);
   tTeam->addElement("captain", tPlayer);
   tTeam->addElement("kills", tBasic);
   tTeam->addElement("lanes", tEnum)->setEnumType(tLane);
@@ -273,15 +258,16 @@ void ScriptType::initTypes()
   tMap->addElement("version", tVersion);
 
   ScriptType* tGamePlayers = new ScriptType(tPlayers);
-  tPlayers->addElement("sentinel", tPlayers);
-  tPlayers->addElement("scourge", tPlayers);
+  tGamePlayers->addElement("sentinel", tPlayers);
+  tGamePlayers->addElement("scourge", tPlayers);
+  tGamePlayers->addElement("ratio", tBasic);
 
   ScriptType* tObservers = new ScriptType(tString);
   tObservers->addElement("count", tBasic);
 
   ScriptType* tKills = new ScriptType(tValue);
   tKills->addElement("sentinel", tBasic);
-  tKills->addElement("sentinel", tBasic);
+  tKills->addElement("scourge", tBasic);
 
   ScriptType* tGame = new ScriptType(tStruct);
   tGame->addElement("name", tString);
@@ -315,6 +301,7 @@ void ScriptType::initTypes()
   tDraft->addElement("bans", tPicks);
   tDraft->addElement("picks", tPicks);
 
+  tGlobal = new ScriptType(ScriptType::tStruct);
   tGlobal->addElement("endl", tBasic);
   tGlobal->addElement("game", tGame);
   tGlobal->addElement("replay", tReplay);
@@ -323,6 +310,15 @@ void ScriptType::initTypes()
   tGlobal->addElement("scourge", tTeam);
   tGlobal->addElement("lanes", tEnum)->setEnumType(tGlobalLane);
   tGlobal->addElement("draft", tDraft);
+}
+void ScriptType::freeTypes()
+{
+  while (first)
+  {
+    ScriptType* next = first->next;
+    delete first;
+    first = next;
+  }
 }
 
 ///////////////////////////////////////////////
@@ -358,7 +354,7 @@ static void setItem(ScriptValue* val, Dota::Item* item)
   val->setValue(item->name);
   setString(val->addElement("name"), item->name);
   setString(val->addElement("icon"), item->icon);
-  setString(val->addElement("pdicon"), getApp()->getDotaLibrary()->getItemPdTag(item->name));
+  setString(val->addElement("pdicon"), getApp()->getDotaLibrary()->getItemPdTag(item->icon));
   val->addElement("combined")->setValue(item->recipe ? "true" : "false");
   val->addElement("cost")->setValue(item->cost);
 }
@@ -374,19 +370,32 @@ static void setHero(ScriptValue* val, Dota::Hero* hero)
   setString(val->addElement("pdiconwide"), getApp()->getDotaLibrary()->getHeroPdTagWide(hero->point));
 }
 
+ScriptValue* ScriptGlobal::alloc(ScriptType* t)
+{
+  return values = new ScriptValue(t, this, values);
+}
+ScriptGlobal::~ScriptGlobal()
+{
+  while (values)
+  {
+    ScriptValue* next = values->getNext();
+    delete values;
+    values = next;
+  }
+}
 ScriptGlobal* ScriptGlobal::create(W3GReplay* w3g)
 {
   W3GGame* gameInfo = w3g->getGameInfo();
   DotaInfo const* dotaInfo = w3g->getDotaInfo();
 
   ScriptGlobal* global = new ScriptGlobal(ScriptType::tGlobal);
-  global->addElement("endl")->setValue("\n");
+  global->addElement("endl")->setValue("\r\n");
 
   Array<ScriptValue*> players;
   for (int i = 0; i < w3g->getNumPlayers(); i++)
   {
     W3GPlayer* player = w3g->getPlayer(i);
-    players.push(new ScriptValue(ScriptType::tPlayer));
+    players.push(global->alloc(ScriptType::tPlayer));
     players[i]->setValue(player->name);
     setString(players[i]->addElement("name"), player->name);
     setColor(players[i]->addElement("color"), getDefaultColor(player->slot.color));
@@ -407,29 +416,29 @@ ScriptGlobal* ScriptGlobal::create(W3GReplay* w3g)
     stats->addElement("creepkills")->setValue(player->stats[STAT_CREEPS]);
     stats->addElement("creepdenies")->setValue(player->stats[STAT_DENIES]);
     stats->addElement("neutralkills")->setValue(player->stats[STAT_NEUTRALS]);
-    stats->addElement("gold")->setValue(player->item_cost + player->stats[STAT_GOLD]);
+    players[i]->addElement("gold")->setValue(player->item_cost + player->stats[STAT_GOLD]);
 
-    ScriptValue* inventory = stats->addElement("inventory");
-    for (int i = 0; i < 6; i++)
-      if (player->inv.final[i])
-        setItem(inventory->addEnum(), player->inv.final[i]);
+    ScriptValue* inventory = players[i]->addElement("inventory");
+    for (int it = 0; it < 6; it++)
+      if (player->inv.final[it])
+        setItem(inventory->addEnum(), player->inv.final[it]);
 
-    ScriptValue* items = stats->addElement("items");
+    ScriptValue* items = players[i]->addElement("items");
     player->inv.compute(0x7FFFFFFF, w3g->getDotaData());
-    for (int i = 0; i < player->inv.comb.length(); i++)
+    for (int it = 0; it < player->inv.comb.length(); it++)
     {
-      W3GItem& item = player->inv.comb[i];
+      W3GItem& item = player->inv.comb[it];
       if (item.item)
       {
-        ScriptValue* it = items->addEnum();
-        setItem(it, item.item);
-        setTime(it->addElement("time"), item.time, w3g);
+        ScriptValue* itm = items->addEnum();
+        setItem(itm, item.item);
+        setTime(itm->addElement("time"), item.time, w3g);
       }
     }
 
     if (player->hero)
     {
-      ScriptValue* skills = stats->addElement("skills");
+      ScriptValue* skills = players[i]->addElement("skills");
       int levels[5] = {0, 0, 0, 0, 0};
       for (int i = 1; i <= player->hero->level; i++)
       {
@@ -506,15 +515,15 @@ ScriptGlobal* ScriptGlobal::create(W3GReplay* w3g)
         continue;
       ScriptValue* lane = lanes->addEnum();
       lane->setValue(getLaneName(l));
-      setString(lane->getElement("name"), getLaneName(l));
+      setString(lane->addElement("name"), getLaneName(l));
 
       for (int t = 0; t < 2; t++)
       {
         ScriptValue* plane = lane->addElement(t ? "scourge" : "sentinel");
         ScriptValue* tlane = tlanes[t]->addEnum();
         tlane->setValue(getLaneName(l));
-        setString(tlane->getElement("name"), getLaneName(l));
-        tlane = tlane->getElement("players");
+        setString(tlane->addElement("name"), getLaneName(l));
+        tlane = tlane->addElement("players");
         for (int i = 0; i < dotaInfo->team_size[t]; i++)
         {
           if ((dotaInfo->teams[t][i]->lane % 4) == l)
@@ -548,7 +557,9 @@ ScriptGlobal* ScriptGlobal::create(W3GReplay* w3g)
       for (int i = 0; i < dotaInfo->team_size[t]; i++)
         gPlayers->addEnum(players[dotaInfo->teams[t][i]->index]);
     gPlayers->addElement("sentinel", sentinel->getElement("players"));
-    gPlayers->addElement("scourge", sentinel->getElement("scourge"));
+    gPlayers->addElement("scourge", scourge->getElement("players"));
+    gPlayers->addElement("ratio")->setValue(String::format("%dv%d",
+      dotaInfo->team_size[0], dotaInfo->team_size[1]));
   }
   else
   {
@@ -584,13 +595,21 @@ ScriptGlobal* ScriptGlobal::create(W3GReplay* w3g)
     kills->addElement("scourge")->setValue(dotaInfo->team_kills[1]);
   }
 
+  bool hasHost = false;
   for (int i = 0; i < w3g->getNumPlayers(); i++)
   {
     if (!w3g->getPlayer(i)->name.icompare(gameInfo->creator))
     {
       game->addElement("host", players[i]);
+      hasHost = true;
       break;
     }
+  }
+  if (!hasHost)
+  {
+    ScriptValue* host = game->addElement("host");
+    host->setValue(gameInfo->creator);
+    setString(host->addElement("name"), gameInfo->creator);
   }
 
   if (gameInfo->winner == WINNER_SENTINEL || gameInfo->winner == WINNER_GSENTINEL ||
@@ -675,8 +694,23 @@ ScriptGlobal* ScriptGlobal::create(W3GReplay* w3g)
     }
   }
 
-  for (int i = 0; i < players.length(); i++)
-    players[i]->poof();
-
   return global;
+}
+
+ScriptValue* ScriptGlobal::getGlobalValue(String name)
+{
+  ScriptValue* value;
+  int dot = name.find('.');
+  String sub = (dot >= 0 ? name.substring(0, dot) : name);
+  if (vars.has(sub))
+    value = vars.get(sub);
+  else
+    value = getElement(sub);
+  while (value && dot >= 0)
+  {
+    name = name.substring(dot + 1);
+    dot = name.find('.');
+    value = value->getElement(dot >= 0 ? name.substring(0, dot) : name);
+  }
+  return value;
 }

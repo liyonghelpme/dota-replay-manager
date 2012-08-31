@@ -123,7 +123,7 @@ uint32 ClickColor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 
 void SettingsWindow::addAllItems()
 {
-  Frame* tab = tabs->addTab(0, "General");
+  Frame* tab = tabs->addTab("General");
 
   Frame* tip = new StaticFrame("Warcraft III Folder:", tab);
   WindowFrame* item1 = addStringItem(0, &cfg.warPath);
@@ -257,7 +257,7 @@ void SettingsWindow::addAllItems()
 
   //////////////////////////////////////////////////////////////
 
-  tab = tabs->addTab(1, "Replay");
+  tab = tabs->addTab("Replay");
 
   tip = new StaticFrame("Your name(s) in replays:", tab);
   item1 = addStringItem(1, &cfg.ownNames);

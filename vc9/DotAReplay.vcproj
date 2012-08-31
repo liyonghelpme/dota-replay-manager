@@ -484,6 +484,10 @@
 					>
 				</File>
 				<File
+					RelativePath="..\src\frameui\simpledlg.h"
+					>
+				</File>
+				<File
 					RelativePath="..\src\frameui\window.h"
 					>
 				</File>
@@ -518,6 +522,10 @@
 				</File>
 				<File
 					RelativePath="..\src\frameui\listctrl.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\frameui\simpledlg.cpp"
 					>
 				</File>
 				<File
@@ -566,6 +574,10 @@
 					>
 					<File
 						RelativePath="..\src\ui\replay\actions.h"
+						>
+					</File>
+					<File
+						RelativePath="..\src\ui\replay\draft.h"
 						>
 					</File>
 					<File
@@ -650,6 +662,10 @@
 						>
 					</File>
 					<File
+						RelativePath="..\src\ui\replay\draft.cpp"
+						>
+					</File>
+					<File
 						RelativePath="..\src\ui\replay\gamechat.cpp"
 						>
 					</File>
@@ -671,6 +687,10 @@
 					</File>
 					<File
 						RelativePath="..\src\ui\replay\present.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\src\ui\replay\scriptgen.cpp"
 						>
 					</File>
 					<File
@@ -811,10 +831,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\src\replay\parser.cpp"
-					>
-				</File>
-				<File
 					RelativePath="..\src\replay\player.cpp"
 					>
 				</File>
@@ -824,6 +840,10 @@
 				</File>
 				<File
 					RelativePath="..\src\replay\replayconsts.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\replayparser.cpp"
 					>
 				</File>
 				<File
@@ -3279,6 +3299,14 @@
 				</File>
 				<File
 					RelativePath="..\src\script\editor.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\script\scripteval.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\script\scriptparser.cpp"
 					>
 				</File>
 			</Filter>

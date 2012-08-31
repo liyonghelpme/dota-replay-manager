@@ -31,23 +31,7 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
   cache = NULL;
   hInstance = _hInstance;
   _loaded = false;
-}
-Application::~Application()
-{
-  delete mainWindow;
-  resources->flush();
-  delete dotaLibrary;
-  delete imageLibrary;
-  delete resources;
-  delete cache;
-  instance = NULL;
-  MPQCleanup();
-  OleUninitialize();
-}
-void loadDotaData(MPQLoader* ldr, String path);
 
-int Application::run()
-{
   root = String::getPath(getAppPath());
 
   INITCOMMONCONTROLSEX iccex;
@@ -113,15 +97,32 @@ int Application::run()
   
   mainWindow->postLoad();
   _loaded = true;
+}
+Application::~Application()
+{
+  delete mainWindow;
+  resources->flush();
+  delete dotaLibrary;
+  delete imageLibrary;
+  cfg.write();
+  delete resources;
+  delete cache;
+  instance = NULL;
+  ScriptType::freeTypes();
+  MPQCleanup();
+  OleFlushClipboard();
+  OleUninitialize();
+}
+void loadDotaData(MPQLoader* ldr, String path);
 
+int Application::run()
+{
   MSG msg;
   while (GetMessage(&msg, NULL, 0, 0))
   {
     TranslateMessage(&msg);
     DispatchMessage(&msg);
   }
-
-  cfg.write();
 
   return msg.wParam;
 }

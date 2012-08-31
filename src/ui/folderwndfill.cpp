@@ -53,24 +53,27 @@ uint32 WINAPI FolderWindow::fillerThreadProc(void* arg)
 
 void FolderWindow::releaseFillers()
 {
-  int count = 0;
-  for (FillerThreadData* data = filler; data; data = data->prev)
-    if (data->hThread)
-      count++;
-  HANDLE* handles = new HANDLE[count];
-  count = 0;
-  for (FillerThreadData* data = filler; data; data = data->prev)
-    if (data->hThread)
-      handles[count++] = data->hThread;
-  WaitForMultipleObjects(count, handles, TRUE, 5000);
-  delete[] handles;
-  while (filler)
+  if (filler)
   {
-    FillerThreadData* prev = filler->prev;
-    if (filler->hThread)
-      CloseHandle(filler->hThread);
-    delete filler;
-    filler = prev;
+    int count = 0;
+    for (FillerThreadData* data = filler; data; data = data->prev)
+      if (data->hThread)
+        count++;
+    HANDLE* handles = new HANDLE[count];
+    count = 0;
+    for (FillerThreadData* data = filler; data; data = data->prev)
+      if (data->hThread)
+        handles[count++] = data->hThread;
+    WaitForMultipleObjects(count, handles, TRUE, 5000);
+    delete[] handles;
+    while (filler)
+    {
+      FillerThreadData* prev = filler->prev;
+      if (filler->hThread)
+        CloseHandle(filler->hThread);
+      delete filler;
+      filler = prev;
+    }
   }
 }
 

@@ -10,7 +10,8 @@ class ScriptType
   Array<ScriptType*> types;
   ScriptType* enumType;
   int type;
-  int ref;
+  static ScriptType* first;
+  ScriptType* next;
 public:
   Dictionary<uint32> dir;
 
@@ -49,31 +50,25 @@ public:
   ScriptType* getSubType(char const* name);
 
   static void initTypes();
+  static void freeTypes();
   static ScriptType* tBasic;
   static ScriptType* tPlayer;
   static ScriptType* tGlobal;
 };
 
+class ScriptGlobal;
 class ScriptValue
 {
   ScriptType* type;
   ScriptValue** elements;
   Array<ScriptValue*> list;
   String value;
-  int ref;
+  ScriptValue* next;
+protected:
+  ScriptGlobal* global;
 public:
-  ScriptValue(ScriptType* t);
+  ScriptValue(ScriptType* t, ScriptGlobal* global, ScriptValue* next);
   ~ScriptValue();
-
-  bool poof()
-  {
-    if (ref == 0)
-    {
-      delete this;
-      return true;
-    }
-    return false;
-  }
 
   ScriptType* getType() const
   {
@@ -111,32 +106,43 @@ public:
   {
     return list[i];
   }
+
+  ScriptValue* getNext() const
+  {
+    return next;
+  }
 };
 
 class ScriptGlobal : public ScriptValue
 {
   ScriptGlobal(ScriptType* type)
-    : ScriptValue(type)
-  {}
+    : ScriptValue(type, NULL, NULL)
+  {
+    values = NULL;
+    global = this;
+  }
+  ScriptValue* values;
   Dictionary<ScriptValue*> vars;
 public:
   static ScriptGlobal* create(W3GReplay* w3g);
+  ~ScriptGlobal();
 
-  ScriptValue* getValue(char const* name)
+  ScriptValue* getGlobalValue(String name);
+
+  bool hasGlobalValue(char const* name)
   {
-    if (vars.has(name))
-      return vars.get(name);
-    return getElement(name);
+    return vars.has(name);
   }
-
-  void setValue(char const* name, ScriptValue* value)
+  void setGlobalValue(char const* name, ScriptValue* value)
   {
     vars.set(name, value);
   }
-  void unsetValue(char const* name)
+  void unsetGlobalValue(char const* name)
   {
     vars.del(name);
   }
+
+  ScriptValue* alloc(ScriptType* t);
 };
 
 #endif // __SCRIPT_DATA__

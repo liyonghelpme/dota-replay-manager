@@ -111,10 +111,15 @@ public:
 
   friend String operator + (char const* str1, String str2)
   {
-    return String(str1) + str2;
+    return String(str1) += str2;
+  }
+  friend String operator * (int n, String str2)
+  {
+    return String(str2) *= n;
   }
 
   String& operator += (char ch);
+  String& operator *= (int n);
 
   String operator + (String str) const
   {
@@ -132,6 +137,11 @@ public:
   {
     String s(*this);
     return s += ch;
+  }
+  String operator * (int n) const
+  {
+    String s(*this);
+    return s *= n;
   }
 
   bool operator == (String str) const

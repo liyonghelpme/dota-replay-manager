@@ -120,6 +120,23 @@ String& String::operator += (char ch)
   return *this;
 }
 
+String& String::operator *= (int n)
+{
+  if (n <= 1)
+    return *this;
+  if (_ref(buf) > 1) splice();
+  if (_len(buf) * n >= _size(buf))
+    realloc(_len(buf) * n);
+
+  int len = _len(buf);
+  int pos = 0;
+  for (int i = 1; i < n; i++, pos += len)
+    memcpy(buf + pos + len, buf + pos, len);
+  buf[_len(buf) *= n] = 0;
+
+  return *this;
+}
+
 int String::toInt() const
 {
   return atoi(buf);

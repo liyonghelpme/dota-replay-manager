@@ -14,6 +14,7 @@
 #define PT_BOTTOMRIGHT    0x22
 
 #define M_UNHANDLED       0x80000000
+#define FM_SHUTDOWN       0x7F000001
 
 class Frame
 {
@@ -179,6 +180,7 @@ protected:
   virtual void endMoving(uint32 data)
   {
   }
+  void shutdown();
 public:
   RootFrame();
   ~RootFrame();

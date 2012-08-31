@@ -145,7 +145,12 @@ MemoryPool::MemoryPool(uint32 chunk)
 }
 MemoryPool::~MemoryPool()
 {
-  clear();
+  while (chunks)
+  {
+    MemoryChunk* next = chunks->next;
+    free(chunks);
+    chunks = next;
+  }
 }
 
 void* MemoryPool::alloc(uint32 size)
