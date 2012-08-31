@@ -35,12 +35,20 @@ class DotaLoader
   MPQArchive* map;
   void addNewImage(String path, bool big = false)
   {
+    String title = String::getFileTitle(path);
+    if (getApp()->getImageLibrary()->hasImage(title))
+      return;
     File* file = loader->load(path);
+    if (file == NULL)
+    {
+      String::setExtension(path, ".blp");
+      file = loader->load(path);
+    }
     if (file)
     {
       Image image(file);
       if (image.bits())
-        getApp()->getImageLibrary()->addImage(String::getFileTitle(path), &image, big);
+        getApp()->getImageLibrary()->addImage(title, &image, big);
       delete file;
     }
   }
@@ -355,10 +363,10 @@ class DotaLoader
   }
 
 public:
-  DotaLoader(MPQLoader* _loader)
+  DotaLoader()
     : iname(DictionaryMap::alNumNoCase)
   {
-    loader = _loader;
+    loader = getApp()->getWarLoader();
     map = NULL;
     curid = 'Xx00';
   }
@@ -733,12 +741,7 @@ public:
 void DotaLibrary::loadMap(String map, String dest)
 {
   MPQArchive* res = getApp()->getResources();
-  MPQLoader ldr("Custom_V1");
-  ldr.loadArchive(String::buildFullName(cfg.warPath, "war3.mpq"));
-  ldr.loadArchive(String::buildFullName(cfg.warPath, "war3x.mpq"));
-  ldr.loadArchive(String::buildFullName(cfg.warPath, "war3xlocal.mpq"));
-  ldr.loadArchive(String::buildFullName(cfg.warPath, "war3patch.mpq"));
-  DotaLoader loader(&ldr);
+  DotaLoader loader;
   loader.load(map);
   File* file = res->openFile(dest, File::REWRITE);
   loader.write(file);

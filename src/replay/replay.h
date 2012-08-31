@@ -220,6 +220,12 @@ public:
   {
     return fileInfo;
   }
+
+  File* getFile()
+  {
+    replay->seek(blockPos, SEEK_SET);
+    return replay;
+  }
 };
 
 #endif // __REPLAY_REPLAY_H__

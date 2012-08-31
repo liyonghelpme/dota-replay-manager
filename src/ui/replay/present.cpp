@@ -241,9 +241,6 @@ uint32 ReplayPresentTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         delete parser;
       }
       break;
-    case IDC_PREVIEW:
-      // NYI
-      break;
     case IDC_COPY:
       {
         String text = result->getText();

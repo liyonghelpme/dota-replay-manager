@@ -573,6 +573,10 @@
 					Name="replay"
 					>
 					<File
+						RelativePath="..\src\ui\replay\actionlog.h"
+						>
+					</File>
+					<File
 						RelativePath="..\src\ui\replay\actions.h"
 						>
 					</File>
@@ -658,6 +662,10 @@
 					Name="replay"
 					>
 					<File
+						RelativePath="..\src\ui\replay\actionlog.cpp"
+						>
+					</File>
+					<File
 						RelativePath="..\src\ui\replay\actions.cpp"
 						>
 					</File>
@@ -723,6 +731,10 @@
 					RelativePath="..\src\dota\dotadata.h"
 					>
 				</File>
+				<File
+					RelativePath="..\src\dota\mapdata.h"
+					>
+				</File>
 				<Filter
 					Name="load"
 					>
@@ -750,6 +762,10 @@
 				</File>
 				<File
 					RelativePath="..\src\dota\dotadata.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\dota\mapdata.cpp"
 					>
 				</File>
 				<Filter
@@ -798,6 +814,10 @@
 					>
 				</File>
 				<File
+					RelativePath="..\src\replay\orders.h"
+					>
+				</File>
+				<File
 					RelativePath="..\src\replay\player.h"
 					>
 				</File>
@@ -828,6 +848,10 @@
 				</File>
 				<File
 					RelativePath="..\src\replay\inventory.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\orders.cpp"
 					>
 				</File>
 				<File

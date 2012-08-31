@@ -14,6 +14,13 @@ int convert_race (int race)
     return RACE_RANDOM;
   return 0;
 }
+static const char raceImage[][32] = {"Empty", "human", "orc", "nightelf", "undead", "random"};
+String getRaceIcon(int race)
+{
+  if (race < 0 || race > RACE_RANDOM)
+    return raceImage[0];
+  return raceImage[race];
+}
 
 const char actionNames[NUM_ACTIONS][256] = {
   "Right click",

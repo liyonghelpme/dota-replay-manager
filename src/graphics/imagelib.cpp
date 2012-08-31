@@ -9,7 +9,8 @@ ImageLibrary::ImageInfo::ImageInfo()
 ImageLibrary::ImageInfo::~ImageInfo()
 {
   delete image;
-  DeleteObject(hBitmap);
+  if (hBitmap)
+    DeleteObject(hBitmap);
 }
 Image* ImageLibrary::ImageInfo::getImage(MPQArchive* mpq)
 {
@@ -56,19 +57,26 @@ void ImageLibrary::loadImage(String name)
 
 String ImageLibrary::getTooltip(char const* name)
 {
+  if (!images.has(name))
+    return "";
   return images.get(name).tooltip;
 }
 void ImageLibrary::setTooltip(char const* name, String tooltip)
 {
-  images.get(name).tooltip = tooltip;
+  if (!images.has(name))
+    images.get(name).tooltip = tooltip;
 }
 Image* ImageLibrary::getImage(char const* name)
 {
+  if (!images.has(name))
+    return NULL;
   ImageInfo& info = images.get(name);
   return info.getImage(mpq);
 }
 HBITMAP ImageLibrary::getBitmap(char const* name)
 {
+  if (!images.has(name))
+    return NULL;
   ImageInfo& info = images.get(name);
   if (!info.hBitmap)
     info.hBitmap = info.getImage(mpq)->createBitmap();

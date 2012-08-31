@@ -26,14 +26,14 @@ class ListFrame : public WindowFrame
   int colorMode;
   Array<bool> colUtf8;
 
-  wchar_t* wcBuf;
   int wcBufSize;
-  int convertUtf8(String text);
 
-  void drawItemText(HDC hDC, String text, RECT rc, uint32 format, bool utf8);
-  int getItemTextWidth(HDC hDC, String text, uint32 format, bool utf8);
+  int drawItemText(HDC hDC, String text, RECT* rc, uint32 format, bool utf8);
   void drawItem(DRAWITEMSTRUCT* dis);
 protected:
+  wchar_t* wcBuf;
+  int convertUtf8(String text);
+
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:
   enum {colorNone, colorStripe, colorParam};

@@ -39,6 +39,10 @@ public:
   HBITMAP getBitmap(char const* name);
   int getListIndex(char const* name, char const* def = NULL);
 
+  bool hasImage(char const* name)
+  {
+    return images.has(name);
+  }
   void addImage(char const* name, Image* image, bool big = false);
 };
 

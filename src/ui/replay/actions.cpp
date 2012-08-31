@@ -284,7 +284,7 @@ void ReplayActionsTab::onSetReplay()
             getLightColor(player->slot.color), player->hero->hero->icon, (uint32) player);
         else
           players->addString(String::format("%s (No Hero)", player->name),
-            getLightColor(player->slot.color), "Empty", (uint32) player);
+            getLightColor(player->slot.color), NULL, (uint32) player);
       }
     }
 

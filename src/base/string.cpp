@@ -122,11 +122,18 @@ String& String::operator += (char ch)
 
 String& String::operator *= (int n)
 {
-  if (n <= 1)
+  if (n == 1)
     return *this;
   if (_ref(buf) > 1) splice();
   if (_len(buf) * n >= _size(buf))
     realloc(_len(buf) * n);
+
+  if (n <= 0)
+  {
+    _len(buf) = 0;
+    buf[0] = 0;
+    return *this;
+  }
 
   int len = _len(buf);
   int pos = 0;
@@ -737,6 +744,23 @@ wchar_t* String::toWide() const
 void String::toWide(wchar_t* ptr, int length) const
 {
   MultiByteToWideChar(CP_UTF8, 0, buf, _len(buf) + 1, ptr, length);
+}
+
+String& String::toAnsi()
+{
+  if (_ref(buf) > 1) splice();
+
+  int count = MultiByteToWideChar(CP_UTF8, 0, buf, _len(buf), NULL, 0);
+  wchar_t* wide = new wchar_t[count];
+  MultiByteToWideChar(CP_UTF8, 0, buf, _len(buf), wide, count);
+
+  int ncount = WideCharToMultiByte(CP_ACP, 0, wide, count, NULL, 0, NULL, NULL);
+  realloc(ncount);
+  WideCharToMultiByte(CP_ACP, 0, wide, count, buf, ncount, NULL, NULL);
+  _len(buf) = ncount;
+  buf[ncount] = 0;
+
+  return *this;
 }
 
 bool String::toClipboard() const

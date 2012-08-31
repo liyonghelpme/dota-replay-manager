@@ -10,6 +10,7 @@
 #define RACE_RANDOM           5
 
 int convert_race(int race);
+String getRaceIcon(int race);
 
 #define SPEED_SLOW            0
 #define SPEED_NORMAL          1

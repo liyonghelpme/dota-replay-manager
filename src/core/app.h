@@ -10,6 +10,7 @@
 #include "core/registry.h"
 
 class MPQArchive;
+class MPQLoader;
 class ImageLibrary;
 class DotaLibrary;
 class MainWnd;
@@ -23,6 +24,7 @@ class Application
   String root;
 
   MPQArchive* resources;
+  MPQLoader* warLoader;
   ImageLibrary* imageLibrary;
   DotaLibrary* dotaLibrary;
   MainWnd* mainWindow;
@@ -40,6 +42,10 @@ public:
   MPQArchive* getResources() const
   {
     return resources;
+  }
+  MPQLoader* getWarLoader() const
+  {
+    return warLoader;
   }
   ImageLibrary* getImageLibrary() const
   {

@@ -386,6 +386,7 @@ Frame::Frame(Frame* _parent)
   _y = 0;
   _width = 0;
   _height = 0;
+  _visible = true;
   memset(anchors, 0, sizeof anchors);
   if (parent)
     master = parent->master;

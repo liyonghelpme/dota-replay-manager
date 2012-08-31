@@ -156,7 +156,9 @@ uint32 EditFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       SetTextColor(hDC, fgcolor);
     if ((bgcolor & 0xFF000000) == 0)
       SetBkColor(hDC, bgcolor);
-    return (uint32) background;
+    if (background)
+      return (uint32) background;
+    return M_UNHANDLED;
   }
   return M_UNHANDLED;
 }

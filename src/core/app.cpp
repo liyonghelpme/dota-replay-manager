@@ -88,6 +88,12 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
     DeleteFile(patchPath);
   }
 
+  warLoader = new MPQLoader("Custom_V1");
+  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3.mpq"));
+  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3x.mpq"));
+  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3xlocal.mpq"));
+  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3patch.mpq"));
+
   imageLibrary = new ImageLibrary(resources);
 
   cache = new CacheManager();
@@ -104,9 +110,11 @@ Application::~Application()
   resources->flush();
   delete dotaLibrary;
   delete imageLibrary;
-  cfg.write();
   delete resources;
   delete cache;
+  delete warLoader;
+
+  cfg.write();
   instance = NULL;
   ScriptType::freeTypes();
   MPQCleanup();

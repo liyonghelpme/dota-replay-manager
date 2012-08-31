@@ -13,17 +13,19 @@
 #include "ui/replay/playerexp.h"
 #include "ui/replay/present.h"
 #include "ui/replay/draft.h"
+#include "ui/replay/actionlog.h"
 
 static char tabNames[][64] = {
-  "Game Info",
+  "Game info",
   "Chat log",
   "Timeline",
-  "Player Info",
+  "Builds",
   "Actions",
   "Gold chart",
   "Exp chart",
   "Presentation",
-  "Draft Info",
+  "Draft info",
+  "Action log",
 };
 
 ReplayWindow::ReplayWindow(Frame* parent)
@@ -43,6 +45,7 @@ ReplayWindow::ReplayWindow(Frame* parent)
   frames[REPLAY_PLAYEREXP] = new ReplayPlayerExpTab(this);
   frames[REPLAY_PRESENT] = new ReplayPresentTab(this);
   frames[REPLAY_DRAFT] = new ReplayDraftTab(this);
+  frames[REPLAY_ACTIONLOG] = new ReplayActionLogTab(this);
 }
 ReplayWindow::~ReplayWindow()
 {
@@ -74,6 +77,8 @@ void ReplayWindow::update()
     if (dotaInfo && (dotaInfo->draft.numPool || dotaInfo->draft.numPicks[0] ||
         dotaInfo->draft.numPicks[1] || dotaInfo->draft.numBans[0] || dotaInfo->draft.numBans[1]))
       addFrame(REPLAY_DRAFT);
+
+    addFrame(REPLAY_ACTIONLOG);
   }
   for (int i = 0; i < REPLAY_NUM_TABS; i++)
     frames[i]->setReplay(replay);

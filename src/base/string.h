@@ -297,6 +297,8 @@ public:
   wchar_t* toWide() const;
   void toWide(wchar_t* ptr, int length) const;
 
+  String& toAnsi();
+
   static void parseString(String str, String& cmd, String& args);
 
   static String null;

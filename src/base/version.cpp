@@ -1,5 +1,17 @@
 #include "version.h"
 
+int vGetMajor(uint32 version)
+{
+  return version / 2600;
+}
+int vGetMinor(uint32 version)
+{
+  return (version / 26) % 100;
+}
+int vGetBuild(uint32 version)
+{
+  return version % 26;
+}
 uint32 makeVersion(int major, int minor, int build)
 {
   return (major * 100 + minor) * 26 + build;
