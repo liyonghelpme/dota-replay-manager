@@ -184,7 +184,7 @@ void ReplayPlayerInfoTab::setPlayer(W3GPlayer* player)
       if (other->hero)
       {
         Image img(16, 16);
-        img.fill(getFlipColor(other->slot.color) | 0xFF000000);
+        img.fill(Image::clr(getSlotColor(other->slot.color)));
         img.blt(1, 1, lib->getImage(other->hero->hero->icon), 1, 1, 14, 14);
         kdIcons[i]->setImage(&img);
         kdIcons[i]->show();
@@ -257,9 +257,7 @@ void ReplayPlayerInfoTab::setPlayer(W3GPlayer* player)
       buildInfo->setText("Final build:");
       buildInfo->resetSize();
       Image image(numItems * 17 - 1, 16);
-      uint32 color = GetSysColor(COLOR_BTNFACE);
-      image.fill(((color & 0x0000FF) << 16) | (color & 0x00FF00) |
-        ((color & 0xFF0000) >> 16) | 0xFF000000);
+      image.fill(Image::clr(GetSysColor(COLOR_BTNFACE)));
       numItems = 0;
       for (int i = 0; i < 6; i++)
         if (player->inv.final[i])

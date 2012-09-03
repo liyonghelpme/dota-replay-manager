@@ -83,6 +83,8 @@ bool Image::loadTGA(File* f)
         delete[] _bits;
         return false;
       }
+      for (uint16 i = 0; i < hdr.colormapLength; i++)
+        pal[i] = clr_rgba_noflip(pal[i]);
     }
   }
   if (hdr.imageType >= 1 && hdr.imageType <= 3)

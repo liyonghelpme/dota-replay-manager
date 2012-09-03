@@ -21,7 +21,7 @@ struct BLP2Header
   uint32 pal[256];
 };
 
-bool load_raw (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
+bool load_raw(uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
 {
   uint32 alphaBits = 0;
   uint32 dim = hdr.width * hdr.height;
@@ -48,6 +48,8 @@ bool load_raw (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
       {
         if (alpha & (1 << b))
           *data |= 0xFF000000;
+        else
+          *data = 0;
         data++;
       }
     }
@@ -55,12 +57,12 @@ bool load_raw (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
   else if (hdr.alphaDepth == 8)
   {
     for (uint32 i = 0; i < dim; i++)
-      *data |= (*src++) << 24;
+      *data = Image::clr_noflip(*data, *src++);
   }
   return true;
 }
 
-bool load_dxt1 (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
+bool load_dxt1(uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
 {
   if (hdr.width < 4 || hdr.height < 4)
     return false;
@@ -70,8 +72,8 @@ bool load_dxt1 (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
   {
     for (uint32 x = 0; x < hdr.width; x += 4)
     {
-      uint16 p = * (uint16*) src;
-      uint16 q = * (uint16*) (src + 2);
+      uint16 p = *(uint16*) src;
+      uint16 q = *(uint16*) (src + 2);
       src += 4;
       uint32 pred = ((p >> 11) & 0x1F) * 255 / 31;
       uint32 pgreen = ((p >> 5) & 0x3F) * 255 / 63;
@@ -94,7 +96,7 @@ bool load_dxt1 (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
           (pgreen + qgreen) / 2, (pblue + qblue) / 2);
         c[3] = 0;
       }
-      uint32 lookup = * (uint32*) src;
+      uint32 lookup = *(uint32*) src;
       src += 4;
       for (uint32 cy = y; cy < y + 4; cy++)
       {
@@ -111,7 +113,7 @@ bool load_dxt1 (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
   return true;
 }
 
-bool load_dxt3 (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
+bool load_dxt3(uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
 {
   if (hdr.width < 4 || hdr.height < 4)
     return false;
@@ -121,10 +123,10 @@ bool load_dxt3 (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
   {
     for (uint32 x = 0; x < hdr.width; x += 4)
     {
-      uint64 alpha = * (uint64*) src;
+      uint64 alpha = *(uint64*) src;
       src += 8;
-      uint16 p = * (uint16*) src;
-      uint16 q = * (uint16*) (src + 2);
+      uint16 p = *(uint16*) src;
+      uint16 q = *(uint16*) (src + 2);
       src += 4;
       uint32 pred = ((p >> 11) & 0x1F) * 255 / 31;
       uint32 pgreen = ((p >> 5) & 0x3F) * 255 / 63;
@@ -138,7 +140,7 @@ bool load_dxt3 (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
                        (pgreen * 2 + qgreen) / 3, (pblue * 2 + qblue) / 3),
                      Image::clr((pred + qred * 2) / 3,
                        (pgreen + qgreen * 2) / 3, (pblue + qblue * 2) / 3)};
-      uint32 lookup = * (uint32*) src;
+      uint32 lookup = *(uint32*) src;
       src += 4;
       for (uint32 cy = y; cy < y + 4; cy++)
       {
@@ -146,7 +148,7 @@ bool load_dxt3 (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
         for (uint32 cx = 0; cx < 4; cx++)
         {
           uint32 i = lookup & 3;
-          *dst++ = (c[i] & 0x00FFFFFF) | ((uint32 (alpha & 0x0F) * 255 / 15) << 24);
+          *dst++ = Image::clr_noflip(c[i], uint32(alpha & 0x0F) * 255 / 15);
           lookup >>= 2;
           alpha >>= 4;
         }
@@ -156,7 +158,7 @@ bool load_dxt3 (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
   return true;
 }
 
-bool load_dxt5 (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
+bool load_dxt5(uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
 {
   if (hdr.width < 4 || hdr.height < 4)
     return false;
@@ -168,11 +170,11 @@ bool load_dxt5 (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
     {
       uint32 a0 = *src++;
       uint32 a1 = *src++;
-      uint64 alpha = (uint64 (* (uint16*) src)) |
-                     (uint64 (* (uint32*) (src + 2)) << 16);
+      uint64 alpha = (uint64(*(uint16*) src)) |
+                     (uint64(*(uint32*) (src + 2)) << 16);
       src += 6;
-      uint16 p = * (uint16*) src;
-      uint16 q = * (uint16*) (src + 2);
+      uint16 p = *(uint16*) src;
+      uint16 q = *(uint16*) (src + 2);
       src += 4;
       uint32 pred = ((p >> 11) & 0x1F) * 255 / 31;
       uint32 pgreen = ((p >> 5) & 0x3F) * 255 / 63;
@@ -205,7 +207,7 @@ bool load_dxt5 (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
         a[6] = 0;
         a[7] = 255;
       }
-      uint32 lookup = * (uint32*) src;
+      uint32 lookup = *(uint32*) src;
       src += 4;
       for (uint32 cy = y; cy < y + 4; cy++)
       {
@@ -213,8 +215,7 @@ bool load_dxt5 (uint8* src, uint32 length, uint32* data, BLP2Header const& hdr)
         for (uint32 cx = 0; cx < 4; cx++)
         {
           uint32 i = lookup & 3;
-          uint32 ai = uint32 (alpha & 7);
-          *dst++ = (c[i] & 0x00FFFFFF) | (a[ai] << 24);
+          *dst++ = Image::clr_noflip(c[i], a[alpha & 7]);
           lookup >>= 2;
           alpha >>= 3;
         }
@@ -231,8 +232,8 @@ using namespace _blp2;
 bool Image::loadBLP2(File* f)
 {
   BLP2Header hdr;
-  f->seek (0, SEEK_SET);
-  if (f->read (&hdr, sizeof hdr) != sizeof hdr)
+  f->seek(0, SEEK_SET);
+  if (f->read(&hdr, sizeof hdr) != sizeof hdr)
     return false;
 
   if (hdr.id != '2PLB')
@@ -252,8 +253,8 @@ bool Image::loadBLP2(File* f)
     return false;
 
   uint8* src = new uint8[hdr.lengths[0]];
-  f->seek (hdr.offsets[0], SEEK_SET);
-  if (f->read (src, hdr.lengths[0]) != hdr.lengths[0])
+  f->seek(hdr.offsets[0], SEEK_SET);
+  if (f->read(src, hdr.lengths[0]) != hdr.lengths[0])
     return false;
 
   _width = hdr.width;

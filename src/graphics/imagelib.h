@@ -10,12 +10,14 @@ class ImageLibrary
 {
   CRITICAL_SECTION lock;
   HIMAGELIST list;
+  HDC hImageDC;
   struct ImageInfo
   {
     String filename;
     String tooltip;
     Image* image;
     HBITMAP hBitmap;
+    HBITMAP hAlphaBitmap;
     int listIndex;
     ImageInfo();
     ~ImageInfo();
@@ -41,6 +43,8 @@ public:
   Image* getImage(char const* name);
   HBITMAP getBitmap(char const* name);
   int getListIndex(char const* name, char const* def = NULL);
+
+  void drawAlpha(HDC hDC, int index, int x, int y, int width, int height);
 
   bool hasImage(char const* name)
   {

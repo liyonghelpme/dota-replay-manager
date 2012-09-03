@@ -96,7 +96,7 @@ ReplayGameInfoTab::ReplayGameInfoTab(Frame* parent)
   map->setSize(132, 132);
 
   mapCanvas = new Image(128, 128);
-  mapCanvas->fill(0xFF00FF00);
+  mapCanvas->fill(Image::clr(0, 255, 0));
   HDC hDC = GetDC(map->getHandle());
   mapBitmap = mapCanvas->createBitmap(hDC);
   ReleaseDC(map->getHandle(), hDC);
@@ -165,7 +165,7 @@ void ReplayGameInfoTab::onSetReplay()
   mapImages[0] = NULL;
   mapImages[1] = NULL;
   curImage = 0;
-  mapCanvas->fill(0);
+  mapCanvas->fill(Image::clr(0, 0, 0));
   HDC hDC = GetDC(map->getHandle());
   mapCanvas->fillBitmap(mapBitmap, hDC);
   ReleaseDC(map->getHandle(), hDC);
@@ -429,7 +429,7 @@ uint32 ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam
         if (mapImages[1 - curImage])
         {
           curImage = 1 - curImage;
-          mapCanvas->fill(0);
+          mapCanvas->fill(Image::clr(0, 0, 0));
           BLTInfo info(mapImages[curImage]);
           info.setDstSize(mapCanvas->width(), mapCanvas->height());
           mapCanvas->blt(info);

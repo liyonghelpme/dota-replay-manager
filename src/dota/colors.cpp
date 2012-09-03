@@ -55,11 +55,6 @@ uint32 getDarkColor(int clr)
   }
   return c;
 }
-uint32 getFlipColor(int clr)
-{
-  uint32 c = getSlotColor(clr);
-  return ((c >> 16) & 0xFF) | (c & 0x00FF00) | ((c & 0xFF) << 16);
-}
 uint32 getExtraColor(int clr)
 {
   switch (clr)

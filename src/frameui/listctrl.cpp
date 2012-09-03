@@ -249,6 +249,7 @@ int ListFrame::toolHitTest(POINT pt, ToolInfo* ti)
                   pt.y >= ti->rc.top && pt.y < ti->rc.bottom)
               {
                 ti->text = getApp()->getImageLibrary()->getTooltip(index);
+                ReleaseDC(hWnd, hDC);
                 return (ti->text.isEmpty() ? -1 : 0);
               }
               item.left += 18;
@@ -312,9 +313,9 @@ int ListFrame::drawItemText(HDC hDC, String text, RECT* rc, uint32 format, bool 
           if (rc && rc->left < rc->right)
           {
             if (index != 0)
-              ImageList_DrawEx(imgList, index, hDC, rc->left + 1, (rc->top + rc->bottom) / 2 - 8,
-                rc->right - rc->left > 16 ? 16 : rc->right - rc->left, 16,
-                CLR_NONE, CLR_NONE, ILD_NORMAL);
+              getApp()->getImageLibrary()->drawAlpha(hDC, index, 
+                rc->left + 1, (rc->top + rc->bottom) / 2 - 8,
+                rc->right - rc->left > 16 ? 16 : rc->right - rc->left, 16);
             rc->left += 18;
           }
           width += 18;
@@ -434,10 +435,8 @@ void ListFrame::drawItem(DRAWITEMSTRUCT* dis)
   }
 
   if (lvi.iImage != 0)
-  {
-    HIMAGELIST imgList = ListView_GetImageList(hWnd, LVSIL_SMALL);
-    ImageList_Draw(imgList, lvi.iImage, dis->hDC, icon.left, icon.top, ILD_NORMAL);
-  }
+    getApp()->getImageLibrary()->drawAlpha(dis->hDC, lvi.iImage, 
+      icon.left, icon.top, 16, 16);
 
   if (selected)
     SetTextColor(dis->hDC, clrTextSave);

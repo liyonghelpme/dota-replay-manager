@@ -14,20 +14,21 @@ inline int _max(int a, int b)
 {
   return a > b ? a : b;
 }
-
-unsigned char Image::mtable[65536];
-bool Image::gtable = false;
-void Image::initTable ()
+inline uint8 _add(uint8 x, uint8 y)
 {
-  if (!gtable)
-  {
-    for (int c = 0; c <= 255; c++)
-      for (int a = 0; a <= 255; a++)
-        mtable[a * 256 + c] = (unsigned char) (c * (255 - a) / 255);
-    gtable = true;
-  }
+  if (x > 255 - y)
+    return 255;
+  else
+    return x + y;
 }
-inline void _qmemset (void* mem, uint32 fill, uint32 count)
+static inline uint8 _clip(uint64 x)
+{
+  if (x > 255)
+    return 255;
+  else
+    return uint8(x);
+}
+inline void _qmemset(void* mem, uint32 fill, uint32 count)
 {
   _asm
   {
@@ -38,32 +39,80 @@ inline void _qmemset (void* mem, uint32 fill, uint32 count)
     rep stosd
   }
 }
+static inline uint8 _unalpha(uint32 c, uint32 a)
+{
+  uint32 res = (c * 255) / a;
+  if (res > 255) res = 255;
+  return (uint8) res;
+}
+
+unsigned char Image::mtable[65536];
+bool Image::gtable = false;
+void Image::initTable()
+{
+  if (!gtable)
+  {
+    for (int c = 0; c <= 255; c++)
+      for (int a = 0; a <= 255; a++)
+        mtable[a * 256 + c] = (uint8) (c * (255 - a) / 255);
+    gtable = true;
+  }
+}
 
 Image::Image(int width, int height)
 {
-  //srcDC = NULL;
-  //bmp = NULL;
   initTable ();
 
   _width = width;
   _height = height;
-  _bits = new unsigned long[width * height];
-  mode = _opaque;
+  _bits = new uint32[width * height];
+  _flags = 0xFFFFFF;
   _qmemset (_bits, 0xFF000000, width * height);
-  unowned = false;
-
-  resetClipRect();
 }
+Image::Image(int width, int height, uint32* bits)
+{
+  initTable ();
+
+  _width = width;
+  _height = height;
+  _bits = bits;
+  _flags = _unowned | 0xFFFFFF;
+  _qmemset (_bits, 0xFF000000, width * height);
+}
+Image::Image(char const* filename)
+{
+  load(TempFile(File::open(filename, File::READ)));
+}
+Image::Image(File* file)
+{
+  load(file);
+}
+Image::~Image()
+{
+  if (!(_flags & _unowned))
+    delete[] _bits;
+}
+void Image::updateAlpha()
+{
+  _flags &= ~_premult;
+  for (int i = 0; i < _width * _height; i++)
+  {
+    if ((_bits[i] & 0xFF000000) != 0xFF000000)
+    {
+      _flags |= _premult;
+      return;
+    }
+  }
+}
+
 bool Image::load(File* file)
 {
-  //srcDC = NULL;
-  //bmp = NULL;
   initTable();
+
   _width = 0;
   _height = 0;
   _bits = NULL;
-  mode = _opaque;
-  unowned = false;
+  _flags = 0xFFFFFF;
 
   if (file)
   {
@@ -80,48 +129,13 @@ bool Image::load(File* file)
       _bits = NULL;
       _width = 0;
       _height = 0;
-      mode = _opaque;
+      _flags = 0;
     }
-
-    if (loaded)
-    {
-      for (int i = _width * _height - 1; i >= 0 && mode == _opaque; i--)
-        if ((_bits[i] & 0xFF000000) != 0xFF000000)
-          mode = _alpha;
-    }
-    resetClipRect();
+    else
+      updateAlpha();
     return loaded;
   }
-  resetClipRect();
   return false;
-}
-Image::Image(char const* filename)
-{
-  load(TempFile(File::open(filename, File::READ)));
-}
-Image::Image(File* file)
-{
-  load(file);
-}
-Image::Image(int width, int height, uint32* bits)
-{
-  initTable ();
-
-  _width = width;
-  _height = height;
-  _bits = bits;
-  mode = _opaque;
-  _qmemset (_bits, 0xFF000000, width * height);
-  unowned = true;
-
-  resetClipRect ();
-}
-Image::~Image()
-{
-  if (!unowned)
-    delete[] _bits;
-  //delete srcDC;
-  //delete bmp;
 }
 
 void Image::blt(int x, int y, Image const* src)
@@ -129,106 +143,91 @@ void Image::blt(int x, int y, Image const* src)
   if (src == NULL || src->_bits == NULL || src == this) return;
   blt(x, y, src, 0, 0, src->_width, src->_height);
 }
-void Image::make_premult()
-{
-  unsigned char* ptr = (unsigned char*) _bits;
-  for (int i = _width * _height - 1; i >= 0; i--)
-  {
-    unsigned char* alpha = mtable + (255 - ptr[3]) * 256; 
-    *ptr = alpha[*ptr]; ptr++;
-    *ptr = alpha[*ptr]; ptr++;
-    *ptr = alpha[*ptr]; ptr++;
-    ptr++;
-  }
-  mode = _premult;
-}
 void Image::blt(int x, int y, Image const* src, int srcX, int srcY, int srcW, int srcH)
 {
   if (src == NULL || src->_bits == NULL || src == this) return;
-  int startY = _max(0, clipRect.top - y);
-  int endY = _min(clipRect.bottom - y, srcH);
-  int startX = _max(0, clipRect.left - x);
-  int endX = _min(clipRect.right - x, srcW);
+  int startY = _max(0, -y);
+  int endY = _min(_height - y, srcH);
+  int startX = _max(0, -x);
+  int endX = _min(_width - x, srcW);
   startY += srcY;
   endY += srcY;
   startX += srcX;
   endX += srcX;
   x -= srcX;
   y -= srcY;
-  if (mode != _opaque && src->mode != _opaque)
-    make_premult();
   for (int cy = startY; cy < endY; cy++)
   {
-    unsigned char* srcBits = (unsigned char*) (src->_bits + src->_width * cy + startX);
-    unsigned char* dstBits = (unsigned char*) (_bits + _width * (cy + y) + (startX + x));
-    if (src->mode == _opaque)
+    uint8* srcBits = (uint8*) (src->_bits + src->_width * cy + startX);
+    uint8* dstBits = (uint8*) (_bits + _width * (cy + y) + (startX + x));
+    if ((src->_flags & _premult) == 0)
       memcpy(dstBits, srcBits, (endX - startX) * 4);
-    else if (mode == _opaque)
-    {
-      if (src->mode == _alpha)
-      {
-        for (int cx = startX; cx < endX; cx++)
-        {
-          unsigned char* tSrc = mtable + (255 - srcBits[3]) * 256;
-          unsigned char* tDst = mtable + srcBits[3] * 256;
-          *dstBits = tDst[*dstBits] + tSrc[*srcBits++]; dstBits++;
-          *dstBits = tDst[*dstBits] + tSrc[*srcBits++]; dstBits++;
-          *dstBits = tDst[*dstBits] + tSrc[*srcBits++]; dstBits++;
-          dstBits++, srcBits++;
-        }
-      }
-      else
-      {
-        for (int cx = startX; cx < endX; cx++)
-        {
-          unsigned char* tDst = mtable + srcBits[3] * 256;
-          *dstBits = tDst[*dstBits] + *srcBits++; dstBits++;
-          *dstBits = tDst[*dstBits] + *srcBits++; dstBits++;
-          *dstBits = tDst[*dstBits] + *srcBits++; dstBits++;
-          dstBits++, srcBits++;
-        }
-      }
-    }
     else
     {
       for (int cx = startX; cx < endX; cx++)
       {
-        unsigned char* tSrc = mtable + (src->mode == _alpha ? (255 - srcBits[3]) * 256 : 0);
-        unsigned char* tDst = mtable + srcBits[3] * 256;
-        *dstBits = tDst[*dstBits] + tSrc[*srcBits++]; dstBits++;
-        *dstBits = tDst[*dstBits] + tSrc[*srcBits++]; dstBits++;
-        *dstBits = tDst[*dstBits] + tSrc[*srcBits++]; dstBits++;
+        uint8* tDst = mtable + uint32(srcBits[3]) * 256;
+        *dstBits = _add(tDst[*dstBits], *srcBits++); dstBits++;
+        *dstBits = _add(tDst[*dstBits], *srcBits++); dstBits++;
+        *dstBits = _add(tDst[*dstBits], *srcBits++); dstBits++;
         *dstBits = 255 - tDst[255 - *dstBits];
         dstBits++, srcBits++;
       }
     }
   }
+  if ((src->_flags & _premult) == 0 && startX == 0 && endX == _width &&
+      startY == 0 && endY == _height)
+    _flags &= ~_premult;
 }
-void Image::fill(unsigned int color)
+void Image::fill(uint32 color)
 {
   _qmemset(_bits, color, _width * _height);
-  mode = ((color & 0xFF000000) == 0xFF000000 ? _opaque : _alpha);
+  if ((color & 0xFF000000) == 0xFF000000)
+    _flags &= ~_premult;
+  else
+    _flags |= _premult;
 }
-void Image::fill(unsigned int color, int x, int y, int width, int height)
+void Image::fill(uint32 color, int x, int y, int width, int height)
 {
-  if (y < clipRect.top) {height -= clipRect.top - y; y = clipRect.top;}
-  if (x < clipRect.left) {width -= clipRect.left - x; x = clipRect.left;}
-  if (y + height > clipRect.bottom) height = clipRect.bottom - y;
-  if (x + width > clipRect.right) width = clipRect.right - x;
-  if ((x != 0 || y != 0 || width != _width || height != _height) && mode == _premult)
-  {
-    unsigned char* buf = (unsigned char*) &color;
-    unsigned char* map = mtable + (255 - buf[3]) * 256;
-    buf[0] = map[buf[0]];
-    buf[1] = map[buf[1]];
-    buf[2] = map[buf[2]];
-  }
+  if (y < 0) {height += y; y = 0;}
+  if (x < 0) {width += x; x = 0;}
+  if (y + height > _height) height = _height - y;
+  if (x + width > _width) width = _width - x;
+  if (width <= 0 || height <= 0)
+    return;
   for (int cy = y; cy < y + height; cy++)
     _qmemset(_bits + _width * cy + x, color, width);
-  if (x == 0 && y == 0 && width == _width && height == _height)
-    mode = ((color & 0xFF000000) == 0xFF000000 ? _opaque : _alpha);
-  else if (width && height && mode == _opaque && (color & 0xFF000000) != 0xFF000000)
-    mode = _alpha;
+  if ((color & 0xFF000000) != 0xFF000000)
+    _flags |= _premult;
+  else if (x == 0 && y == 0 && width == _width && height == _height)
+    _flags &= ~_premult;
+  else if (_flags & _premult)
+    updateAlpha();
+}
+void Image::setAlpha(Image* image)
+{
+  if (image == NULL || image->_width != _width || image->_height != _height)
+    return;
+  _flags &= ~_premult;
+  for (int i = 0; i < _width * _height; i++)
+  {
+    uint32 a = _bits[i] >> 24;
+    if (a == 0)
+      _bits[i] = clr(0, 0, 0, brightness((image->_bits[i] >> 16) & 0xFF,
+                              (image->_bits[i] >> 8) & 0xFF,
+                              image->_bits[i] & 0xFF
+                              ));
+    else
+      _bits[i] = clr(_unalpha((_bits[i] >> 16) & 0xFF, a),
+                     _unalpha((_bits[i] >> 8) & 0xFF, a),
+                     _unalpha(_bits[i] & 0xFF, a),
+                     brightness((image->_bits[i] >> 16) & 0xFF,
+                                (image->_bits[i] >> 8) & 0xFF,
+                                image->_bits[i] & 0xFF
+                     ));
+    if ((_bits[i] & 0xFF000000) != 0xFF000000)
+      _flags |= _premult;
+  }
 }
 
 HBITMAP Image::createBitmap(HDC hDC)
@@ -242,8 +241,56 @@ HBITMAP Image::createBitmap(HDC hDC)
     ReleaseDC(NULL, hDC);
   return hBitmap;
 }
+HBITMAP Image::createAlphaBitmap(HDC hDC)
+{
+  if ((_flags & _premult) == 0)
+    return NULL;
+
+  bool nullDC = (hDC == NULL);
+  if (nullDC)
+    hDC = GetDC(NULL);
+
+  BITMAPV5HEADER bi;
+  memset(&bi, 0, sizeof bi);
+  bi.bV5Size = sizeof bi;
+  bi.bV5Width = _width;
+  bi.bV5Height = -_height;
+  bi.bV5Planes = 1;
+  bi.bV5BitCount = 32;
+  bi.bV5Compression = BI_BITFIELDS;
+  bi.bV5RedMask = 0x00FF0000;
+  bi.bV5GreenMask = 0x0000FF00;
+  bi.bV5BlueMask = 0x000000FF;
+  bi.bV5AlphaMask = 0xFF000000;
+  uint8* dst;
+  HBITMAP hBitmap = CreateDIBSection(hDC, (BITMAPINFO*) &bi,
+    DIB_RGB_COLORS, (void**) &dst, NULL, 0);
+  if (dst)
+    memcpy(dst, _bits, sizeof(uint32) * _width * _height);
+
+  if (nullDC)
+    ReleaseDC(NULL, hDC);
+  return hBitmap;
+}
 void Image::fillBitmap(HBITMAP hBitmap, HDC hDC)
 {
+  uint32* temp = NULL;
+  if ((_flags & _premult) && (_flags & _bgcolor))
+  {
+    temp = new uint32[_width * _height];
+    uint32 bgr = (_flags >> 16) & 0xFF;
+    uint32 bgg = (_flags >> 8) & 0xFF;
+    uint32 bgb = _flags & 0xFF;
+    uint8* ptr = (uint8*) temp;
+    for (int i = 0; i < _width * _height; i++)
+    {
+      uint8* alpha = mtable + uint32(_bits[i] >> 24) * 256;
+      *ptr++ = _add(_bits[i] & 0xFF, alpha[bgb]);
+      *ptr++ = _add((_bits[i] >> 8) & 0xFF, alpha[bgg]);
+      *ptr++ = _add((_bits[i] >> 16) & 0xFF, alpha[bgr]);
+      *ptr++ = 255;
+    }
+  }
   BITMAPINFOHEADER bi;
   bi.biSize = sizeof bi;
   bi.biWidth = _width;
@@ -256,7 +303,8 @@ void Image::fillBitmap(HBITMAP hBitmap, HDC hDC)
   bi.biYPelsPerMeter = 1;
   bi.biClrUsed = 0;
   bi.biClrImportant = 0;
-  SetDIBits(hDC, hBitmap, 0, _height, _bits, (BITMAPINFO*) &bi, DIB_RGB_COLORS);
+  SetDIBits(hDC, hBitmap, 0, _height, temp ? temp : _bits, (BITMAPINFO*) &bi, DIB_RGB_COLORS);
+  delete[] temp;
 }
 Image* Image::fromBitmap(HBITMAP hBitmap)
 {
@@ -278,93 +326,40 @@ Image* Image::fromBitmap(HBITMAP hBitmap)
   bi.biClrImportant = 0;
   HDC hDC = GetDC(NULL);
   GetDIBits(hDC, hBitmap, 0, bm.bmHeight, image->_bits, (BITMAPINFO*) &bi, DIB_RGB_COLORS);
+  image->_flags &= ~_premult;
+  for (int i = 0; i < image->_width * image->_height; i++)
+  {
+    if ((image->_bits[i] & 0xFF000000) != 0xFF000000)
+    {
+      image->_bits[i] = clr_rgba_noflip(image->_bits[i]);
+      image->_flags |= _premult;
+    }
+  }
 
-  for (int i = 0; i < bm.bmWidth * bm.bmHeight; i++)
-    image->_bits[i] |= 0xFF000000;
   return image;
 }
+uint32* Image::bitsAlpha() const
+{
+  uint32* bits = new uint32[_width * _height];
+  if (_flags & _premult)
+  {
+    for (int i = 0; i < _width * _height; i++)
+    {
+      uint32 a = _bits[i] >> 24;
+      if (a == 0)
+        bits[i] = 0;
+      else
+        bits[i] = _unalpha(_bits[i] & 0xFF, a) |
+                 (_unalpha((_bits[i] >> 8) & 0xFF, a) << 8) |
+                 (_unalpha((_bits[i] >> 16) & 0xFF, a) << 16) |
+                 (a << 24);
+    }
+  }
+  else
+    memcpy(bits, _bits, sizeof(uint32) * _width * _height);
+  return bits;
+}
 
-//void Image4D::render (CDC* dc, int x, int y, bool opaque)
-//{
-//  if (srcDC == NULL)
-//  {
-//    srcDC = new CDC;
-//    srcDC->CreateCompatibleDC (dc);
-//    bmp = new CBitmap;
-//    bmp->CreateCompatibleBitmap (dc, width, height);
-//    srcDC->SelectObject (bmp);
-//  }
-//  if (!opaque && mode == _alpha)
-//    make_premult ();
-//  fillBitmap (bmp, dc);
-//  RECT clip;
-//  dc->GetClipBox (&clip);
-//  int startX = 0;
-//  int startY = 0;
-//  int endX = width;
-//  int endY = height;
-//  if (x + startX < clip.left) startX = clip.left - x;
-//  if (y + startY < clip.top) startY = clip.top - y;
-//  if (x + endX > clip.right) endX = clip.right - x;
-//  if (y + endY > clip.bottom) endY = clip.bottom - y;
-//  if (endX > startX && endY > startY)
-//  {
-//    if (opaque || mode == _opaque)
-//      dc->BitBlt (x + startX, y + startY, endX - startX, endY - startY, srcDC, startX, startY, SRCCOPY);
-//    else
-//    {
-//      BLENDFUNCTION bf;
-//      bf.BlendOp = AC_SRC_OVER;
-//      bf.BlendFlags = 0;
-//      bf.SourceConstantAlpha = 255;
-//      bf.AlphaFormat = AC_SRC_ALPHA;
-//      dc->AlphaBlend (x + startX, y + startY, endX - startX, endY - startY, srcDC,
-//                      startX, startY, endX - startX, endY - startY, bf);
-//    }
-//  }
-//}
-//void Image4D::eraseBkgnd (CDC* dc, int x, int y, unsigned long color)
-//{
-//  CWnd* wnd = dc->GetWindow ();
-//  CRect rc;
-//  wnd->GetClientRect (rc);
-//  eraseBkgnd (dc, x, y, rc, color);
-//}
-//void Image4D::eraseBkgnd (CDC* dc, int x, int y, CRect const& rc, unsigned long color)
-//{
-//  if (x > 0)
-//    dc->FillSolidRect (0, 0, x, rc.bottom, color);
-//  if (x + width < rc.right)
-//    dc->FillSolidRect (x + width, 0, rc.right, rc.bottom, color);
-//  if (y > 0)
-//    dc->FillSolidRect (x, 0, x + width, y, color);
-//  if (y + height < rc.bottom)
-//    dc->FillSolidRect (x, y + height, x + width, rc.bottom, color);
-//}
-//void Image4D::setClipRect (CDC* dc, int x, int y)
-//{
-//  resetClipRect ();
-//  RECT clip;
-//  dc->GetClipBox (&clip);
-//  if (x + clipRect.left < clip.left) clipRect.left = clip.left - x;
-//  if (y + clipRect.top < clip.top) clipRect.top = clip.top - y;
-//  if (x + clipRect.right > clip.right) clipRect.right = clip.right - x;
-//  if (y + clipRect.bottom > clip.bottom) clipRect.bottom = clip.bottom - y;
-//}
-static inline unsigned char _add(unsigned char x, unsigned char y)
-{
-  if (x > 255 - y)
-    return 255;
-  else
-    return x + y;
-}
-static inline unsigned char _clip(__int64 x)
-{
-  if (x > 255)
-    return 255;
-  else
-    return (unsigned char) x;
-}
 void Image::blt(BLTInfo& info)
 {
   if (info.src == NULL || info.src->_bits == NULL || info.src == this)
@@ -398,33 +393,20 @@ void Image::blt(BLTInfo& info)
     info.flipY = !info.flipY;
   }
   bool mod = ((info.modulate & 0x00FFFFFF) != 0x00FFFFFF);
-  unsigned char* modb = mtable + (255 - (info.modulate & 0xFF)) * 256;
-  unsigned char* modg = mtable + (255 - ((info.modulate >> 8) & 0xFF)) * 256;
-  unsigned char* modr = mtable + (255 - ((info.modulate >> 16) & 0xFF)) * 256;
-  if (mode != _opaque && info.src->mode != _opaque)
-    make_premult ();
+  uint8* modr = mtable + (255 - ((info.modulate >> 16) & 0xFF)) * 256;
+  uint8* modg = mtable + (255 - ((info.modulate >> 8) & 0xFF)) * 256;
+  uint8* modb = mtable + (255 - (info.modulate & 0xFF)) * 256;
+
+  int cxStart = 0;
+  int cxEnd = info.dstW;
+  if (info.x + cxStart < 0) cxStart = -info.x;
+  if (info.x + cxEnd > _width) cxEnd = _width - info.x;
+  int cyStart = 0;
+  int cyEnd = info.dstH;
+  if (info.y + cyStart < 0) cyStart = -info.y;
+  if (info.y + cyEnd > _height) cyEnd = _height - info.y;
   if (info.srcW == info.dstW && info.srcH == info.dstH)
   {
-    int cyStart = 0;
-    int cyEnd = info.dstH;
-    if (info.y + cyStart < clipRect.top) cyStart = clipRect.top - info.y;
-    if (info.y + cyEnd > clipRect.bottom) cyEnd = clipRect.bottom - info.y;
-    if (info.flipY)
-    {
-      if (info.srcY + info.srcH - cyStart > info.src->_height)
-        cyStart = info.srcY + info.srcH - info.src->_height;
-      if (info.srcY + info.srcH - cyEnd < 0)
-        cyEnd = info.srcY + info.srcH;
-    }
-    else
-    {
-      if (info.srcY + cyStart < 0) cyStart = -info.srcY;
-      if (info.srcY + cyEnd > info.src->_height) cyEnd = info.src->_height - info.srcY;
-    }
-    int cxStart = 0;
-    int cxEnd = info.dstW;
-    if (info.x + cxStart < clipRect.left) cxStart = clipRect.left - info.x;
-    if (info.x + cxEnd > clipRect.right) cxEnd = clipRect.right - info.x;
     if (info.flipX)
     {
       if (info.srcX + info.srcW - cxStart > info.src->_width)
@@ -437,6 +419,18 @@ void Image::blt(BLTInfo& info)
       if (info.srcX + cxStart < 0) cxStart = -info.srcX;
       if (info.srcX + cxEnd > info.src->_width) cxEnd = info.src->_width - info.srcX;
     }
+    if (info.flipY)
+    {
+      if (info.srcY + info.srcH - cyStart > info.src->_height)
+        cyStart = info.srcY + info.srcH - info.src->_height;
+      if (info.srcY + info.srcH - cyEnd < 0)
+        cyEnd = info.srcY + info.srcH;
+    }
+    else
+    {
+      if (info.srcY + cyStart < 0) cyStart = -info.srcY;
+      if (info.srcY + cyEnd > info.src->_height) cyEnd = info.src->_height - info.srcY;
+    }
     int dstOY = info.y;
     int dstOX = info.x;
     int srcOY = info.flipY ? info.srcY + info.srcH - 1 : info.srcY;
@@ -447,20 +441,19 @@ void Image::blt(BLTInfo& info)
     {
       int dstY = dstOY + cy;
       int srcY = srcOY + cy * srcDY;
-      unsigned char* srcBits = (unsigned char*) (info.src->_bits + info.src->_width * srcY + srcOX + cxStart);
-      unsigned char* dstBits = (unsigned char*) (_bits + _width * dstY + dstOX + cxStart);
-      if (info.src->mode == _opaque && !info.flipX && !info.desaturate && info.alphaMode == BLTInfo::Blend)
+      uint8* srcBits = (uint8*) (info.src->_bits + info.src->_width * srcY + srcOX + cxStart);
+      uint8* dstBits = (uint8*) (_bits + _width * dstY + dstOX + cxStart);
+      if ((info.src->_flags & _premult) == 0 && !info.flipX &&
+          !info.desaturate && info.alphaMode == BLTInfo::Blend)
         memcpy(dstBits, srcBits, (cxEnd - cxStart) * 4);
       else
       {
         for (int cx = cxStart; cx < cxEnd; cx++)
         {
-          unsigned char* tSrc = mtable + (info.src->mode == _alpha ? (255 - srcBits[3]) * 256 : 0);
-          unsigned char* tMid = mtable + srcBits[3] * 256;
-          unsigned char* tDst = (mode == _alpha ? mtable + (255 - tMid[dstBits[3]]) * 256 : tMid);
-          unsigned char srcb = srcBits[0];
-          unsigned char srcg = srcBits[1];
-          unsigned char srcr = srcBits[2];
+          uint8* tDst = mtable + uint32(srcBits[3]) * 256;
+          uint8 srcb = srcBits[0];
+          uint8 srcg = srcBits[1];
+          uint8 srcr = srcBits[2];
           if (mod)
           {
             srcb = modb[srcb];
@@ -469,24 +462,23 @@ void Image::blt(BLTInfo& info)
           }
           if (info.desaturate)
           {
-            unsigned char sat = brightness (srcr, srcg, srcb);
+            uint8 sat = brightness(srcr, srcg, srcb);
             srcb = sat;
             srcg = sat;
             srcr = sat;
           }
           if (info.alphaMode == BLTInfo::Blend)
           {
-            dstBits[0] = tDst[dstBits[0]] + tSrc[srcb];
-            dstBits[1] = tDst[dstBits[1]] + tSrc[srcg];
-            dstBits[2] = tDst[dstBits[2]] + tSrc[srcr];
-            dstBits[3] = 255 - tMid[255 - dstBits[3]];
+            dstBits[0] = _add(tDst[dstBits[0]], srcb);
+            dstBits[1] = _add(tDst[dstBits[1]], srcg);
+            dstBits[2] = _add(tDst[dstBits[2]], srcr);
+            dstBits[3] = 255 - tDst[255 - dstBits[3]];
           }
           else
           {
-            tDst = mtable + (mode == _alpha ? (255 - dstBits[3]) * 256 : 0);
-            dstBits[0] = _add (tDst[dstBits[0]], tSrc[srcb]);
-            dstBits[1] = _add (tDst[dstBits[1]], tSrc[srcg]);
-            dstBits[2] = _add (tDst[dstBits[2]], tSrc[srcr]);
+            dstBits[0] = _add(dstBits[0], srcb);
+            dstBits[1] = _add(dstBits[1], srcg);
+            dstBits[2] = _add(dstBits[2], srcr);
           }
           dstBits += 4;
           srcBits += 4 * srcDX;
@@ -496,14 +488,6 @@ void Image::blt(BLTInfo& info)
   }
   else
   {
-    int cxStart = 0;
-    int cxEnd = info.dstW;
-    if (info.x + cxStart < clipRect.left) cxStart = clipRect.left - info.x;
-    if (info.x + cxEnd > clipRect.right) cxEnd = clipRect.right - info.x;
-    int cyStart = 0;
-    int cyEnd = info.dstH;
-    if (info.y + cyStart < clipRect.top) cyStart = clipRect.top - info.y;
-    if (info.y + cyEnd > clipRect.bottom) cyEnd = clipRect.bottom - info.y;
     for (int cx = cxStart; cx < cxEnd; cx++)
     {
       for (int cy = cyStart; cy < cyEnd; cy++)
@@ -519,11 +503,11 @@ void Image::blt(BLTInfo& info)
           srcY = (info.srcY * info.srcH) * info.dstH - (cy + 1) * info.srcH;
         else
           srcY = info.srcY * info.dstH + cy * info.srcH;
-        __int64 cb = 0;
-        __int64 cg = 0;
-        __int64 cr = 0;
-        __int64 ca = 0;
-        __int64 area = 0;
+        uint64 cb = 0;
+        uint64 cg = 0;
+        uint64 cr = 0;
+        uint64 ca = 0;
+        uint64 area = 0;
         int curX = srcX;
         int curY = srcY;
         while (curX < srcX + info.srcW)
@@ -542,24 +526,23 @@ void Image::blt(BLTInfo& info)
                 endY = srcY + info.srcH;
               if (py >= 0 && py < info.src->_height)
               {
-                unsigned char* src = (unsigned char*) (info.src->_bits + info.src->_width * py + px);
-                __int64 da = (endX - curX) * (endY - curY);
-                __int64 alpha = src[3];
-                __int64 salpha = (info.src->mode == _alpha ? alpha : 255);
+                uint8* src = (uint8*) (info.src->_bits + info.src->_width * py + px);
+                uint64 da = (endX - curX) * (endY - curY);
+                uint64 alpha = src[3];
                 if (info.desaturate)
                 {
-                  __int64 sat = __int64(brightness (modr[src[2]], modg[src[1]], modb[src[0]])) * salpha * da;
+                  uint64 sat = uint64(brightness(modr[src[2]], modg[src[1]], modb[src[0]])) * da;
                   cb += sat;
                   cg += sat;
                   cr += sat;
                 }
                 else
                 {
-                  cb += __int64(modr[src[0]]) * salpha * da;
-                  cg += __int64(modg[src[1]]) * salpha * da;
-                  cr += __int64(modb[src[2]]) * salpha * da;
+                  cb += uint64(modr[src[0]]) * da;
+                  cg += uint64(modg[src[1]]) * da;
+                  cr += uint64(modb[src[2]]) * da;
                 }
-                ca += __int64 (255 - alpha) * da;
+                ca += uint64(255 - alpha) * da;
                 area += da;
               }
               curY = endY;
@@ -569,35 +552,32 @@ void Image::blt(BLTInfo& info)
         }
         if (area)
         {
-          unsigned char* dst = (unsigned char*) (_bits + _width * dstY + dstX);
-          unsigned char* tDst = mtable + (mode == _alpha ? (255 - dst[3]) * 256 : 0);
+          uint8* dst = (uint8*) (_bits + _width * dstY + dstX);
           if (info.alphaMode == BLTInfo::Blend)
           {
-            dst[0] = (unsigned char) ((__int64(tDst[dst[0]]) * ca + cb) / area / 255);
-            dst[1] = (unsigned char) ((__int64(tDst[dst[1]]) * ca + cg) / area / 255);
-            dst[2] = (unsigned char) ((__int64(tDst[dst[2]]) * ca + cr) / area / 255);
-            dst[3] = 255 - (unsigned char) (__int64(255 - dst[3]) * ca / area / 255);
+            dst[0] = _clip((uint64(dst[0]) * ca / 255 + cb) / area);
+            dst[1] = _clip((uint64(dst[1]) * ca / 255 + cg) / area);
+            dst[2] = _clip((uint64(dst[2]) * ca / 255 + cr) / area);
+            dst[3] = 255 - _clip(uint64(255 - dst[3]) * ca / (area * 255));
           }
           else
           {
-            dst[0] = _clip (__int64(tDst[dst[0]]) + cb / area / 255);
-            dst[1] = _clip (__int64(tDst[dst[1]]) + cg / area / 255);
-            dst[2] = _clip (__int64(tDst[dst[2]]) + cr / area / 255);
+            dst[0] = _clip(uint64(dst[0]) + cb / area);
+            dst[1] = _clip(uint64(dst[1]) + cg / area);
+            dst[2] = _clip(uint64(dst[2]) + cr / area);
           }
         }
       }
     }
   }
-  if (mode != _opaque)
-    mode = _premult;
 }
 
 void Image::desaturate()
 {
-  unsigned char* data = (unsigned char*) _bits;
+  uint8* data = (uint8*) _bits;
   for (int i = _width * _height; i > 0; i--)
   {
-    unsigned char sat = brightness(data[0], data[1], data[2]);
+    uint8 sat = brightness(data[2], data[1], data[0]);
     data[0] = sat;
     data[1] = sat;
     data[2] = sat;
@@ -611,12 +591,12 @@ bool Image::getRect(int& left, int& top, int& right, int& bottom) const
   top = _height;
   right = 0;
   bottom = 0;
-  unsigned long* data = _bits;
+  uint32* data = _bits;
   for (int y = 0; y < _height; y++)
   {
     for (int x = 0; x < _width; x++, data++)
     {
-      if ((*data) & 0xFF000000)
+      if (*data)
       {
         if (x < left) left = x;
         if (x >= right) right = x + 1;
@@ -629,87 +609,6 @@ bool Image::getRect(int& left, int& top, int& right, int& bottom) const
     return false;
   return true;
 }
-
-//ImageList::ImageList (int _width, int _height, int _background)
-//{
-//  width = _width;
-//  height = _height;
-//  background = _background | 0xFF000000;
-//  list = new CImageList;
-//  img = new Image4D (width, height);
-//  bmp = new CBitmap;
-//  list->Create (width, height, ILC_COLOR24, 16, 16);
-//
-//  CDC* dc = CDC::FromHandle (GetDC (NULL));
-//  bmp->CreateCompatibleBitmap (dc, width, height);
-//  ReleaseDC (NULL, dc->m_hDC);
-//}
-//ImageList::~ImageList ()
-//{
-//  delete img;
-//  delete bmp;
-//  delete list;
-//}
-//void ImageList::reset ()
-//{
-//  list->DeleteImageList ();
-//  list->Create (width, height, ILC_COLOR24, 16, 16);
-//  images.clear ();
-//}
-//int ImageList::getImagePos (Image4D* image)
-//{
-//  if (image == NULL) return getBlankPos ();
-//  if (images.has ((uint32) image))
-//    return images.get ((uint32) image);
-//
-//  img->fill (background);
-//  BLTInfo blt (image);
-//  blt.setDstSize (width, height);
-//  img->blt (blt);
-//
-//  CDC* dc = CDC::FromHandle (GetDC (NULL));
-//  img->fillBitmap (bmp, dc);
-//  int pos = list->Add (bmp, (CBitmap*) NULL);
-//  ReleaseDC (NULL, dc->m_hDC);
-//
-//  images.set ((uint32) image, pos);
-//  return pos;
-//}
-//int ImageList::getIconPos (Icon* icon, int size)
-//{
-//  if (icon == NULL) return getBlankPos ();
-//  if (images.has ((uint32) icon))
-//    return images.get ((uint32) icon);
-//
-//  img->fill (background);
-//  Image4D* image = icon->getImage (size).getImage ();
-//  BLTInfo blt (image);
-//  blt.setDstSize (width, height);
-//  img->blt (blt);
-//
-//  CDC* dc = CDC::FromHandle (GetDC (NULL));
-//  img->fillBitmap (bmp, dc);
-//  int pos = list->Add (bmp, (CBitmap*) NULL);
-//  ReleaseDC (NULL, dc->m_hDC);
-//
-//  images.set ((uint32) icon, pos);
-//  return pos;
-//}
-//int ImageList::getBlankPos ()
-//{
-//  if (images.has (0))
-//    return images.get (0);
-//
-//  img->fill (background);
-//
-//  CDC* dc = CDC::FromHandle (GetDC (NULL));
-//  img->fillBitmap (bmp, dc);
-//  int pos = list->Add (bmp, (CBitmap*) NULL);
-//  ReleaseDC (NULL, dc->m_hDC);
-//
-//  images.set (0, pos);
-//  return pos;
-//}
 
 static inline int swork(int org, int acc, int count, float coeff)
 {
@@ -772,9 +671,14 @@ void Image::modBrightness(float coeff)
               (bwork((_bits[i] >> 16) & 0xFF, coeff) << 16) |
               (_bits[i] & 0xFF000000);
 }
-void Image::replaceColor(unsigned int color, unsigned int with)
+void Image::replaceColor(uint32 color, uint32 with)
 {
-  for (int i = _width * _height - 1; i >= 0; i--)
+  _flags &= ~_premult;
+  for (int i = 0; i < _width * _height; i++)
+  {
     if (_bits[i] == color)
       _bits[i] = with;
+    if ((_bits[i] & 0xFF000000) != 0xFF000000)
+      _flags |= _premult;
+  }
 }

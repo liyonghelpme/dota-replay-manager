@@ -20,7 +20,7 @@ MapData::MapData(char const* path)
       WC3_LOAD_ABILITIES | WC3_LOAD_UPGRADES | WC3_LOAD_MERGED | WC3_LOAD_NO_WEONLY);
 
     Image blank(16, 16);
-    blank.fill(0xFFFFFFFF);
+    blank.fill(Image::clr(255, 255, 255));
     HBITMAP hBitmap = blank.createBitmap();
     ImageList_Add(imgList, hBitmap, NULL);
     DeleteObject(hBitmap);

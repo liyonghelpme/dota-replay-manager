@@ -156,9 +156,10 @@ bool Image::loadBLP(File* f)
         uint8* ptr = buffer[0];
         for (int i = 0; i < _width; i++, ptr += cinfo.num_components)
         {
-          lineBuf[i] = clr(ptr[2], ptr[1], ptr[0]);
           if (cinfo.num_components > 3)
-            lineBuf[i] = (lineBuf[i] & 0x00FFFFFF) | (ptr[3] << 24);
+            lineBuf[i] = clr(ptr[2], ptr[1], ptr[0], ptr[3]);
+          else
+            lineBuf[i] = clr(ptr[2], ptr[1], ptr[0]);
         }
       }
       y++;
@@ -183,15 +184,15 @@ bool Image::loadBLP(File* f)
       for (int i = 0; i < _width * _height; i++)
       {
         uint32 p = pal[f->getc()];
-        _bits[i] = (p & 0x00FFFFFF) | ((255 - (p >> 24)) << 24);
+        _bits[i] = clr_noflip(p, 255 - (p >> 24));
       }
     }
     else
     {
       for (int i = 0; i < _width * _height; i++)
-        _bits[i] = pal[f->getc()] & 0x00FFFFFF;
+        _bits[i] = pal[f->getc()];
       for (int i = 0; i < _width * _height; i++)
-        _bits[i] |= (f->getc() << 24);
+        _bits[i] = clr_noflip(_bits[i], f->getc());
     }
   }
   return true;

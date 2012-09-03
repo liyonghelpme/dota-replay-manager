@@ -277,7 +277,7 @@ W3GGame::W3GGame(File* f)
   uint32 chksum = *(uint32*) (buf + 9);
 
   map = (buf + 13);
-  int bpos = 0;
+  int bpos = 13;
   while (buf[bpos])
     bpos++;
   creator = (buf + bpos + 1);

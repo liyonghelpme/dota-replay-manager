@@ -4,6 +4,10 @@ http://www.playdota.com/forums/showthread.php?p=110886
 http://rivsoft.narod.ru/dotareplay.html
 
 ============== Changelog ==================================
+**3.01**
+ - Fixed host name detection
+ - Added icon transparency, fixed recipe icon
+
 **3.00**
  - Major remake!
  - Whole program re-written from scratch!

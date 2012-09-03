@@ -268,8 +268,10 @@ uint32 OGLPainter::genTexture(Image const* img)
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
+  uint32* bits = img->bitsAlpha();
   glTexImage2D(GL_TEXTURE_2D, 0, 4, img->width(), img->height(), 0, GL_BGRA_EXT,
-    GL_UNSIGNED_BYTE, img->bits());
+    GL_UNSIGNED_BYTE, bits);
+  delete[] bits;
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);

@@ -56,12 +56,10 @@ FolderWindow::FolderWindow(Frame* parent, MainWnd* pMainWnd)
 
   Image* sortImg = getApp()->getImageLibrary()->getImage("SortUp");
   if (sortImg)
-    sortImg->replaceColor(sortImg->getPixel(0, 0), 0xFF000000 |
-      Image::flip_color(GetSysColor(COLOR_MENU)));
+    sortImg->setBackground(Image::clr(GetSysColor(COLOR_MENU)));
   sortImg = getApp()->getImageLibrary()->getImage("SortDown");
   if (sortImg)
-    sortImg->replaceColor(sortImg->getPixel(0, 0), 0xFF000000 |
-      Image::flip_color(GetSysColor(COLOR_MENU)));
+    sortImg->setBackground(Image::clr(GetSysColor(COLOR_MENU)));
 
   ctxMenu = CreatePopupMenu();
 

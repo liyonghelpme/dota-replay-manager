@@ -18,17 +18,17 @@ struct PNGChunk
   uint32 type;
   uint8* data;
   uint32 crc;
-  PNGChunk ()
+  PNGChunk()
   {
     data = NULL;
   }
-  ~PNGChunk ()
+  ~PNGChunk()
   {
     delete[] data;
   }
 };
 
-#pragma pack (push, 1)
+#pragma pack(push, 1)
 struct PNGHeader
 {
   uint32 width;
@@ -39,41 +39,41 @@ struct PNGHeader
   uint8 filterMethod;
   uint8 interlaceMethod;
 };
-#pragma	pack (pop)
+#pragma	pack(pop)
 
-bool read_chunk (PNGChunk& ch, File* f)
+bool read_chunk(PNGChunk& ch, File* f)
 {
   delete[] ch.data;
   ch.data = NULL;
-  if (f->read (&ch.length, 4) != 4)
+  if (f->read(&ch.length, 4) != 4)
     return false;
-  if (f->read (&ch.type, 4) != 4)
+  if (f->read(&ch.type, 4) != 4)
     return false;
-  ch.length = flip_int (ch.length);
+  ch.length = flip_int(ch.length);
   ch.data = new uint8[ch.length];
-  if (f->read (ch.data, ch.length) != ch.length)
+  if (f->read(ch.data, ch.length) != ch.length)
     return false;
-  if (f->read (&ch.crc, 4) != 4)
+  if (f->read(&ch.crc, 4) != 4)
     return false;
-  ch.crc = flip_int (ch.crc);
-  uint32 crc = update_crc (0xFFFFFFFF, &ch.type, 4);
-  crc = update_crc (crc, ch.data, ch.length);
+  ch.crc = flip_int(ch.crc);
+  uint32 crc = update_crc(0xFFFFFFFF, &ch.type, 4);
+  crc = update_crc(crc, ch.data, ch.length);
   crc = ~crc;
   if (crc != ch.crc)
     return false;
-  ch.type = flip_int (ch.type);
+  ch.type = flip_int(ch.type);
   return true;
 }
 
-void write_chunk (uint32 type, uint32 length, void const* data, File* f)
+void write_chunk(uint32 type, uint32 length, void const* data, File* f)
 {
-  type = flip_int (type);
-  f->writeInt (flip_int (length));
-  f->writeInt (type);
-  f->write (data, length);
-  uint32 crc = update_crc (0xFFFFFFFF, &type, 4);
-  crc = ~update_crc (crc, data, length);
-  f->writeInt (flip_int (crc));
+  type = flip_int(type);
+  f->writeInt(flip_int(length));
+  f->writeInt(type);
+  f->write(data, length);
+  uint32 crc = update_crc(0xFFFFFFFF, &type, 4);
+  crc = ~update_crc(crc, data, length);
+  f->writeInt(flip_int(crc));
 }
 
 struct PNGPalette
@@ -84,7 +84,7 @@ struct PNGPalette
   uint32 colorKey[3];
 };
 
-uint32 get_image_size (uint32 width, uint32 height, PNGHeader const& hdr)
+uint32 get_image_size(uint32 width, uint32 height, PNGHeader const& hdr)
 {
   uint32 bpp;
   if (hdr.colorType == 0 || hdr.colorType == 3)
@@ -99,15 +99,15 @@ uint32 get_image_size (uint32 width, uint32 height, PNGHeader const& hdr)
   return height * (bpl + 1);
 }
 
-uint8 paethPredictor (uint8 a, uint8 b, uint8 c)
+uint8 paethPredictor(uint8 a, uint8 b, uint8 c)
 {
-  int ia = int (a) & 0xFF;
-  int ib = int (b) & 0xFF;
-  int ic = int (c) & 0xFF;
+  int ia = int(a) & 0xFF;
+  int ib = int(b) & 0xFF;
+  int ic = int(c) & 0xFF;
   int p = ia + ib - ic;
-  int pa = abs (p - ia);
-  int pb = abs (p - ib);
-  int pc = abs (p - ic);
+  int pa = abs(p - ia);
+  int pb = abs(p - ib);
+  int pc = abs(p - ic);
   if (pa <= pb && pa <= pc) return a;
   if (pb <= pc) return b;
   return c;
@@ -121,12 +121,12 @@ public:
   BitStream (uint8 const* src);
   uint32 read (uint32 count);
 };
-BitStream::BitStream (uint8 const* src)
+BitStream::BitStream(uint8 const* src)
 {
   buf = src;
   cur = 8;
 }
-uint32 BitStream::read (uint32 count)
+uint32 BitStream::read(uint32 count)
 {
   if (count == 16)
   {
@@ -171,7 +171,7 @@ uint32 BitStream::read (uint32 count)
   }
   return 0;
 }
-uint32 fix_color (uint32 src, uint32 count)
+uint32 fix_color(uint32 src, uint32 count)
 {
   if (count == 16)
     return src >> 8;
@@ -181,7 +181,7 @@ uint32 fix_color (uint32 src, uint32 count)
     return src;
 }
 
-uint8 fix_sample (uint8 cur, uint8 a, uint8 b, uint8 c, uint8 filter)
+uint8 fix_sample(uint8 cur, uint8 a, uint8 b, uint8 c, uint8 filter)
 {
   if (filter == 0)
     return cur;
@@ -192,12 +192,12 @@ uint8 fix_sample (uint8 cur, uint8 a, uint8 b, uint8 c, uint8 filter)
   else if (filter == 3)
     return cur + (a + b) / 2;
   else if (filter == 4)
-    return cur + paethPredictor (a, b, c);
+    return cur + paethPredictor(a, b, c);
   return cur;
 }
 
-bool read_sub_image (uint32 width, uint32 height, uint32* data,
-                     uint8 const* src, PNGHeader const& hdr, PNGPalette const& pal)
+bool read_sub_image(uint32 width, uint32 height, uint32* data,
+                    uint8 const* src, PNGHeader const& hdr, PNGPalette const& pal)
 {
   uint32 bpp;
   if (hdr.colorType == 0 || hdr.colorType == 3)
@@ -230,7 +230,7 @@ bool read_sub_image (uint32 width, uint32 height, uint32* data,
       uint8 a = i < bpp ? 0 : curLine[i - bpp];
       uint8 b = prevLine[i];
       uint8 c = i < bpp ? 0 : prevLine[i - bpp];
-      curLine[i] = fix_sample (cur, a, b, c, filter);
+      curLine[i] = fix_sample(cur, a, b, c, filter);
     }
     BitStream buf (curLine);
     for (uint32 x = 0; x < width; x++)
@@ -238,26 +238,26 @@ bool read_sub_image (uint32 width, uint32 height, uint32* data,
       uint32 cur = 0;
       if (hdr.colorType == 0)
       {
-        uint32 gray = buf.read (hdr.bitDepth);
+        uint32 gray = buf.read(hdr.bitDepth);
         if (pal.useColorKey && gray == pal.colorKey[0])
           cur = 0;
         else
         {
           gray = fix_color(gray, hdr.bitDepth);
-          cur = Image::clr(gray, gray, gray, 255);
+          cur = Image::clr(gray, gray, gray);
         }
       }
       else if (hdr.colorType == 2)
       {
-        uint32 red = buf.read (hdr.bitDepth);
-        uint32 green = buf.read (hdr.bitDepth);
-        uint32 blue = buf.read (hdr.bitDepth);
+        uint32 red = buf.read(hdr.bitDepth);
+        uint32 green = buf.read(hdr.bitDepth);
+        uint32 blue = buf.read(hdr.bitDepth);
         if (pal.useColorKey && red == pal.colorKey[0] &&
-          green == pal.colorKey[1] && blue == pal.colorKey[2])
+            green == pal.colorKey[1] && blue == pal.colorKey[2])
           cur = 0;
         else
-          cur = Image::clr(fix_color (red, hdr.bitDepth),
-            fix_color(green, hdr.bitDepth), fix_color (blue, hdr.bitDepth), 255);
+          cur = Image::clr(fix_color(red, hdr.bitDepth),
+            fix_color(green, hdr.bitDepth), fix_color(blue, hdr.bitDepth));
       }
       else if (hdr.colorType == 3)
       {
@@ -272,21 +272,21 @@ bool read_sub_image (uint32 width, uint32 height, uint32* data,
       }
       else if (hdr.colorType == 4)
       {
-        uint32 gray = fix_color(buf.read (hdr.bitDepth), hdr.bitDepth);
-        uint32 alpha = fix_color(buf.read (hdr.bitDepth), hdr.bitDepth);
+        uint32 gray = fix_color(buf.read(hdr.bitDepth), hdr.bitDepth);
+        uint32 alpha = fix_color(buf.read(hdr.bitDepth), hdr.bitDepth);
         cur = Image::clr(gray, gray, gray, alpha);
       }
       else if (hdr.colorType == 6)
       {
-        uint32 red = fix_color(buf.read (hdr.bitDepth), hdr.bitDepth);
-        uint32 green = fix_color(buf.read (hdr.bitDepth), hdr.bitDepth);
-        uint32 blue = fix_color(buf.read (hdr.bitDepth), hdr.bitDepth);
-        uint32 alpha = fix_color(buf.read (hdr.bitDepth), hdr.bitDepth);
+        uint32 red = fix_color(buf.read(hdr.bitDepth), hdr.bitDepth);
+        uint32 green = fix_color(buf.read(hdr.bitDepth), hdr.bitDepth);
+        uint32 blue = fix_color(buf.read(hdr.bitDepth), hdr.bitDepth);
+        uint32 alpha = fix_color(buf.read(hdr.bitDepth), hdr.bitDepth);
         cur = Image::clr(red, green, blue, alpha);
       }
       *data++ = cur;
     }
-    memcpy (prevLine, curLine, bpl);
+    memcpy(prevLine, curLine, bpl);
     src += bpl;
   }
   delete[] prevLine;
@@ -304,9 +304,9 @@ struct SubImage
   int ref;
 };
 
-void write_image (uint32* src, uint32 srcw, uint32 srch,
-                  uint32* dst, uint32 dstw, uint32 dsth,
-                  uint32 sx, uint32 sy, uint32 dx, uint32 dy)
+void write_image(uint32* src, uint32 srcw, uint32 srch,
+                 uint32* dst, uint32 dstw, uint32 dsth,
+                 uint32 sx, uint32 sy, uint32 dx, uint32 dy)
 {
   for (uint32 y = 0; y < srch; y++)
   {
@@ -319,6 +319,13 @@ void write_image (uint32* src, uint32 srcw, uint32 srch,
       dstl += dx;
     }
   }
+}
+
+inline uint8 unalpha(uint32 c, uint32 a)
+{
+  uint32 res = (c * 255) / a;
+  if (res > 255) res = 255;
+  return (uint8) res;
 }
 
 }
@@ -349,15 +356,24 @@ void Image::writePNG(File* f)
     for (int x = 0; x < _width; x++)
     {
       uint32 color = *_src++;
-      *_dst++ = ((color >> 16) & 0xFF);
-      *_dst++ = ((color >> 8) & 0xFF);
-      *_dst++ = (color & 0xFF);
-      *_dst++ = ((color >> 24) & 0xFF);
+      uint32 alpha = (color >> 24);
+      if (alpha)
+      {
+        *_dst++ = unalpha((color >> 16) & 0xFF, alpha);
+        *_dst++ = unalpha((color >> 8) & 0xFF, alpha);
+        *_dst++ = unalpha(color & 0xFF, alpha);
+        *_dst++ = (uint8) alpha;
+      }
+      else
+      {
+        *(uint32*) _dst = 0;
+        _dst += 4;
+      }
     }
   }
   uint32 csize = (usize * 11) / 10 + 32;
   uint8* cdata = new uint8[csize];
-  if (gzdeflate (udata, usize, cdata, &csize))
+  if (gzdeflate(udata, usize, cdata, &csize))
   {
     delete udata;
     delete cdata;
@@ -365,8 +381,8 @@ void Image::writePNG(File* f)
   }
   delete udata;
 
-  write_chunk ('IDAT', csize, cdata, f);
-  write_chunk ('IEND', 0, NULL, f);
+  write_chunk('IDAT', csize, cdata, f);
+  write_chunk('IEND', 0, NULL, f);
 
   delete cdata;
 }
@@ -377,7 +393,7 @@ bool Image::loadPNG(File* f)
   _bits = NULL;
   _width = 0;
   _height = 0;
-  mode = _opaque;
+  _flags = 0;
 
   uint8 sig[8];
   f->seek(0, SEEK_SET);
@@ -427,7 +443,7 @@ bool Image::loadPNG(File* f)
     numPasses = 1;
     passes[0].width = _width;
     passes[0].height = _height;
-    passes[0].src_size = get_image_size (_width, _height, hdr);
+    passes[0].src_size = get_image_size(_width, _height, hdr);
     passes[0].ref = 0;
     total_src_size += passes[0].src_size;
     total_data_size += _width * _height;
@@ -490,7 +506,7 @@ bool Image::loadPNG(File* f)
   uint8* buf = new uint8[buf_size];
   while (true)
   {
-    if (!read_chunk (ch, f))
+    if (!read_chunk(ch, f))
     {
       delete[] src;
       delete[] data;
@@ -514,7 +530,7 @@ bool Image::loadPNG(File* f)
         uint8 red = ch.data[i * 3 + 0];
         uint8 green = ch.data[i * 3 + 1];
         uint8 blue = ch.data[i * 3 + 2];
-        pal.rgba[i] = clr (red, green, blue, 255);
+        pal.rgba[i] = clr(red, green, blue);
       }
     }
     else if (ch.type == 'tRNS')
@@ -529,7 +545,7 @@ bool Image::loadPNG(File* f)
           return false;
         }
         for (uint32 i = 0; i < pal.size && i < ch.length; i++)
-          pal.rgba[i] = (pal.rgba[i] & 0x00FFFFFF) | (uint32 (ch.data[i]) << 24);
+          pal.rgba[i] = clr_noflip(pal.rgba[i], ch.data[i]);
       }
       else if (hdr.colorType == 0)
       {
@@ -573,16 +589,16 @@ bool Image::loadPNG(File* f)
         while (buf_count + ch.length > new_buf_size)
           new_buf_size *= 2;
         uint8* temp = new uint8[new_buf_size];
-        memcpy (temp, buf, buf_count);
+        memcpy(temp, buf, buf_count);
         delete[] buf;
         buf = temp;
         buf_size = new_buf_size;
       }
-      memcpy (buf + buf_count, ch.data, ch.length);
+      memcpy(buf + buf_count, ch.data, ch.length);
       buf_count += ch.length;
     }
   }
-  if (gzinflate (buf, buf_count, src, &total_src_size))
+  if (gzinflate(buf, buf_count, src, &total_src_size))
   {
     delete[] src;
     delete[] data;
@@ -592,7 +608,7 @@ bool Image::loadPNG(File* f)
   delete[] buf;
 
   for (int i = 0; i < numPasses; i++)
-    read_sub_image (passes[i].width, passes[i].height, passes[i].data, passes[i].src, hdr, pal);
+    read_sub_image(passes[i].width, passes[i].height, passes[i].data, passes[i].src, hdr, pal);
 
   if (hdr.interlaceMethod == 0)
   {
@@ -611,9 +627,9 @@ bool Image::loadPNG(File* f)
       if (passes[i].ref >= 0)
       {
         int j = passes[i].ref;
-        write_image (passes[j].data, passes[j].width, passes[j].height,
-                     _bits, _width, _height,
-                     sx[i], sy[i], dx[i], dy[i]);
+        write_image(passes[j].data, passes[j].width, passes[j].height,
+                    _bits, _width, _height,
+                    sx[i], sy[i], dx[i], dy[i]);
       }
     }
     delete[] src;

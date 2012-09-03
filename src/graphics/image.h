@@ -11,34 +11,43 @@ struct BLTInfo;
 
 class Image
 {
-  static unsigned char mtable[65536];
+  static uint8 mtable[65536];
   static bool gtable;
   static void initTable();
 
   int _width;
   int _height;
   uint32* _bits;
-  enum {_opaque, _alpha, _premult};
-  int mode;
-  bool unowned;
+  uint32 _flags;
+  enum {_premult = 0x01000000,
+        _unowned = 0x02000000,
+        _bgcolor = 0x00FFFFFF
+  };
+  void updateAlpha();
 
-  bool loadPNG (File* file);
-  bool loadGIF (File* file);
-  bool loadTGA (File* file);
-  bool loadBIN (File* file);
-  bool loadBLP (File* file);
-  bool loadBLP2 (File* file);
-  bool load (File* file);
+  bool loadPNG(File* file);
+  bool loadGIF(File* file);
+  bool loadTGA(File* file);
+  bool loadBIN(File* file);
+  bool loadBLP(File* file);
+  bool loadBLP2(File* file);
+  bool load(File* file);
 
   Rect clipRect;
 
-  void make_premult();
 public:
   Image(int width, int height);
   Image(char const* filename);
   Image(File* file);
   Image(int width, int height, uint32* bits);
   ~Image();
+
+  void setAlpha(Image* image);
+
+  void setBackground(uint32 color)
+  {
+    _flags = (_flags & (~_bgcolor)) | (color & _bgcolor);
+  }
 
   void writePNG(File* file);
   void writeBIN(File* file);
@@ -51,14 +60,15 @@ public:
   {
     return _bits;
   }
+  uint32* bitsAlpha() const;
 
   void blt(int x, int y, Image const* src);
   void blt(int x, int y, Image const* src, int srcX, int srcY, int srcW, int srcH);
 
   void blt(BLTInfo& info);
 
-  void fill(unsigned int color);
-  void fill(unsigned int color, int x, int y, int width, int height);
+  void fill(uint32 color);
+  void fill(uint32 color, int x, int y, int width, int height);
 
   int width() const
   {
@@ -69,19 +79,53 @@ public:
     return _height;
   }
 
-  static unsigned long flip_color(unsigned long clr)
+  static uint32 clr(uint8 r, uint8 g, uint8 b)
   {
-    return (clr & 0xFF00FF00) | ((clr >> 16) & 0x0000FF) | ((clr << 16) & 0xFF0000);
+    return 0xFF000000 | (r << 16) | (g << 8) | b;
   }
-  static unsigned int clr(int r, int g, int b, int a = 255)
+  static uint32 clr(uint8 r, uint8 g, uint8 b, uint8 a)
   {
-    return (((unsigned char) a) << 24) | (((unsigned char) r) << 16) | (((unsigned char) g) << 8) | ((unsigned char) b);
+    uint8* alpha = mtable + uint32(255 - a) * 256;
+    return (a << 24) | (alpha[r] << 16) | (alpha[g] << 8) | alpha[b];
   }
-  static unsigned int clr(int c, int a = 255)
+  static uint32 clr(uint32 rgb)
   {
-    return (((unsigned char) a) << 24) | (flip_color (c) & 0x00FFFFFF);
+    return 0xFF000000 | ((rgb & 0x00FF0000) >> 16) | (rgb & 0x0000FF00) | ((rgb & 0x000000FF) << 16);
   }
-  static unsigned char brightness(int r, int g, int b)
+  static uint32 clr(uint32 rgb, uint8 a)
+  {
+    uint8* alpha = mtable + uint32(255 - a) * 256;
+    return alpha[(rgb >> 16) & 0xFF] |
+          (alpha[(rgb >> 8) & 0xFF] << 8) |
+          (alpha[rgb & 0xFF] << 16) |
+          (a << 24);
+  }
+  static uint32 clr_noflip(uint32 rgb, uint8 a)
+  {
+    uint8* alpha = mtable + uint32(255 - a) * 256;
+    return alpha[rgb & 0xFF] |
+          (alpha[(rgb >> 8) & 0xFF] << 8) |
+          (alpha[(rgb >> 16) & 0xFF] << 16) |
+          (a << 24);
+  }
+  static uint32 clr_rgba(uint32 rgba)
+  {
+    uint8* alpha = mtable + (255 - ((rgba >> 24) & 0xFF)) * 256;
+    return alpha[(rgba >> 16) & 0xFF] |
+          (alpha[(rgba >> 8) & 0xFF] << 8) |
+          (alpha[rgba & 0xFF] << 16) |
+          (rgba & 0xFF000000);
+  }
+  static uint32 clr_rgba_noflip(uint32 rgba)
+  {
+    uint8* alpha = mtable + (255 - ((rgba >> 24) & 0xFF)) * 256;
+    return alpha[rgba & 0xFF] |
+          (alpha[(rgba >> 8) & 0xFF] << 8) |
+          (alpha[(rgba >> 16) & 0xFF] << 16) |
+          (rgba & 0xFF000000);
+  }
+
+  static uint8 brightness(int r, int g, int b)
   {
     int mn = r, mx = r;
     if (g < r) mn = r; else mx = r;
@@ -90,36 +134,25 @@ public:
     return (mn + mx) / 2;
   }
 
-  void setClipRect(Rect const& rc)
-  {
-    clipRect = rc;
-  }
-  void resetClipRect()
-  {
-    clipRect.left = 0;
-    clipRect.top = 0;
-    clipRect.right = _width;
-    clipRect.bottom = _height;
-  }
-
   void desaturate();
 
   void sharpen(float coeff);
   void modBrightness(float coeff);
 
-  bool getRect(int& left, int& top, int& right, int& bottom) const;
-
-  unsigned int getPixel(int x, int y)
+  uint32 getPixel(int x, int y)
   {
     return _bits[x + y * _width];
   }
-  void setPixel(int x, int y, unsigned int color)
+  void setPixel(int x, int y, uint32 color)
   {
     _bits[x + y * _width] = color;
   }
-  void replaceColor(unsigned int color, unsigned int with);
+  void replaceColor(uint32 color, uint32 with);
+
+  bool getRect(int& left, int& top, int& right, int& bottom) const;
 
   HBITMAP createBitmap(HDC hDC = NULL);
+  HBITMAP createAlphaBitmap(HDC hDC = NULL);
   void fillBitmap(HBITMAP hBitmap, HDC hDC);
   static Image* fromBitmap(HBITMAP hBitmap);
 };
@@ -134,26 +167,13 @@ struct BLTInfo
   int dstW, dstH;
   bool desaturate;
   int alphaMode;
-  unsigned long modulate;
+  uint32 modulate;
 
   enum {Blend, Add};
 
   BLTInfo()
   {
-    x = 0;
-    y = 0;
-    src = NULL;
-    srcX = 0;
-    srcY = 0;
-    srcW = 0;
-    srcH = 0;
-    flipX = false;
-    flipY = false;
-    dstW = 0;
-    dstH = 0;
-    desaturate = false;
-    alphaMode = Blend;
-    modulate = 0xFFFFFFFF;
+    reset(NULL, 0, 0);
   }
   BLTInfo(Image const* img, int _x = 0, int _y = 0)
   {
@@ -166,8 +186,8 @@ struct BLTInfo
     src = img;
     srcX = 0;
     srcY = 0;
-    srcW = img->width();
-    srcH = img->height();
+    srcW = (img ? img->width() : 0);
+    srcH = (img ? img->height() : 0);
     flipX = false;
     flipY = false;
     dstW = srcW;
@@ -203,31 +223,5 @@ struct BLTInfo
     setColor(ri, gi, bi);
   }
 };
-
-//class CImageList;
-//class Icon;
-//
-//class ImageList
-//{
-//  CImageList* list;
-//  IntDictionary images;
-//  Image4D* img;
-//  CBitmap* bmp;
-//  int width;
-//  int height;
-//  int background;
-//public:
-//  ImageList (int width, int height, int background = 0xFFFFFFFF);
-//  ~ImageList ();
-//
-//  void reset ();
-//  int getImagePos (Image4D* img);
-//  int getIconPos (Icon* icon, int img = 0);
-//  int getBlankPos ();
-//  CImageList* getList () const
-//  {
-//    return list;
-//  }
-//};
 
 #endif // __GRAPHICS_IMAGE_H__

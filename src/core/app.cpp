@@ -106,32 +106,32 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
 
   //dotaLibrary->getDota(parseVersion("6.74c"),
   //  "K:\\Progs\\DotAReplay\\docs\\maps\\DotA v6.74c.w3x");
-  WIN32_FIND_DATA data;
-  String enumPath = "K:\\Progs\\DotAReplay\\docs\\maps";
-  HANDLE hFind = FindFirstFile(String::buildFullName(enumPath, "*"), &data);
-  BOOL success = (hFind != INVALID_HANDLE_VALUE);
-  while (success)
-  {
-    String file(data.cFileName);
-    if (String::getExtension(file).icompare(".w3x") == 0)
-    {
-      file.toLower();
-      Array<String> sub;
-      if (file.rfind("dota{{_| }allstars}?{_| }v(\\d)\\.(\\d\\d)([b-z]?)[^b-z]", 0, &sub) >= 0)
-      {
-        int major = sub[1].toInt();
-        int minor = sub[2].toInt();
-        int build = 0;
-        if (!sub[3].isEmpty())
-          build = int(sub[3][0] - 'a');
-        uint32 version = makeVersion(major, minor, build);
+  //WIN32_FIND_DATA data;
+  //String enumPath = "K:\\Progs\\DotAReplay\\docs\\maps";
+  //HANDLE hFind = FindFirstFile(String::buildFullName(enumPath, "*"), &data);
+  //BOOL success = (hFind != INVALID_HANDLE_VALUE);
+  //while (success)
+  //{
+  //  String file(data.cFileName);
+  //  if (String::getExtension(file).icompare(".w3x") == 0)
+  //  {
+  //    file.toLower();
+  //    Array<String> sub;
+  //    if (file.rfind("dota{{_| }allstars}?{_| }v(\\d)\\.(\\d\\d)([b-z]?)[^b-z]", 0, &sub) >= 0)
+  //    {
+  //      int major = sub[1].toInt();
+  //      int minor = sub[2].toInt();
+  //      int build = 0;
+  //      if (!sub[3].isEmpty())
+  //        build = int(sub[3][0] - 'a');
+  //      uint32 version = makeVersion(major, minor, build);
 
-        dotaLibrary->getDota(version, String::buildFullName(enumPath, file));
-      }
-    }
-    success = FindNextFile(hFind, &data);
-  }
-  FindClose(hFind);
+  //      dotaLibrary->getDota(version, String::buildFullName(enumPath, file));
+  //    }
+  //  }
+  //  success = FindNextFile(hFind, &data);
+  //}
+  //FindClose(hFind);
 
   mainWindow = new MainWnd();
   

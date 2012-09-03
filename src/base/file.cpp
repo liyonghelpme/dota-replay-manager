@@ -194,7 +194,7 @@ public:
   {
     int res = fgetc(file);
     if (res == EOF) return 0;
-    return int(char(res));
+    return int(unsigned char(res));
   }
   int putc(int c)
   {

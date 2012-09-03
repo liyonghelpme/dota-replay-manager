@@ -82,14 +82,12 @@ uint32 ScriptSuggest::onWndMessage(uint32 message, uint32 wParam, uint32 lParam)
       PAINTSTRUCT ps;
       HDC hDC = BeginPaint(hWnd, &ps);
       SelectObject(hDC, FontSys::getSysFont());
-      HIMAGELIST img = getApp()->getImageLibrary()->getImageList();
+      ImageLibrary* lib = getApp()->getImageLibrary();
       rc.top = 0;
       SetBkMode(hDC, OPAQUE);
       for (int i = 0; i < options.length(); i++)
       {
         rc.bottom = rc.top + 16;
-        ImageList_Draw(img, options[i].icon, hDC, rc.left, rc.top, ILD_NORMAL);
-        rc.left = 16;
         if (selected == i)
         {
           SetBkColor(hDC, 0x6A240A);
@@ -101,7 +99,8 @@ uint32 ScriptSuggest::onWndMessage(uint32 message, uint32 wParam, uint32 lParam)
           SetTextColor(hDC, 0x000000);
         }
         ExtTextOut(hDC, 0, 0, ETO_OPAQUE, &rc, NULL, 0, NULL);
-        rc.left += 4;
+        lib->drawAlpha(hDC, options[i].icon, rc.left, rc.top, 16, 16);
+        rc.left = 20;
         DrawText(hDC, options[i].text.c_str(), -1, &rc, DT_LEFT | DT_VCENTER);
         rc.left = 0;
         rc.top = rc.bottom;
