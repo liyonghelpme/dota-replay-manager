@@ -7,6 +7,9 @@ regbasic(int, wndShow, SW_SHOWNORMAL);
 
 regbasic(int, byDate, 0);
 
+regbasic(uint64, lastVersionCheck, 0);
+regbasic(uint64, lastVersionNotify, 0);
+
 //////////////////////////////////////////////
 
 #ifdef cfginit
@@ -57,6 +60,7 @@ regbasic(int, useTray, 1);
 regbasic(int, enableUrl, 1);
 regbasic(int, autoUpdate, 1);
 regarray(int, giColWidth, 16);
+regarray(int, giLColWidth, 16);
 
 #ifdef cfginit
 for (int i = 0; i < 7; i++)
@@ -67,6 +71,8 @@ for (int i = 0; i < 7; i++)
 }
 for (int i = 0; i < 16; i++)
   giColWidth[i] = LVSCW_AUTOSIZE_USEHEADER;
+for (int i = 0; i < 4; i++)
+  giLColWidth[i] = LVSCW_AUTOSIZE_USEHEADER;
 #endif
 
 regstring(ownNames, "");
@@ -97,3 +103,5 @@ regbasic(int, useOGL, 0);
 regstrarray(fmtPresets);
 regstring(fmtScript, "");
 regbasic(uint64, fmtGenerator, 0);
+
+regbasic(int, autoLoadMap, 0);

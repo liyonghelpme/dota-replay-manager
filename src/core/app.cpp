@@ -9,6 +9,7 @@
 #include "frameui/fontsys.h"
 #include "ui/mainwnd.h"
 #include "dota/dotadata.h"
+#include "ui/updatedlg.h"
 
 #include "replay/replay.h"
 #include "replay/cache.h"
@@ -16,6 +17,8 @@
 #include "base/dictionary.h"
 
 #include "script/data.h"
+
+#include <shlwapi.h>
 
 Application* Application::instance = NULL;
 
@@ -31,6 +34,8 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
   cache = NULL;
   hInstance = _hInstance;
   _loaded = false;
+
+  UpdateDialog::init(hInstance);
 
   root = String::getPath(getAppPath());
 
@@ -99,10 +104,49 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
   cache = new CacheManager();
   dotaLibrary = new DotaLibrary();
 
+  //dotaLibrary->getDota(parseVersion("6.74c"),
+  //  "K:\\Progs\\DotAReplay\\docs\\maps\\DotA v6.74c.w3x");
+  WIN32_FIND_DATA data;
+  String enumPath = "K:\\Progs\\DotAReplay\\docs\\maps";
+  HANDLE hFind = FindFirstFile(String::buildFullName(enumPath, "*"), &data);
+  BOOL success = (hFind != INVALID_HANDLE_VALUE);
+  while (success)
+  {
+    String file(data.cFileName);
+    if (String::getExtension(file).icompare(".w3x") == 0)
+    {
+      file.toLower();
+      Array<String> sub;
+      if (file.rfind("dota{{_| }allstars}?{_| }v(\\d)\\.(\\d\\d)([b-z]?)[^b-z]", 0, &sub) >= 0)
+      {
+        int major = sub[1].toInt();
+        int minor = sub[2].toInt();
+        int build = 0;
+        if (!sub[3].isEmpty())
+          build = int(sub[3][0] - 'a');
+        uint32 version = makeVersion(major, minor, build);
+
+        dotaLibrary->getDota(version, String::buildFullName(enumPath, file));
+      }
+    }
+    success = FindNextFile(hFind, &data);
+  }
+  FindClose(hFind);
+
   mainWindow = new MainWnd();
   
   mainWindow->postLoad();
   _loaded = true;
+}
+void Application::reloadWarData()
+{
+  warLoader->lock();
+  warLoader->clear();
+  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3.mpq"));
+  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3x.mpq"));
+  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3xlocal.mpq"));
+  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3patch.mpq"));
+  warLoader->unlock();
 }
 Application::~Application()
 {
@@ -137,5 +181,5 @@ int Application::run()
 
 HWND Application::getMainWindow() const
 {
-  return mainWindow->getHandle();
+  return (mainWindow ? mainWindow->getHandle() : NULL);
 }

@@ -1,11 +1,13 @@
 #include "rmpq.h"
 #include "mpqcompress.h"
+#include "mpqsync.h"
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <math.h>
+#include <windows.h>
 
 #define MPQ_BLOCK_GROW              16
 #define MPQ_DATA_GROW               4096
@@ -451,6 +453,7 @@ struct _MPQFile;
 
 struct _MPQArchive
 {
+  uint32 lock;
   uint32 file;
   char path[256];
   int64 offset;
@@ -479,6 +482,7 @@ struct _MPQArchive
   _MPQArchive ()
   {
     memset (this, 0, sizeof (_MPQArchive));
+    lock = createCriticalSection();
     next = firstArchive;
     if (next)
       next->prev = this;
@@ -778,6 +782,7 @@ uint32 MPQListFiles (MPQARCHIVE handle, MPQLISTFILE listfile)
   if (mpq == NULL || mpq->file == 0 || list == NULL)
     return mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
   if (mpq->fileNames == NULL) return mpq_error = MPQ_OK;
+  MPQLocker lock_(mpq->lock);
   for (uint32 i = 0; i < list->size; i++)
   {
     uint32 pos = MPQFindFile ((MPQARCHIVE) mpq, list->list[i]);
@@ -825,6 +830,7 @@ uint32 MPQSaveAs (MPQARCHIVE handle, char const* filename)
   uint32 file = file_open (filename, MPQFILE_REWRITE | MPQFILE_BINARY);
   if (file == 0)
     return mpq_serror = mpq_error = MPQ_ERROR_ACCESS;
+  MPQLocker lock_(mpq->lock);
   file_seek (mpq->file, 0, MPQSEEK_SET);
   MPQFileTransfer (mpq->file, file, -1);
   file_close (mpq->file);
@@ -872,6 +878,7 @@ uint32 MPQFindFile (MPQARCHIVE handle, char const* name)
   _MPQArchive* mpq = (_MPQArchive*) handle;
   if (mpq == NULL || mpq->file == 0)
     return mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
+  MPQLocker lock_(mpq->lock);
   uint32 hash = MPQHashString (name, MPQ_HASH_OFFSET) % mpq->hdr->hashTableSize;
   uint32 name1 = MPQHashString (name, MPQ_HASH_NAME1);
   uint32 name2 = MPQHashString (name, MPQ_HASH_NAME2);
@@ -897,6 +904,7 @@ uint32 MPQFindFile (MPQARCHIVE handle, char const* name, uint16 locale)
   _MPQArchive* mpq = (_MPQArchive*) handle;
   if (mpq == NULL || mpq->file == 0)
     return mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
+  MPQLocker lock_(mpq->lock);
   uint32 hash = MPQHashString (name, MPQ_HASH_OFFSET) % mpq->hdr->hashTableSize;
   uint32 name1 = MPQHashString (name, MPQ_HASH_NAME1);
   uint32 name2 = MPQHashString (name, MPQ_HASH_NAME2);
@@ -925,6 +933,7 @@ uint32 MPQFindNextFile (MPQARCHIVE handle, char const* name, uint32 cur)
   _MPQArchive* mpq = (_MPQArchive*) handle;
   if (mpq == NULL || mpq->file == 0)
     return mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
+  MPQLocker lock_(mpq->lock);
   uint32 name1 = MPQHashString (name, MPQ_HASH_NAME1);
   uint32 name2 = MPQHashString (name, MPQ_HASH_NAME2);
   uint32 count = 1;
@@ -1068,6 +1077,7 @@ static uint32 MPQLoadBlock (_MPQFile* file, uint32 index)
     return mpq_error = MPQ_EOF;
   if (file->curBlock != index || file->buf == NULL)
   {
+    MPQLocker lock_(file->mpq->lock);
     if (file->buf == NULL)
       file->buf = new uint8[file->mpq->blockSize];
     uint32 offset = index * file->mpq->blockSize;
@@ -1122,16 +1132,21 @@ static uint32 MPQLoadBlock (_MPQFile* file, uint32 index)
 
 static uint32 MPQLoadSingleUnit (_MPQFile* file)
 {
-  uint32 csize = file->mpq->blockTable[file->mpq->hashTable[file->index].blockIndex].cSize;
-  file->buf = new uint8[file->size];
-  uint8* buf = file->buf;
-  if (csize < file->size)
-    buf = new uint8[csize];
-  file_seek (file->mpq->file, file->offset, MPQSEEK_SET);
-  if (file_read (buf, csize, file->mpq->file) != csize)
+  uint32 csize;
+  uint8* buf;
   {
-    if (csize < file->size) delete[] buf;
-    return mpq_serror = mpq_error = MPQ_ERROR_READ;
+    MPQLocker lock_(file->mpq->lock);
+    csize = file->mpq->blockTable[file->mpq->hashTable[file->index].blockIndex].cSize;
+    file->buf = new uint8[file->size];
+    buf = file->buf;
+    if (csize < file->size)
+      buf = new uint8[csize];
+    file_seek (file->mpq->file, file->offset, MPQSEEK_SET);
+    if (file_read (buf, csize, file->mpq->file) != csize)
+    {
+      if (csize < file->size) delete[] buf;
+      return mpq_serror = mpq_error = MPQ_ERROR_READ;
+    }
   }
   if (file->flags & MPQ_FILE_ENCRYPTED)
   {
@@ -1189,6 +1204,7 @@ bool MPQFileExists (MPQARCHIVE handle, uint32 pos)
     mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
     return false;
   }
+  MPQLocker lock_(mpq->lock);
   return pos >= 0 && pos < mpq->hdr->hashTableSize &&
     mpq->hashTable[pos].blockIndex >= 0 && mpq->hashTable[pos].blockIndex < mpq->hdr->blockTableSize;
 }
@@ -1204,6 +1220,7 @@ bool MPQFileExists (MPQARCHIVE handle, char const* name)
 bool MPQFileExists (MPQARCHIVE handle, char const* name, uint16 locale)
 {
   uint32 pos = MPQFindFile (handle, name, locale);
+  MPQLocker lock_(((_MPQArchive*) handle)->lock);
   bool res = false;
   if (mpq_error == MPQ_OK)
     res = (((_MPQArchive*) handle)->hashTable[pos].locale == locale);
@@ -1524,6 +1541,7 @@ MPQFILE MPQOpenFile (MPQARCHIVE handle, char const* name, uint32 options)
     mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
     return 0;
   }
+  MPQLocker lock_(mpq->lock);
   if ((options & 3) == 0)
   {
     uint32 pos = MPQFindFile (handle, name);
@@ -1592,6 +1610,7 @@ MPQFILE MPQOpenFile (MPQARCHIVE handle, char const* name, uint16 locale, uint32 
     mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
     return 0;
   }
+  MPQLocker lock_(mpq->lock);
   if ((options & 3) == 0)
   {
     uint32 pos = MPQFindFile (handle, name, locale);
@@ -1662,6 +1681,7 @@ MPQFILE MPQOpenFile (MPQARCHIVE handle, uint32 pos, uint32 options)
     return 0;
   }
   _MPQFile* file = new _MPQFile (mpq);
+  MPQLocker lock_(mpq->lock);
   MPQSubOpenFile (mpq, file, pos, 0, options);
   if (mpq_error)
   {
@@ -1678,6 +1698,7 @@ bool MPQTestFile (MPQARCHIVE handle, uint32 pos)
     mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
     return false;
   }
+  MPQLocker lock_(mpq->lock);
   mpq_error = MPQ_OK;
   uint32 block = mpq->hashTable[pos].blockIndex;
   if (block < 0 || block >= mpq->hdr->blockTableSize || (mpq->blockTable[block].flags & MPQ_FILE_EXISTS) == 0)
@@ -1728,6 +1749,7 @@ uint32 MPQPeekFile (MPQARCHIVE handle, uint32 pos, uint8* dest)
     mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
     return 0;
   }
+  MPQLocker lock_(mpq->lock);
   mpq_error = MPQ_OK;
   uint32 block = mpq->hashTable[pos].blockIndex;
   if (block < 0 || block >= mpq->hdr->blockTableSize || (mpq->blockTable[block].flags & MPQ_FILE_EXISTS) == 0)
@@ -1832,6 +1854,7 @@ uint32 MPQReopenFile (MPQFILE handle)
   if (file == NULL)
     return mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
   if (file->fsys) return mpq_error = MPQ_OK;
+  MPQLocker lock_(file->mpq->lock);
   if ((file->mode & 3) == 0)
   {
     delete[] file->blockPos;
@@ -1881,6 +1904,7 @@ uint32 MPQFileAttribute (MPQFILE handle, uint32 attr)
     }
     return mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
   }
+  MPQLocker lock_(file->mpq->lock);
   uint32 block = file->mpq->hashTable[file->index].blockIndex;
   if (attr == MPQ_FILE_FLAGS)
     return file->mpq->blockTable[block].flags;
@@ -2227,6 +2251,7 @@ uint32 MPQRenameFile (MPQARCHIVE handle, char const* source, char const* dest)
   _MPQArchive* mpq = (_MPQArchive*) handle;
   if (mpq->readonly)
     return mpq_serror = mpq_error = MPQ_ERROR_READONLY;
+  MPQLocker lock_(mpq->lock);
   uint32 block = mpq->hashTable[pos].blockIndex;
   uint16 locale = mpq->hashTable[pos].locale;
   uint16 platform = mpq->hashTable[pos].platform;
@@ -2258,9 +2283,13 @@ uint32 MPQRenameFile (MPQARCHIVE handle, char const* source, char const* dest)
 
 uint32 MPQEncryptFile (MPQARCHIVE handle, char const* name, uint32 options)
 {
+  _MPQArchive* mpq = (_MPQArchive*) handle;
+  if (mpq == NULL)
+    return 0;
+  MPQLocker lock_(mpq->lock);
   if (MPQEncryptFileEx (handle, name, options) != MPQ_OK)
     return mpq_error;
-  return MPQFlushBlockTable ((_MPQArchive*) handle);
+  return MPQFlushBlockTable (mpq);
 }
 
 uint32 MPQDeleteFile (MPQARCHIVE handle, char const* name)
@@ -2271,6 +2300,7 @@ uint32 MPQDeleteFile (MPQARCHIVE handle, char const* name)
   _MPQArchive* mpq = (_MPQArchive*) handle;
   if (mpq->readonly)
     return mpq_serror = mpq_error = MPQ_ERROR_READONLY;
+  MPQLocker lock_(mpq->lock);
   uint32 block = mpq->hashTable[pos].blockIndex;
   if (block < 0 || block >= mpq->hdr->blockTableSize || (mpq->blockTable[block].flags & MPQ_FILE_EXISTS) == 0)
   {
@@ -2299,6 +2329,7 @@ uint32 MPQResizeHash (MPQARCHIVE handle, uint32 bsize)
     return mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
   if (mpq->readonly)
     return mpq_serror = mpq_error = MPQ_ERROR_READONLY;
+  MPQLocker lock_(mpq->lock);
   if (bsize <= mpq->hdr->hashTableSize)
     return mpq_error = MPQ_OK;
   uint32 size = 1;
@@ -2397,6 +2428,7 @@ bool MPQHasUnknowns (MPQARCHIVE handle)
     mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
     return false;
   }
+  MPQLocker lock_(mpq->lock);
   for (uint32 i = 0; i < mpq->hdr->hashTableSize; i++)
   {
     if (mpq->hashTable[i].blockIndex != MPQ_INDEX_EMPTY &&
@@ -2411,6 +2443,7 @@ uint32 MPQFillHashTable (MPQARCHIVE handle)
   _MPQArchive* mpq = (_MPQArchive*) handle;
   if (mpq == NULL || mpq->file == 0)
     return mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
+  MPQLocker lock_(mpq->lock);
   for (uint32 i = 0; i < mpq->hdr->hashTableSize; i++)
     if (mpq->hashTable[i].blockIndex == MPQ_INDEX_EMPTY)
       mpq->hashTable[i].blockIndex = MPQ_INDEX_DELETED;
@@ -2472,6 +2505,7 @@ uint32 MPQFlushFile (MPQFILE handle)
   if (file->mode == 0)
     return mpq_serror = mpq_error = MPQ_ERROR_READONLY;
 
+  MPQLocker lock_(file->mpq->lock);
   int64 hashTablePos = file->mpq->hdr->hashTablePos;
   if (file->mpq->hdr2) hashTablePos += (int64) file->mpq->hdr2->hashTablePosHigh << 32;
   int64 blockTablePos = file->mpq->hdr->blockTablePos;
@@ -2595,6 +2629,7 @@ uint32 MPQFlushListfile (MPQARCHIVE handle)
     return mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
   if (mpq->readonly)
     return mpq_serror = mpq_error = MPQ_ERROR_READONLY;
+  MPQLocker lock_(mpq->lock);
   MPQFILE listfile = MPQOpenFile (handle, "(listfile)", MPQFILE_REWRITE);
   if (listfile)
   {
@@ -2617,6 +2652,7 @@ uint32 MPQFlush (MPQARCHIVE handle)
     return mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
   if (mpq->readonly)
     return mpq_serror = mpq_error = MPQ_ERROR_READONLY;
+  MPQLocker lock_(mpq->lock);
   _MPQFile* cur = mpq->firstFile;
   while (cur)
   {
@@ -2944,6 +2980,7 @@ _MPQArchive::~_MPQArchive ()
     firstArchive = next;
   if (isTemp)
     file_delete (path);
+  deleteCriticalSection(lock);
 }
 
 struct _MPQLoader
@@ -3143,6 +3180,7 @@ uint32 MPQReadMapName (MPQARCHIVE handle, char* buf)
   _MPQArchive* mpq = (_MPQArchive*) handle;
   if (mpq == NULL || mpq->file == 0)
     return mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
+  MPQLocker lock_(mpq->lock);
   file_seek (mpq->file, 8, MPQSEEK_SET);
   int len = 0;
   while (true)
@@ -3222,6 +3260,7 @@ uint32 MPQFilePush (MPQFILE handle, uint32 size)
 char const* MPQGetFileName (MPQARCHIVE handle, uint32 pos)
 {
   _MPQArchive* mpq = (_MPQArchive*) handle;
+  MPQLocker lock_(mpq->lock);
   if (mpq == NULL || mpq->file == 0 || pos < 0 || pos >= mpq->hdr->hashTableSize)
   {
     mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
@@ -3236,6 +3275,7 @@ char const* MPQGetFileName (MPQARCHIVE handle, uint32 pos)
 uint32 MPQItemAttribute (MPQARCHIVE handle, uint32 pos, uint32 attr)
 {
   _MPQArchive* mpq = (_MPQArchive*) handle;
+  MPQLocker lock_(mpq->lock);
   if (mpq == NULL || mpq->file == 0 || pos < 0 || pos >= mpq->hdr->hashTableSize)
     return mpq_serror = mpq_error = MPQ_ERROR_PARAMS;
   if (attr == MPQ_FILE_NAME1)

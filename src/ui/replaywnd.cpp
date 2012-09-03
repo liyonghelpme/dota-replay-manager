@@ -46,6 +46,18 @@ ReplayWindow::ReplayWindow(Frame* parent)
   frames[REPLAY_PRESENT] = new ReplayPresentTab(this);
   frames[REPLAY_DRAFT] = new ReplayDraftTab(this);
   frames[REPLAY_ACTIONLOG] = new ReplayActionLogTab(this);
+
+  failure = new StaticFrame("Failed to open replay", this);
+  failure->setFont(FontSys::changeSize(24));
+  failure->resetSize();
+  failure->setPoint(PT_BOTTOM, this, PT_CENTER, 0, -5);
+  failure->hide();
+
+  failureInfo = new StaticFrame("", this);
+  failureInfo->setFont(FontSys::changeSize(18));
+  failureInfo->resetSize();
+  failureInfo->setPoint(PT_TOP, this, PT_CENTER, 0, 5);
+  failureInfo->hide();
 }
 ReplayWindow::~ReplayWindow()
 {
@@ -62,23 +74,38 @@ void ReplayWindow::addFrame(int tab)
 void ReplayWindow::update()
 {
   clear();
-  addFrame(REPLAY_GAMEINFO);
   if (replay)
   {
-    addFrame(REPLAY_GAMECHAT);
-    addFrame(REPLAY_TIMELINE);
-    addFrame(REPLAY_PLAYERINFO);
-    addFrame(REPLAY_ACTIONS);
-    addFrame(REPLAY_PLAYERGOLD);
-    addFrame(REPLAY_PLAYEREXP);
-    addFrame(REPLAY_PRESENT);
+    failure->hide();
+    failureInfo->hide();
 
     DotaInfo const* dotaInfo = replay->getDotaInfo();
+
+    addFrame(REPLAY_GAMEINFO);
+    addFrame(REPLAY_GAMECHAT);
+    if (dotaInfo)
+    {
+      addFrame(REPLAY_TIMELINE);
+      addFrame(REPLAY_PLAYERINFO);
+    }
+    addFrame(REPLAY_ACTIONS);
+    if (dotaInfo)
+    {
+      addFrame(REPLAY_PLAYERGOLD);
+      addFrame(REPLAY_PLAYEREXP);
+    }
+    addFrame(REPLAY_PRESENT);
+
     if (dotaInfo && (dotaInfo->draft.numPool || dotaInfo->draft.numPicks[0] ||
         dotaInfo->draft.numPicks[1] || dotaInfo->draft.numBans[0] || dotaInfo->draft.numBans[1]))
       addFrame(REPLAY_DRAFT);
 
     addFrame(REPLAY_ACTIONLOG);
+  }
+  else
+  {
+    failure->show();
+    failureInfo->show();
   }
   for (int i = 0; i < REPLAY_NUM_TABS; i++)
     frames[i]->setReplay(replay);
@@ -93,9 +120,36 @@ void ReplayWindow::openReplay(File* file)
 }
 void ReplayWindow::openReplay(String path)
 {
+  if (FileInfo* info = (replay ? replay->getFileInfo() : NULL))
+  {
+    if (info->path.icompare(path) == 0)
+    {
+      FileInfo cur;
+      getFileInfo(path, cur);
+      if (cur.ftime == info->ftime)
+        return;
+    }
+  }
   delete replay;
   viewItem = NULL;
-  replay = W3GReplay::load(path);
+  uint32 error;
+  replay = W3GReplay::load(path, false, &error);
+  if (replay == NULL)
+  {
+    switch (error)
+    {
+    case W3GReplay::eNoFile:
+      failureInfo->setText("File not found");
+      break;
+    case W3GReplay::eBadFile:
+      failureInfo->setText("Failed to parse file");
+      break;
+    case W3GReplay::eNoMap:
+      failureInfo->setText("No map data");
+      break;
+    }
+    failureInfo->resetSize();
+  }
   update();
 }
 void ReplayWindow::setTab(int tab)

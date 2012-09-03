@@ -35,6 +35,8 @@ public:
   Application(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow);
   ~Application();
 
+  void reloadWarData();
+
   HINSTANCE getInstanceHandle() const
   {
     return hInstance;

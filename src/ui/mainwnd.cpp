@@ -5,6 +5,10 @@
 #include "ui/folderwnd.h"
 #include "frameui/controlframes.h"
 
+#include "replay/cache.h"
+
+#include "ui/updatedlg.h"
+
 #include "mainwnd.h"
 
 #define SPLITTER_WIDTH      10
@@ -15,8 +19,17 @@
 #define IDC_BACK              744
 #define IDC_FORWARD           745
 
+#define ID_TRAY_OPEN          901
+#define ID_TRAY_EXIT          902
+#define IDI_TRAY              1758
+#define WM_TRAYNOTIFY         (WM_USER+674)
+
+#define ID_UPDATE_TIMER       1002
+
 MainWnd::MainWnd()
 {
+  hIcon = (HICON) LoadImage(getInstance(), MAKEINTRESOURCE(IDI_MAIN),
+    IMAGE_ICON, 16, 16, 0);
   if (WNDCLASSEX* wcx = createclass("MainWndClass"))
   {
     wcx->hbrBackground = HBRUSH(COLOR_BTNFACE + 1);
@@ -77,9 +90,36 @@ MainWnd::MainWnd()
 
   hBack->enable(history && history->hasPrev());
   hForward->enable(history && history->hasNext());
+
+  trayShown = false;
+  trayMenu = CreatePopupMenu();
+
+  MENUITEMINFO mii;
+  memset(&mii, 0, sizeof mii);
+  mii.cbSize = sizeof mii;
+
+  mii.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_STATE | MIIM_ID;
+  mii.fType = MFT_STRING;
+  mii.fState = MFS_DEFAULT;
+  mii.dwTypeData = "Open";
+  mii.cch = strlen(mii.dwTypeData);
+  mii.wID = ID_TRAY_OPEN;
+  InsertMenuItem(trayMenu, 0, TRUE, &mii);
+
+  mii.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_ID;
+  mii.fType = MFT_STRING;
+  mii.dwTypeData = "Exit";
+  mii.cch = strlen(mii.dwTypeData);
+  mii.wID = ID_TRAY_EXIT;
+  InsertMenuItem(trayMenu, 1, TRUE, &mii);
+
+  FileInfo fi;
+  getFileInfo(String::buildFullName(cfg.replayPath, "LastReplay.w3g"), fi);
+  lastReplayTime = fi.ftime;
 }
 MainWnd::~MainWnd()
 {
+  DestroyMenu(trayMenu);
 }
 void MainWnd::postLoad()
 {
@@ -100,15 +140,106 @@ void MainWnd::postLoad()
     pl.rcNormalPosition.bottom = pl.rcNormalPosition.top + cfg.wndHeight;
   }
   SetWindowPlacement(hWnd, &pl);
+
+  SetTimer(hWnd, ID_UPDATE_TIMER, 10000, NULL);
 }
+
+void MainWnd::createTrayIcon()
+{
+  if (trayShown)
+    return;
+  NOTIFYICONDATA nid;
+  memset(&nid, 0, sizeof nid);
+  nid.cbSize = NOTIFYICONDATA_V3_SIZE;
+  nid.hWnd = hWnd;
+  nid.uID = IDI_TRAY;
+  nid.uFlags = NIF_ICON | NIF_TIP | NIF_MESSAGE;
+  nid.uCallbackMessage = WM_TRAYNOTIFY;
+  nid.hIcon = hIcon;
+  strcpy_s(nid.szTip, sizeof nid.szTip, getText());
+  Shell_NotifyIcon(trayShown ? NIM_MODIFY : NIM_ADD, &nid);
+  trayShown = true;
+}
+void MainWnd::destroyTrayIcon()
+{
+  if (trayShown)
+  {
+    NOTIFYICONDATA nid;
+    memset(&nid, 0, sizeof nid);
+    nid.cbSize = NOTIFYICONDATA_V3_SIZE;
+    nid.hWnd = hWnd;
+    nid.uID = IDI_TRAY;
+    Shell_NotifyIcon(NIM_DELETE, &nid);
+    trayShown = false;
+  }
+}
+void MainWnd::trayNotify(String title, String text)
+{
+  if (trayShown)
+  {
+    NOTIFYICONDATA nid;
+    memset(&nid, 0, sizeof nid);
+    nid.cbSize = NOTIFYICONDATA_V3_SIZE;
+    nid.hWnd = hWnd;
+    nid.uID = IDI_TRAY;
+
+    nid.uFlags = NIF_INFO;
+    strcpy_s(nid.szInfo, sizeof nid.szInfo, text);
+    strcpy_s(nid.szInfoTitle, sizeof nid.szInfoTitle, title);
+    nid.uTimeout = 10000;
+    nid.dwInfoFlags = NIIF_INFO;
+
+    Shell_NotifyIcon(NIM_MODIFY, &nid);
+  }
+}
+
+extern const char appId[256];
 
 uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
   switch (message)
   {
+  case WM_UPDATEVERSION:
+    if (cfg.autoUpdate && UpdateDialog::lastVersion > UpdateDialog::thisVersion)
+      UpdateDialog::run();
+    break;
+  case WM_TIMER:
+    if (wParam == ID_UPDATE_TIMER)
+      UpdateDialog::check();
+    break;
+  case WM_COPYDATA:
+  case WM_COPYDATA_FAKE:
+    {
+      COPYDATASTRUCT* cd = (COPYDATASTRUCT*) lParam;
+      if (cd->dwData == MAINWND_OPEN_REPLAY)
+      {
+        String path((char*) cd->lpData);
+        path.dequote();
+        if (cfg.enableUrl && File::isValidURL(path))
+          pushView(new ReplayViewItem(path));
+        else
+        {
+          uint32 attr = GetFileAttributes(path);
+          if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY))
+            pushView(new FolderViewItem(path));
+          else
+            pushView(new ReplayViewItem(path));
+        }
+      }
+    }
+    break;
+
   case WM_DESTROY:
+    destroyTrayIcon();
     PostQuitMessage(0);
     break;
+  case WM_GETMINMAXINFO:
+    {
+      MINMAXINFO* mmi = (MINMAXINFO*) lParam;
+      mmi->ptMinTrackSize.x = cfg.splitterPos + 609;
+      mmi->ptMinTrackSize.y = 580;
+    }
+    return 0;
   case WM_SIZE:
   case WM_MOVE:
     if (getApp()->loaded())
@@ -125,8 +256,43 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         cfg.wndWidth = pl.rcNormalPosition.right - pl.rcNormalPosition.left;
         cfg.wndHeight = pl.rcNormalPosition.bottom - pl.rcNormalPosition.top;
       }
+
+      if (cfg.useTray && message == WM_SIZE)
+      {
+        if (wParam == SIZE_MINIMIZED)
+        {
+          ShowWindow(hWnd, SW_HIDE);
+          createTrayIcon();
+        }
+        else
+          destroyTrayIcon();
+      }
     }
     break;
+  case WM_TRAYNOTIFY:
+    switch (LOWORD(lParam))
+    {
+    case WM_LBUTTONUP:
+      ShowWindow(hWnd, SW_SHOW);
+      ShowWindow(hWnd, SW_RESTORE);
+      break;
+    case WM_RBUTTONUP:
+      {
+        POINT pt;
+        GetCursorPos(&pt);
+        int result = TrackPopupMenuEx(trayMenu, TPM_HORIZONTAL | TPM_LEFTALIGN |
+          TPM_RETURNCMD | TPM_NONOTIFY, pt.x, pt.y, hWnd, NULL);
+        if (result == ID_TRAY_OPEN)
+        {
+          ShowWindow(hWnd, SW_SHOW);
+          ShowWindow(hWnd, SW_RESTORE);
+        }
+        else if (result == ID_TRAY_EXIT)
+          DestroyWindow(hWnd);
+      }
+      break;
+    }
+    return 0;
   case WM_COMMAND:
     if (HIWORD(wParam) == BN_CLICKED)
     {
@@ -145,28 +311,18 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         String path;
         if (LOWORD(wParam) == IDC_BROWSE)
         {
-          OPENFILENAME ofn;
-          memset(&ofn, 0, sizeof ofn);
-          ofn.lStructSize = sizeof ofn;
-          ofn.hwndOwner = hWnd;
-          ofn.lpstrFilter = "Warcraft III Replay Files (*.w3g)\0*.w3g\0All Files\0*\0\0";
-          char buf[512] = "";
-          ofn.lpstrFile = buf;
-          ofn.nMaxFile = sizeof buf;
-          ofn.lpstrDefExt = "w3g";
-          ofn.lpstrInitialDir = cfg.replayPath;
-          ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
-          ofn.FlagsEx = OFN_EX_NOPLACESBAR;
-          if (!GetOpenFileName(&ofn))
+          path = getOpenReplayName(hWnd);
+          if (path.isEmpty())
             return 0;
-          path = buf;
         }
         else
           path = String::fixPath(addressBar->getText());
-        uint32 attr = GetFileAttributes(path);
-        if (attr != INVALID_FILE_ATTRIBUTES)
+        if (cfg.enableUrl && File::isValidURL(path))
+          pushView(new ReplayViewItem(path));
+        else
         {
-          if (attr & FILE_ATTRIBUTE_DIRECTORY)
+          uint32 attr = GetFileAttributes(path);
+          if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY))
             pushView(new FolderViewItem(path));
           else
             pushView(new ReplayViewItem(path));
@@ -176,7 +332,49 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     }
     break;
   case WM_UPDATEPATH:
-    replayTree->setPath(cfg.replayPath);
+    {
+      FileInfo fi;
+      if (getFileInfo(String::buildFullName(cfg.replayPath, "LastReplay.w3g"), fi))
+        lastReplayTime = fi.ftime;
+      else
+        lastReplayTime = 0;
+      replayTree->setPath(cfg.replayPath);
+    }
+    return 0;
+  case WM_UPDATEFILE:
+    if (cfg.autoView || cfg.autoCopy)
+    {
+      FileInfo fi;
+      if (getFileInfo(String::buildFullName(cfg.replayPath, "LastReplay.w3g"), fi) &&
+        fi.ftime != lastReplayTime)
+      {
+        if (cfg.autoView)
+        {
+          pushView(new ReplayViewItem(fi.path));
+          GameCache* cache = getApp()->getCache()->getGameNow(fi.path);
+          if (cache)
+            trayNotify("New replay", cache->game_name);
+        }
+        if (cfg.autoCopy)
+        {
+          GameCache* cache = getApp()->getCache()->getGame(fi.path);
+          if (cache)
+          {
+            String path = cache->format(cfg.copyFormat, cfg.replayPath);
+            path = String::fixPath(String::buildFullName(cfg.replayPath, path));
+            if (createPath(String::getPath(path)))
+            {
+              if (CopyFile(fi.path, path, FALSE))
+                getApp()->getCache()->duplicate(path, cache);
+            }
+            if (!cfg.autoView)
+              trayNotify("New replay", cache->game_name);
+          }
+        }
+      }
+      else
+      lastReplayTime = fi.ftime;
+    }
     return 0;
 //////////////////// SPLITTER ////////////////////////
   case WM_SETCURSOR:
@@ -215,7 +413,7 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       GetClientRect(hWnd, &rc);
       int oldSplitterPos = cfg.splitterPos;
       if (cfg.splitterPos < 50) cfg.splitterPos = 50;
-      if (cfg.splitterPos > rc.right - 200) cfg.splitterPos = rc.right - 200;
+      if (cfg.splitterPos > rc.right - 600) cfg.splitterPos = rc.right - 600;
       dragPos += cfg.splitterPos - oldSplitterPos;
       if (replayTree)
         replayTree->setWidth(cfg.splitterPos - 10);

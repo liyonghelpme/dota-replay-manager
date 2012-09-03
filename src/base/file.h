@@ -160,6 +160,7 @@ public:
 
   static File* open(char const* filename, int mode = READ);
   static File* longopen(char const* filename, int mode = READ);
+  static bool isValidURL(char const* url);
   static File* openURL(char const* url);
   static File* load(char const* filename, FileLoader* loader = NULL)
   {
@@ -169,6 +170,8 @@ public:
       return open(filename);
   }
   static File* memfile(void const* data, int length);
+
+  uint32 crc32();
 };
 class TempFile
 {

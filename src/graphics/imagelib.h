@@ -8,6 +8,7 @@
 
 class ImageLibrary
 {
+  CRITICAL_SECTION lock;
   HIMAGELIST list;
   struct ImageInfo
   {
@@ -21,6 +22,7 @@ class ImageLibrary
     Image* getImage(MPQArchive* mpq);
   };
   Dictionary<ImageInfo> images;
+  Array<ImageInfo*> ilist;
   MPQArchive* mpq;
 
   void loadImage(String name);
@@ -33,6 +35,7 @@ public:
     return list;
   }
 
+  String getTooltip(int index);
   String getTooltip(char const* name);
   void setTooltip(char const* name, String tooltip);
   Image* getImage(char const* name);

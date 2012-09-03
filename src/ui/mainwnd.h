@@ -11,6 +11,11 @@
 #define MAINWND_FOLDER        2
 #define MAINWND_NUM_VIEWS     3
 
+#define MAINWND_OPEN_REPLAY   1728
+
+#define WM_UPDATEFILE         (WM_USER+987)
+#define WM_COPYDATA_FAKE      (WM_USER+989)
+
 class EditFrame;
 
 class MainWnd : public RootWindow
@@ -23,9 +28,18 @@ class MainWnd : public RootWindow
   ButtonFrame* hForward;
   EditFrame* addressBar;
 
+  HMENU trayMenu;
+
   // splitter
   int dragPos;
   HCURSOR sizeCursor;
+
+  uint64 lastReplayTime;
+  HICON hIcon;
+  bool trayShown;
+  void createTrayIcon();
+  void destroyTrayIcon();
+  void trayNotify(String title, String text);
 
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:

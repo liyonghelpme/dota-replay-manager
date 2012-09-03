@@ -26,7 +26,7 @@ String formatVersion(uint32 version)
 uint32 parseVersion(String version)
 {
   Array<String> sub;
-  if (version.rfind("(\\d+)\\.(\\d+)([b-z]?)", 0, &sub) < 0)
+  if (!version.match("(\\d+)\\.(\\d+)([b-z]?)", &sub))
     return 0;
   int major = sub[1].toInt();
   int minor = sub[2].toInt();

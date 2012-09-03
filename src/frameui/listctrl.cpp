@@ -114,6 +114,8 @@ ListFrame::ListFrame(Frame* parent, int id, int style, int styleEx)
   setId(id);
   ListView_SetExtendedListViewStyle(hWnd, styleEx);
   ListView_SetImageList(hWnd, getApp()->getImageLibrary()->getImageList(), LVSIL_SMALL);
+
+  enableTooltips(true);
 }
 ListFrame::~ListFrame()
 {
@@ -141,6 +143,124 @@ int ListFrame::convertUtf8(String text)
   }
   MultiByteToWideChar(CP_UTF8, 0, text.c_str(), text.length(), wcBuf, size);
   return size;
+}
+int ListFrame::toolHitTest(POINT pt, ToolInfo* ti)
+{
+  static char text[65536];
+  static int order[256];
+  LVHITTESTINFO ht;
+  memset(&ht, 0, sizeof ht);
+  ht.pt = pt;
+  ListView_HitTest(hWnd, &ht);
+  if (ht.flags & LVHT_ONITEM)
+  {
+    ListView_GetItemRect(hWnd, ht.iItem, &ti->rc, LVIR_ICON);
+    if (pt.x >= ti->rc.left && pt.x < ti->rc.right &&
+        pt.y >= ti->rc.top && pt.y < ti->rc.bottom)
+    {
+      LVITEM lvi;
+      memset(&lvi, 0, sizeof lvi);
+      lvi.mask = LVIF_IMAGE;
+      lvi.iItem = ht.iItem;
+      ListView_GetItem(hWnd, &lvi);
+      ti->text = getApp()->getImageLibrary()->getTooltip(lvi.iImage);
+      return ti->text.isEmpty() ? -1 : 0;
+    }
+    else
+    {
+      RECT label, wnd;
+      ListView_GetItemRect(hWnd, ht.iItem, &label, LVIR_LABEL);
+      GetClientRect(hWnd, &wnd);
+      label.right -= 1;
+
+      LVCOLUMN lvc;
+      memset(&lvc, 0, sizeof lvc);
+      lvc.mask = LVCF_FMT | LVCF_WIDTH;
+
+      HWND header = ListView_GetHeader(hWnd);
+      int count = Header_GetItemCount(header);
+      ListView_GetColumnOrderArray(hWnd, count, order);
+      for (int i = 0; i < count; i++)
+      {
+        ListView_GetColumn(hWnd, order[i], &lvc);
+        label.right -= lvc.cx;
+        if (order[i] == 0)
+          break;
+      }
+      for (int i = 0; i < count; i++)
+      {
+        ListView_GetColumn(hWnd, order[i], &lvc);
+        label.left = label.right;
+        label.right += lvc.cx;
+        ListView_GetItemText(hWnd, ht.iItem, order[i], text, sizeof text);
+        if (text[0] == 0)
+          continue;
+
+        uint32 flags = DT_LEFT;
+        if ((lvc.fmt & LVCFMT_JUSTIFYMASK) == LVCFMT_RIGHT)
+          flags = DT_RIGHT;
+        else if ((lvc.fmt & LVCFMT_JUSTIFYMASK) == LVCFMT_CENTER)
+          flags = DT_CENTER;
+
+        RECT item = label;
+        if (order[i] == 0)
+        {
+          item.left += 2;
+          item.right -= 2;
+        }
+        else
+        {
+          item.left += 6;
+          item.right -= 6;
+        }
+        if (!colUtf8[order[i]] && flags == DT_LEFT)
+        {
+          HIMAGELIST imgList = ListView_GetImageList(hWnd, LVSIL_SMALL);
+          SIZE sz;
+          HDC hDC = GetDC(hWnd);
+          int prev = 0;
+          for (int cur = 0; text[cur] && item.left < wnd.right; cur++)
+          {
+            bool valid = false;
+            int index = 0;
+            int save = cur;
+            if (text[cur] == '$')
+            {
+              cur++;
+              while (text[cur] >= '0' && text[cur] <= '9')
+                index = index * 10 + int(text[cur++] - '0');
+              if (text[cur] == '$' && index >= 0 && index < ImageList_GetImageCount(imgList))
+                valid = true;
+              else
+                cur = save;
+            }
+            if (valid)
+            {
+              if (save > prev)
+              {
+                GetTextExtentPoint32(hDC, text + prev, save - prev, &sz);
+                item.left += sz.cx;
+              }
+              ti->rc.left = item.left;
+              ti->rc.right = item.left + 16;
+              ti->rc.top = (item.top + item.bottom) / 2 - 8;
+              ti->rc.bottom = ti->rc.top + 16;
+              if (pt.x >= ti->rc.left && pt.x < ti->rc.right &&
+                  pt.y >= ti->rc.top && pt.y < ti->rc.bottom)
+              {
+                ti->text = getApp()->getImageLibrary()->getTooltip(index);
+                return (ti->text.isEmpty() ? -1 : 0);
+              }
+              item.left += 18;
+              prev = cur + 1;
+            }
+          }
+          ReleaseDC(hWnd, hDC);
+        }
+      }
+    }
+  }
+  return -1;
 }
 int ListFrame::drawItemText(HDC hDC, String text, RECT* rc, uint32 format, bool utf8)
 {
@@ -191,9 +311,10 @@ int ListFrame::drawItemText(HDC hDC, String text, RECT* rc, uint32 format, bool 
           }
           if (rc && rc->left < rc->right)
           {
-            ImageList_DrawEx(imgList, index, hDC, rc->left + 1, (rc->top + rc->bottom) / 2 - 8,
-              rc->right - rc->left > 16 ? 16 : rc->right - rc->left, 16,
-              CLR_NONE, CLR_NONE, ILD_NORMAL);
+            if (index != 0)
+              ImageList_DrawEx(imgList, index, hDC, rc->left + 1, (rc->top + rc->bottom) / 2 - 8,
+                rc->right - rc->left > 16 ? 16 : rc->right - rc->left, 16,
+                CLR_NONE, CLR_NONE, ILD_NORMAL);
             rc->left += 18;
           }
           width += 18;
@@ -213,7 +334,8 @@ int ListFrame::drawItemText(HDC hDC, String text, RECT* rc, uint32 format, bool 
 }
 void ListFrame::drawItem(DRAWITEMSTRUCT* dis)
 {
-  char buf[MAX_PATH];
+  static char buf[65536];
+  static int order[256];
   LVITEM lvi;
   memset(&lvi, 0, sizeof lvi);
   lvi.mask = LVIF_TEXT | LVIF_IMAGE | LVIF_STATE | LVIF_PARAM;
@@ -281,7 +403,6 @@ void ListFrame::drawItem(DRAWITEMSTRUCT* dis)
   lvc.mask = LVCF_FMT | LVCF_WIDTH;
 
   int count = Header_GetItemCount(header);
-  int* order = new int[count];
   ListView_GetColumnOrderArray(hWnd, count, order);
   for (int i = 0; i < count; i++)
   {
@@ -311,10 +432,12 @@ void ListFrame::drawItem(DRAWITEMSTRUCT* dis)
     item.right -= 6;
     drawItemText(dis->hDC, buf, &item, flags, colUtf8[order[i]]);
   }
-  delete[] order;
 
-  HIMAGELIST imgList = ListView_GetImageList(hWnd, LVSIL_SMALL);
-  ImageList_Draw(imgList, lvi.iImage, dis->hDC, icon.left, icon.top, ILD_NORMAL);
+  if (lvi.iImage != 0)
+  {
+    HIMAGELIST imgList = ListView_GetImageList(hWnd, LVSIL_SMALL);
+    ImageList_Draw(imgList, lvi.iImage, dis->hDC, icon.left, icon.top, ILD_NORMAL);
+  }
 
   if (selected)
     SetTextColor(dis->hDC, clrTextSave);

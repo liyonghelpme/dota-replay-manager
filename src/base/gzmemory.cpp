@@ -15,6 +15,8 @@ void gzmemory::reset()
 }
 void* gzmemory::alloc(int block)
 {
+  if (this == NULL)
+    return malloc(block);
   count += block;
   if (pos + block > size)
     return malloc(block);
@@ -24,7 +26,7 @@ void* gzmemory::alloc(int block)
 }
 void gzmemory::free(void* ptr)
 {
-  if (ptr && (ptr < buf || ptr >= buf + size))
+  if (this == NULL || (ptr && (ptr < buf || ptr >= buf + size)))
     ::free(ptr);
 }
 void* gzalloc(void* param, unsigned int items, unsigned int size)

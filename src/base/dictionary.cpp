@@ -37,7 +37,7 @@ DictionaryBase::DictionaryBase(uint8 const* _map)
       if (i == '/')
         _mapPath[i] = '\\';
       else
-        _mapPath[i] = tolower(i);
+        _mapPath[i] = s_tolower(i);
     }
     _mapInit = true;
   }

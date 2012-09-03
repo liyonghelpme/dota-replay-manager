@@ -9,6 +9,21 @@
 #define  FIND_WHOLE_WORD         4
 #define  REPLACE_ALL             8
 
+#define s_isalnum(x)       isalnum((unsigned char) (x))
+#define s_isalpha(x)       isalpha((unsigned char) (x))
+#define s_iscntrl(x)       iscntrl((unsigned char) (x))
+#define s_isdigit(x)       isdigit((unsigned char) (x))
+#define s_isgraph(x)       isgraph((unsigned char) (x))
+#define s_isleadbyte(x)    isleadbyte((unsigned char) (x))
+#define s_islower(x)       islower((unsigned char) (x))
+#define s_isprint(x)       isprint((unsigned char) (x))
+#define s_ispunct(x)       ispunct((unsigned char) (x))
+#define s_isspace(x)       isspace((unsigned char) (x))
+#define s_isupper(x)       isupper((unsigned char) (x))
+#define s_isxdigit(x)      isxdigit((unsigned char) (x))
+#define s_toupper(x)       toupper((unsigned char) (x))
+#define s_tolower(x)       tolower((unsigned char) (x))
+
 class String
 {
 protected:

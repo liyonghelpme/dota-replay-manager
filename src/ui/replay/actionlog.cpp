@@ -24,6 +24,10 @@ class ActionListFrame : public ListFrame
   void drawItem(DRAWITEMSTRUCT* dis);
   int drawItemText(HDC hDC, String text, RECT* rc, uint32 format, bool utf8);
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
+  int toolHitTest(POINT pt, ToolInfo* ti)
+  {
+    return -1;
+  }
 public:
   struct Action
   {
@@ -742,6 +746,7 @@ void ReplayActionLogTab::parseReplay()
   if (!mapData->isLoaded())
   {
     delete mapData;
+    mapData = NULL;
     loadButton->setText("Failed");
     return;
   }

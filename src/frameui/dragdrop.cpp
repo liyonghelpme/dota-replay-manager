@@ -25,10 +25,7 @@ ULONG __stdcall DropTarget::Release()
 {
   int count = InterlockedDecrement((LONG*) &refCount);
   if (count == 0)
-  {
     delete this;
-    return 0;
-  }
   return count;
 }
 
@@ -55,7 +52,7 @@ HRESULT __stdcall DropTarget::DragEnter(IDataObject* pDataObj, DWORD grfKeyState
     *pdwEffect = DropEffect(grfKeyState, pt, *pdwEffect);
     SetFocus(window->getHandle());
     ScreenToClient(window->getHandle(), (POINT*) &pt);
-    window->notify(WM_DRAGOVER, grfKeyState, MAKELONG(pt.x, pt.y));
+    window->notify(WM_DRAGOVER, (uint32) pdwEffect, MAKELONG(pt.x, pt.y));
   }
   else
     *pdwEffect = DROPEFFECT_NONE;
@@ -67,7 +64,7 @@ HRESULT __stdcall DropTarget::DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwE
   {
     *pdwEffect = DropEffect(grfKeyState, pt, *pdwEffect);
     ScreenToClient(window->getHandle(), (POINT*) &pt);
-    window->notify(WM_DRAGOVER, grfKeyState, MAKELONG(pt.x, pt.y));
+    window->notify(WM_DRAGOVER, (uint32) pdwEffect, MAKELONG(pt.x, pt.y));
   }
   else
     *pdwEffect = DROPEFFECT_NONE;
@@ -164,10 +161,7 @@ ULONG __stdcall EnumFormatEtc::Release()
 {
   int count = InterlockedDecrement((LONG*) &refCount);
   if (count == 0)
-  {
     delete this;
-    return 0;
-  }
   return count;
 }
 
@@ -288,10 +282,7 @@ ULONG __stdcall DataObject::Release()
 {
   int count = InterlockedDecrement((LONG*) &refCount);
   if (count == 0)
-  {
     delete this;
-    return 0;
-  }
   return count;
 }
 
@@ -416,10 +407,7 @@ ULONG __stdcall DropSource::Release()
 {
   int count = InterlockedDecrement((LONG*) &refCount);
   if (count == 0)
-  {
     delete this;
-    return 0;
-  }
   return count;
 }
 

@@ -294,7 +294,7 @@ void ScriptEditor::suggest()
     }
 
     int start = pos.offset;
-    while (start > 0 && (isalnum(pos.block->text[start - 1]) ||
+    while (start > 0 && (s_isalnum(pos.block->text[start - 1]) ||
         pos.block->text[start - 1] == '.' || pos.block->text[start - 1] == '_'))
       start--;
     String path = pos.block->text.substring(start, pos.offset);
@@ -372,7 +372,7 @@ void ScriptEditor::onSuggest(String text)
       pos.offset = pos.block->text.length();
     }
     int suggestEnd = pos.offset;
-    while (isalnum(pos.block->text[suggestEnd]) || pos.block->text[suggestEnd] == '_')
+    while (s_isalnum(pos.block->text[suggestEnd]) || pos.block->text[suggestEnd] == '_')
       suggestEnd++;
     suggestEnd += suggestPos - pos.offset;
     replace(suggestPos, suggestEnd, text);
@@ -1036,9 +1036,9 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     ReleaseCapture();
     return 0;
   case WM_CHAR:
-    if (isprint(wParam) && (GetAsyncKeyState(VK_CONTROL) & 0x8000) == 0)
+    if (s_isprint(wParam) && (GetAsyncKeyState(VK_CONTROL) & 0x8000) == 0)
     {
-      if (suggestList->visible() && !isalnum(wParam))
+      if (suggestList->visible() && !s_isalnum(wParam))
         suggestList->finish();
       if (caret == selStart && !insertMode && caret < getTextLength())
         replace(caret, caret + 1, String((char) wParam));
@@ -1490,7 +1490,7 @@ int ScriptEditor::getBlockKeyword(TextBlock* block)
   if (block == NULL || block->type != tBlock || block->text[0] != '{')
     return 0;
   int pos = 1;
-  while (pos < block->text.length() && !isspace(block->text[pos]) &&
+  while (pos < block->text.length() && !s_isspace(block->text[pos]) &&
       block->text[pos] != '}' && block->text[pos] != ':')
     pos++;
   String keyword = block->text.substring(1, pos);
@@ -1851,8 +1851,8 @@ int ScriptEditor::getWordSize(int pos, int dir)
   int prevType = 0;
   while (pos >= 0 && pos < cur.block->text.length())
   {
-    int type = isalnum(cur.block->text[pos]) ? 1 :
-      (isspace(cur.block->text[pos]) ? -1 : 0);
+    int type = s_isalnum(cur.block->text[pos]) ? 1 :
+      (s_isspace(cur.block->text[pos]) ? -1 : 0);
     if (count > 0 && type != prevType && prevType != -1)
       break;
     count++;

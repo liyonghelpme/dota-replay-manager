@@ -257,7 +257,7 @@ String String::substring(int from, int to) const
 String& String::removeLeadingSpaces()
 {
   int i = 0;
-  while (buf[i] && isspace(buf[i]))
+  while (buf[i] && s_isspace(buf[i]))
     i++;
   if (i)
   {
@@ -271,7 +271,7 @@ String& String::removeLeadingSpaces()
 String& String::removeTrailingSpaces()
 {
   int i = _len(buf);
-  while (i > 0 && isspace(buf[i - 1]))
+  while (i > 0 && s_isspace(buf[i - 1]))
     i--;
   if (i < _len(buf))
   {
@@ -326,7 +326,7 @@ bool String::isWordBoundary(int pos) const
 int String::find(char const* str, int start, int options) const
 {
   static int kmpbuf[256];
-#define comp(a,b) (options&FIND_CASE_INSENSITIVE?tolower((unsigned char)a)==tolower((unsigned char)b):(a)==(b))
+#define comp(a,b) (options&FIND_CASE_INSENSITIVE?s_tolower(a)==s_tolower(b):(a)==(b))
   if (start < 0) start += _len(buf);
   if (start < 0) start = 0;
   if (start > _len(buf)) start = _len(buf);
@@ -404,12 +404,12 @@ int String::find(char ch, int start, int options) const
   if (start < 0) start = 0;
   if (start > _len(buf)) start = _len(buf);
   if (options & FIND_CASE_INSENSITIVE)
-    ch = tolower((unsigned char) ch);
+    ch = s_tolower(ch);
   if (options & FIND_REVERSE)
   {
     for (int i = start - 1; i >= 0; i--)
     {
-      if ((options & FIND_CASE_INSENSITIVE ? tolower((unsigned char) buf[i]) == ch : buf[i] == ch) &&
+      if ((options & FIND_CASE_INSENSITIVE ? s_tolower(buf[i]) == ch : buf[i] == ch) &&
         ((options & FIND_WHOLE_WORD) == 0 || (
         isWordBoundary(i) && isWordBoundary(i + 1))))
         return i;
@@ -419,7 +419,7 @@ int String::find(char ch, int start, int options) const
   {
     for (int i = start; i < _len(buf); i++)
     {
-      if ((options & FIND_CASE_INSENSITIVE ? tolower((unsigned char) buf[i]) == ch : buf[i] == ch) &&
+      if ((options & FIND_CASE_INSENSITIVE ? s_tolower(buf[i]) == ch : buf[i] == ch) &&
         ((options & FIND_WHOLE_WORD) == 0 || (
         isWordBoundary(i) && isWordBoundary(i + 1))))
         return i;
@@ -496,7 +496,7 @@ String& String::insert(int pos, char const* str)
 bool String::isAlpha() const
 {
   for (int i = 0; i < _len(buf); i++)
-    if (!isalpha((unsigned char) buf[i]))
+    if (!s_isalpha((unsigned char) buf[i]))
       return false;
   return true;
 }
@@ -504,7 +504,7 @@ bool String::isAlpha() const
 bool String::isAlNum() const
 {
   for (int i = 0; i < _len(buf); i++)
-    if (!isalnum((unsigned char) buf[i]))
+    if (!s_isalnum((unsigned char) buf[i]))
       return false;
   return true;
 }
@@ -512,7 +512,7 @@ bool String::isAlNum() const
 bool String::isDigits() const
 {
   for (int i = 0; i < _len(buf); i++)
-    if (!isdigit((unsigned char) buf[i]))
+    if (!s_isdigit((unsigned char) buf[i]))
       return false;
   return true;
 }
@@ -520,7 +520,7 @@ bool String::isDigits() const
 bool String::isHexDigits() const
 {
   for (int i = 0; i < _len(buf); i++)
-    if (!isxdigit((unsigned char) buf[i]))
+    if (!s_isxdigit((unsigned char) buf[i]))
       return false;
   return true;
 }
@@ -542,10 +542,14 @@ void String::setExtension(String& str, String ext)
   for (int i = _len(str.buf) - 1; i >= 0; i--)
   {
     if (str.buf[i] == '/' || str.buf[i] == '\\')
-      return;
+      break;
     if (str.buf[i] == '.')
+    {
       str.replace(i, toTheEnd, ext);
+      return;
+    }
   }
+  str += ext;
 }
 
 bool String::isRelPath(String str)
@@ -654,7 +658,7 @@ String String::buildFullName(String path, String name)
 
 bool String::isWhitespace(unsigned char c)
 {
-  return isspace(c) != 0;
+  return s_isspace(c) != 0;
 }
 bool String::isIdChar(unsigned char c)
 {
@@ -901,8 +905,8 @@ int String::smartCompare(String a, String b)
     }
     else
     {
-      unsigned char ca = tolower(*ta++);
-      unsigned char cb = tolower(*tb++);
+      unsigned char ca = s_tolower(*ta++);
+      unsigned char cb = s_tolower(*tb++);
       if (ca != cb)
         return int(ca) - int(cb);
     }

@@ -9,14 +9,15 @@
 
 #include "base/gzmemory.h"
 
+#include "mpqsync.h"
+
 extern uint32 mpq_error;
 static bool _partial = false;
-static gzmemory* gzmem = NULL;
 
 struct CompressionType
 {
   uint8 id;
-  uint32 (*func) (uint8* in, uint32 in_size, uint8* out, uint32* out_size);
+  uint32 (*func) (uint8* in, uint32 in_size, uint8* out, uint32* out_size, gzmemory* gzmem);
 };
 static CompressionType comp_table[] = {
   {0x40, wave_compress_mono},
@@ -57,7 +58,7 @@ uint32 gzdeflate (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
   }
   return (result == Z_STREAM_END ? 0 : -1);
 }
-uint32 zlib_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
+uint32 zlib_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size, gzmemory* gzmem)
 {
   z_stream z;
   memset (&z, 0, sizeof z);
@@ -105,7 +106,7 @@ uint32 gzinflate (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
   }
   return (z.avail_out == 0 ? 0 : -1);
 }
-uint32 zlib_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
+uint32 zlib_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size, gzmemory* gzmem)
 {
   z_stream z;
   memset (&z, 0, sizeof z);
@@ -129,40 +130,6 @@ uint32 zlib_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
     inflateEnd (&z);
   }
   return mpq_error = (z.avail_out == 0 ? MPQ_OK : MPQ_ERROR_DECOMPRESS);
-  // somehow the library detects errors while the files are still decompressed
-  //if (result != Z_STREAM_END)
-  //  return mpq_error = MPQ_ERROR_DECOMPRESS;
-  //else
-  //  return mpq_error = MPQ_OK;
-}
-
-uint32 bzip2_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
-{
-  return 0;
-}
-
-uint32 bzip2_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
-{
-  //bz_stream bz;
-  //memset (&bz, 0, sizeof bz);
-  //bz.next_in = (char*) in;
-  //bz.avail_in = in_size;
-  //bz.next_out = (char*) out;
-  //bz.avail_out = *out_size;
-  //int result = BZ2_bzDecompressInit (&bz, 0, 0);
-  //if (result == BZ_OK)
-  //{
-  //  result = BZ2_bzDecompress (&bz);
-  //  *out_size -= bz.avail_out;
-  //  BZ2_bzDecompressEnd (&bz);
-  //}
-  //return mpq_error = MPQ_OK;;
-  // somehow the library detects errors while the files are still decompressed
-  //if (result != BZ_STREAM_END)
-  //  return mpq_error = MPQ_ERROR_DECOMPRESS;
-  //else
-  //  return mpq_error = MPQ_OK;
-  return 0;
 }
 
 struct BUFFERINFO
@@ -195,7 +162,7 @@ void FillOutput (char* buffer, unsigned int* size, void* param)
   bi->outPos += bufSize;
 }
 
-uint32 pkzip_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
+uint32 pkzip_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size, gzmemory* gzmem)
 {
   void* buf = gzmem->alloc (CMP_BUFFER_SIZE);
 
@@ -222,7 +189,7 @@ uint32 pkzip_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
   return mpq_error = MPQ_OK;
 }
 
-uint32 pkzip_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
+uint32 pkzip_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size, gzmemory* gzmem)
 {
   void* buf = gzmem->alloc (CMP_BUFFER_SIZE);
 
@@ -240,31 +207,31 @@ uint32 pkzip_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size
   return mpq_error = MPQ_OK;
 }
 
-uint32 wave_compress_mono (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
+uint32 wave_compress_mono (uint8* in, uint32 in_size, uint8* out, uint32* out_size, gzmemory* gzmem)
 {
   *out_size = CompressWave (out, *out_size, (short*) in, in_size, 1, 5);
   return mpq_error = MPQ_OK;
 }
 
-uint32 wave_decompress_mono (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
+uint32 wave_decompress_mono (uint8* in, uint32 in_size, uint8* out, uint32* out_size, gzmemory* gzmem)
 {
   *out_size = DecompressWave (out, *out_size, in, in_size, 1);
   return mpq_error = MPQ_OK;
 }
 
-uint32 wave_compress_stereo (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
+uint32 wave_compress_stereo (uint8* in, uint32 in_size, uint8* out, uint32* out_size, gzmemory* gzmem)
 {
   *out_size = CompressWave (out, *out_size, (short*) in, in_size, 2, 5);
   return mpq_error = MPQ_OK;
 }
 
-uint32 wave_decompress_stereo (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
+uint32 wave_decompress_stereo (uint8* in, uint32 in_size, uint8* out, uint32* out_size, gzmemory* gzmem)
 {
   *out_size = DecompressWave (out, *out_size, in, in_size, 2);
   return mpq_error = MPQ_OK;
 }
 
-uint32 huff_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
+uint32 huff_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size, gzmemory* gzmem)
 {
   THuffmannTree* ht = (THuffmannTree*) gzmem->alloc (sizeof(THuffmannTree));
 
@@ -292,7 +259,7 @@ uint32 huff_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
   return mpq_error = MPQ_OK;
 }
 
-uint32 huff_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
+uint32 huff_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size, gzmemory* gzmem)
 {
   THuffmannTree* ht = (THuffmannTree*) gzmem->alloc (sizeof(THuffmannTree));
 
@@ -322,7 +289,8 @@ uint32 huff_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
 
 uint32 mpq_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size, uint8* temp, uint32 methods)
 {
-  gzmem->reset ();
+  gzmemory gzmem;
+  gzmem.reset();
   if (in_size <= 32)
   {
     if (*out_size < in_size)
@@ -341,7 +309,7 @@ uint32 mpq_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size, ui
     if (methods & comp_table[i].id)
     {
       uint32 size = *out_size - 1;
-      uint32 res = comp_table[i].func (cur_in, cur_size, cur_out, &size);
+      uint32 res = comp_table[i].func (cur_in, cur_size, cur_out, &size, &gzmem);
       if (res == MPQ_OK && size < cur_size)
       {
         cur_size = size;
@@ -373,7 +341,8 @@ uint32 mpq_compress (uint8* in, uint32 in_size, uint8* out, uint32* out_size, ui
 
 uint32 mpq_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
 {
-  gzmem->reset ();
+  gzmemory gzmem;
+  gzmem.reset();
   if (in_size == *out_size)
   {
     if (in != out)
@@ -406,7 +375,7 @@ uint32 mpq_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
   }
   uint8* temp = NULL;
   if (count > 1)
-    temp = (uint8*) gzmem->alloc (*out_size);
+    temp = (uint8*) gzmem.alloc (*out_size);
   for (int i = 0; i < numMethods; i++)
   {
     if (method & decomp_table[i].id)
@@ -414,9 +383,9 @@ uint32 mpq_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
       uint8* work = (count-- & 1) ? out : temp;
       uint32 work_size = *out_size;
       uint32 res;
-      if (res = decomp_table[i].func (in, in_size, work, &work_size))
+      if (res = decomp_table[i].func (in, in_size, work, &work_size, &gzmem))
       {
-        gzmem->free (temp);
+        gzmem.free (temp);
         return res;
       }
       in = work;
@@ -426,12 +395,13 @@ uint32 mpq_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
   if (in != out)
     memcpy (out, in, in_size);
   *out_size = in_size;
-  gzmem->free (temp);
+  gzmem.free (temp);
   return MPQ_OK;
 }
 uint32 mpq_part_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_size)
 {
-  gzmem->reset ();
+  gzmemory gzmem;
+  gzmem.reset();
   int numMethods = sizeof decomp_table / sizeof decomp_table[0];
   uint8 method = *in++;
   uint8 remain = method;
@@ -457,7 +427,7 @@ uint32 mpq_part_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_s
   }
   uint8* temp = NULL;
   if (count > 1)
-    temp = (uint8*) gzmem->alloc (*out_size);
+    temp = (uint8*) gzmem.alloc (*out_size);
   _partial = true;
   for (int i = 0; i < numMethods; i++)
   {
@@ -466,10 +436,10 @@ uint32 mpq_part_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_s
       uint8* work = (count-- & 1) ? out : temp;
       uint32 work_size = *out_size;
       uint32 res;
-      if (res = decomp_table[i].func (in, in_size, work, &work_size))
+      if (res = decomp_table[i].func (in, in_size, work, &work_size, &gzmem))
       {
         _partial = false;
-        gzmem->free (temp);
+        gzmem.free (temp);
         return res;
       }
       in = work;
@@ -480,16 +450,13 @@ uint32 mpq_part_decompress (uint8* in, uint32 in_size, uint8* out, uint32* out_s
   if (in != out)
     memcpy (out, in, in_size);
   *out_size = in_size;
-  gzmem->free (temp);
+  gzmem.free (temp);
   return MPQ_OK;
 }
 
 void MPQC_INIT ()
 {
-  gzmem = new gzmemory ();
 }
 void MPQC_CLEANUP ()
 {
-  delete gzmem;
-  gzmem = NULL;
 }

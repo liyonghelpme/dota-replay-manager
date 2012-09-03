@@ -144,9 +144,9 @@ int FontSys::getMTextHeight (HFONT font, int width, String text)
   int height = 0;
   for (int i = 0; i <= text.length (); i++)
   {
-    if (text[i] && text[i] != '\n' && !isspace (text[i]))
+    if (text[i] && text[i] != '\n' && !s_isspace (text[i]))
       word += text[i];
-    if (text[i] == 0 || isspace (text[i]))
+    if (text[i] == 0 || s_isspace (text[i]))
     {
       String tmp = curline + word;
       GetTextExtentPoint32(instance.hDC, tmp, tmp.length(), &sz);

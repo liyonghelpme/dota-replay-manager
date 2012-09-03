@@ -143,6 +143,8 @@ void GraphWindow::smoothGraph(int id, int factor)
 }
 void GraphWindow::combineGraphs(int id, int id2)
 {
+  if (id2 >= graphs.length())
+    return;
   Graph* g[2] = {&graphs[id], &graphs[id2]};
   if (g[1]->points.length() == 0)
     return;

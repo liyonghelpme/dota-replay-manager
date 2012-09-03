@@ -152,12 +152,14 @@ class W3GReplay
 
   void parseMode(W3GPlayer* player, char const* text);
 
-  W3GReplay(File* unpacked, W3GHeader const& header, bool quick);
+  W3GReplay(File* unpacked, W3GHeader const& header, bool quick, uint32* error);
 public:
-  static W3GReplay* load(File* replay, bool quick = false);
-  static W3GReplay* load(char const* path, bool quick = false);
+  static W3GReplay* load(File* replay, bool quick = false, uint32* error = NULL);
+  static W3GReplay* load(char const* path, bool quick = false, uint32* error = NULL);
   void setPath(char const* path);
   ~W3GReplay();
+
+  enum {eOk, eNoFile, eBadFile, eNoMap};
 
   W3GPlayer* getCaptain(int team);
   W3GPlayer* getPlayerInSlot(int slot);

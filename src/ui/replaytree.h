@@ -36,6 +36,7 @@ class ReplayTree : public Frame, public DirChangeHandler
   DirChangeTracker* tracker;
   String path;
   MainWnd* mainWnd;
+  HTREEITEM selfDrag;
 
   void enumfiles(Array<FileInfo>& files, String path);
   static int compfiles(FileInfo const& a, FileInfo const& b);

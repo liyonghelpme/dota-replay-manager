@@ -36,6 +36,7 @@ ReplayTree::ReplayTree(String thePath, MainWnd* parent)
   mainWnd = parent;
   tracker = NULL;
   updating = false;
+  selfDrag = NULL;
 
   treeView = new DropTreeViewFrame(this, 0, TVS_HASBUTTONS | TVS_HASLINES |
     TVS_LINESATROOT | TVS_SHOWSELALWAYS | TVS_EDITLABELS | WS_HSCROLL | WS_TABSTOP);
@@ -95,7 +96,11 @@ uint32 ReplayTree::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         {
           HGLOBAL data = CreateFileDrop(items[pos].path);
           if (data)
+          {
+            selfDrag = hdr->itemNew.hItem;
             DoDragDrop(CF_HDROP, data, DROPEFFECT_MOVE | DROPEFFECT_COPY | DROPEFFECT_LINK);
+            selfDrag = NULL;
+          }
         }
         return TRUE;
       }
@@ -136,7 +141,7 @@ uint32 ReplayTree::onMessage(uint32 message, uint32 wParam, uint32 lParam)
           op.wFunc = FO_RENAME;
           op.pFrom = src;
           op.pTo = dst;
-          if (SHFileOperation(&op) == 0)
+          if (SHFileOperationEx(&op) == 0)
           {
             items[di->item.lParam].path = String::buildFullName(
               String::getPath(items[di->item.lParam].path), di->item.pszText);
@@ -170,7 +175,12 @@ uint32 ReplayTree::onMessage(uint32 message, uint32 wParam, uint32 lParam)
           TreeView_GetItem(treeView->getHandle(), &tvi);
           if (tvi.lParam < 0 || tvi.lParam >= items.length() || items[tvi.lParam].type != MAINWND_FOLDER)
             ht.hItem = NULL;
+          if (selfDrag == ht.hItem || (selfDrag &&
+              TreeView_GetParent(treeView->getHandle(), selfDrag) == ht.hItem))
+            ht.hItem = NULL;
         }
+        if (wParam && selfDrag && ht.hItem == NULL && *(DWORD*) wParam == DROPEFFECT_MOVE)
+          *(DWORD*) wParam = DROPEFFECT_NONE;
       }
       else
         ht.hItem = NULL;
@@ -233,7 +243,7 @@ uint32 ReplayTree::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       op.wFunc = (lParam == DROPEFFECT_MOVE ? FO_MOVE : FO_COPY);
       op.pFrom = opFrom;
       op.pTo = opTo;
-      SHFileOperation(&op);
+      SHFileOperationEx(&op);
       if (df->fWide)
         delete opFrom;
       GlobalUnlock((HGLOBAL) wParam);

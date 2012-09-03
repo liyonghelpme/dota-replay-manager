@@ -71,6 +71,45 @@ IDI_PLAY                ICON                    "K:\\Progs\\DotAReplay\\res\\pla
 
 /////////////////////////////////////////////////////////////////////////////
 //
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 3,0,0,0
+ PRODUCTVERSION 3,0,0,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x4L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904e4"
+        BEGIN
+            VALUE "CompanyName", "RiV Soft"
+            VALUE "FileDescription", "DotA Replay Manager"
+            VALUE "FileVersion", "3.00"
+            VALUE "InternalName", "DotAReplay"
+            VALUE "LegalCopyright", "d07.RiV, 02.09.2012. http://rivsoft.narod.ru/"
+            VALUE "OriginalFilename", "DotAReplay.exe"
+            VALUE "ProductName", "DotA Replay Manager"
+            VALUE "ProductVersion", "3.00"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1252
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
 // Cursor
 //
 
@@ -145,6 +184,59 @@ BEGIN
     CONTROL         "",IDC_STATIC,"Static",SS_ETCHEDVERT,112,120,1,9
 END
 
+IDD_BATCHDLG DIALOGEX 0, 0, 238, 52
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Batch copy"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    PUSHBUTTON      "Cancel",IDCANCEL,181,31,50,14
+    LTEXT           "From:",IDC_FROMFILE,7,7,224,8,SS_PATHELLIPSIS
+    LTEXT           "To:",IDC_TOFILE,15,18,216,8,SS_PATHELLIPSIS
+    CONTROL         "",IDC_BATCHPROGRESS,"msctls_progress32",0x0,7,31,170,14
+END
+
+IDD_UPDATEDLG DIALOGEX 0, 0, 360, 210
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Updates"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "Open webpage",IDC_OPENWEB,7,189,110,14
+    PUSHBUTTON      "Open playdota.com thread",IDC_OPENFORUM,125,189,110,14
+    PUSHBUTTON      "Close",IDCANCEL,243,189,110,14
+    EDITTEXT        IDC_UPDATEINFO,7,7,346,161,ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | ES_READONLY | WS_VSCROLL
+END
+
+IDD_ABOUTBOX DIALOGEX 0, 0, 235, 44
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About DotAReplay"
+FONT 8, "MS Shell Dlg", 0, 0, 0x1
+BEGIN
+    ICON            "",IDC_APPICON,7,6,21,20
+    LTEXT           "DotAReplay",IDC_APPINFO,45,10,119,8,SS_NOPREFIX | NOT WS_GROUP
+    LTEXT           "By d07.RiV, http://rivsoft.narod.ru/",IDC_STATIC,45,25,119,8
+    DEFPUSHBUTTON   "OK",IDOK,178,6,50,14,WS_GROUP
+    PUSHBUTTON      "Website",IDC_OPENWEB,178,23,50,14
+END
+
+IDD_NODATA DIALOGEX 0, 0, 200, 124
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "No data"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    LTEXT           "No data for version:",IDC_NODATA_TIP,7,8,186,8
+    CONTROL         "Load data from map used in replay",IDC_LOADMAPAUTO,
+                    "Button",BS_AUTORADIOBUTTON | WS_TABSTOP,7,19,127,10
+    CONTROL         "Remember this choice",IDC_ALWAYSLOAD,"Button",BS_AUTOCHECKBOX | WS_DISABLED | WS_TABSTOP,17,31,129,10
+    CONTROL         "Load data from the following map:",IDC_LOADMAP,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,7,43,125,10
+    EDITTEXT        IDC_MAPTOLOAD,17,55,122,12,ES_AUTOHSCROLL
+    PUSHBUTTON      "Browse...",IDC_MAPBROWSE,143,55,50,12
+    CONTROL         "Copy data from version",IDC_COPYVERSION,"Button",BS_AUTORADIOBUTTON | WS_TABSTOP,7,73,91,10
+    COMBOBOX        IDC_VERSIONLIST,98,71,59,30,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    CONTROL         "Save data for this version",IDC_SAVEDATA,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,89,99,10
+    DEFPUSHBUTTON   "OK",IDOK,7,103,50,14
+    PUSHBUTTON      "Cancel",2,143,103,50,14
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -168,6 +260,22 @@ BEGIN
         RIGHTMARGIN, 331
         TOPMARGIN, 7
         BOTTOMMARGIN, 147
+    END
+
+    IDD_BATCHDLG, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 231
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 45
+    END
+
+    IDD_NODATA, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 193
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 117
     END
 END
 #endif    // APSTUDIO_INVOKED

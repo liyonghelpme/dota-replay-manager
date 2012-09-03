@@ -14,11 +14,10 @@ MapData::MapData(char const* path)
   {
     imgList = ImageList_Create(16, 16, ILC_COLOR24, 16, 16);
 
-    MPQLoader* loader = getApp()->getWarLoader();
-    loader->addArchive(*map);
-    LoadGameData(data, loader, WC3_LOAD_UNITS | WC3_LOAD_ITEMS |
+    MPQLoader loader(*getApp()->getWarLoader());
+    loader.addArchive(map);
+    LoadGameData(data, &loader, WC3_LOAD_UNITS | WC3_LOAD_ITEMS |
       WC3_LOAD_ABILITIES | WC3_LOAD_UPGRADES | WC3_LOAD_MERGED | WC3_LOAD_NO_WEONLY);
-    loader->removeArchive(*map);
 
     Image blank(16, 16);
     blank.fill(0xFFFFFFFF);
@@ -42,15 +41,14 @@ int MapData::getImageIndex(String name)
   if (images.has(title))
     return images.get(title);
 
-  MPQLoader* loader = getApp()->getWarLoader();
-  loader->addArchive(*map);
-  File* file = loader->load(name);
+  MPQLoader loader(*getApp()->getWarLoader());
+  loader.addArchive(map);
+  File* file = loader.load(name);
   if (file == NULL)
   {
     String::setExtension(name, ".blp");
-    file = loader->load(name);
+    file = loader.load(name);
   }
-  loader->removeArchive(*map);
 
   Image image(file);
   delete file;

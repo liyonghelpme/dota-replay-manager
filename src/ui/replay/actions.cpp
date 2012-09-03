@@ -290,6 +290,19 @@ void ReplayActionsTab::onSetReplay()
 
     setPlayer((W3GPlayer*) players->getItemData(1));
   }
+  else if (w3g)
+  {
+    players->enable();
+
+    for (int i = 0; i < w3g->getNumPlayers(); i++)
+    {
+      W3GPlayer* player = w3g->getPlayer(i);
+      players->addString(player->name, getLightColor(player->slot.color),
+        getRaceIcon(player->race), (uint32) player);
+    }
+
+    setPlayer((W3GPlayer*) players->getItemData(0));
+  }
   else
   {
     players->disable();

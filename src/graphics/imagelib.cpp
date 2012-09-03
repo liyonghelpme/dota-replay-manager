@@ -1,4 +1,5 @@
 #include "imagelib.h"
+#include "base/utils.h"
 
 ImageLibrary::ImageInfo::ImageInfo()
 {
@@ -36,6 +37,7 @@ ImageLibrary::ImageLibrary(MPQArchive* _mpq)
 {
   mpq = _mpq;
   list = ImageList_Create(16, 16, ILC_COLOR24, 16, 16);
+  InitializeCriticalSection(&lock);
   
   for (uint32 i = 0; i < mpq->getHashSize(); i++)
   {
@@ -43,10 +45,12 @@ ImageLibrary::ImageLibrary(MPQArchive* _mpq)
     if (name && !strnicmp(name, "images\\", 7))
       loadImage(name);
   }
+  getListIndex("Empty");
 }
 ImageLibrary::~ImageLibrary()
 {
   ImageList_Destroy(list);
+  DeleteCriticalSection(&lock);
 }
 
 void ImageLibrary::loadImage(String name)
@@ -57,17 +61,27 @@ void ImageLibrary::loadImage(String name)
 
 String ImageLibrary::getTooltip(char const* name)
 {
+  Locker lock_(lock);
   if (!images.has(name))
     return "";
   return images.get(name).tooltip;
 }
+String ImageLibrary::getTooltip(int index)
+{
+  Locker lock_(lock);
+  if (index <= 0 || index > ilist.length())
+    return "";
+  return ilist[index]->tooltip;
+}
 void ImageLibrary::setTooltip(char const* name, String tooltip)
 {
-  if (!images.has(name))
+  Locker lock_(lock);
+  if (images.has(name))
     images.get(name).tooltip = tooltip;
 }
 Image* ImageLibrary::getImage(char const* name)
 {
+  Locker lock_(lock);
   if (!images.has(name))
     return NULL;
   ImageInfo& info = images.get(name);
@@ -75,6 +89,7 @@ Image* ImageLibrary::getImage(char const* name)
 }
 HBITMAP ImageLibrary::getBitmap(char const* name)
 {
+  Locker lock_(lock);
   if (!images.has(name))
     return NULL;
   ImageInfo& info = images.get(name);
@@ -84,6 +99,7 @@ HBITMAP ImageLibrary::getBitmap(char const* name)
 }
 int ImageLibrary::getListIndex(char const* name, char const* def)
 {
+  Locker lock_(lock);
   if (!images.has(name))
   {
     if (def && images.has(def))
@@ -100,6 +116,7 @@ int ImageLibrary::getListIndex(char const* name, char const* def)
       if (!info.hBitmap)
         info.hBitmap = image->createBitmap();
       info.listIndex = ImageList_Add(list, info.hBitmap, NULL);
+      ilist.push(&info);
     }
   }
   return info.listIndex;
@@ -107,6 +124,7 @@ int ImageLibrary::getListIndex(char const* name, char const* def)
 
 void ImageLibrary::addImage(char const* name, Image* image, bool big)
 {
+  Locker lock_(lock);
   if (images.has(name))
     return;
 

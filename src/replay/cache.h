@@ -17,9 +17,11 @@ struct GameCache
   uint64 game_mode;
   uint32 map_version;
   uint32 wc3_version;
-  uint8 winner;
+  sint8 winner;
 
   uint8 players;
+  sint8 host;
+  sint8 saver;
   String pname[10];
   uint8 pteam[10];
   uint8 phero[10];
@@ -29,6 +31,8 @@ struct GameCache
   uint8 plevel[10];
   uint32 pgold[10];
   uint16 papm[10];
+
+  String format(char const* fmt, char const* dst = NULL, char const* src = NULL);
 };
 
 class CacheManager
@@ -45,6 +49,8 @@ public:
   GameCache* getGame(String path, GameCache* dst = NULL);
   GameCache* getGameNow(String path);
   void addGame(W3GReplay* replay);
+
+  void duplicate(String path, GameCache* game);
 };
 
 #endif // __REPLAY_CACHE__

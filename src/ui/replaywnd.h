@@ -48,6 +48,8 @@ class ReplayWindow : public TabFrame
 
   W3GReplay* replay;
   ReplayViewItem* viewItem;
+  StaticFrame* failure;
+  StaticFrame* failureInfo;
 
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
   void update();

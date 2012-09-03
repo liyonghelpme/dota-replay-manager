@@ -4,15 +4,17 @@
 //
 #define IDI_MAIN                        102
 #define IDC_SPLITVERT                   103
-#define IDC_CURSOR1                     104
 #define IDC_ELFHAND                     104
 #define IDI_PLAY                        107
-#define IDC_CURSOR2                     109
 #define IDC_ZOOM_IN                     109
 #define IDC_ZOOM_OUT                    110
 #define IDD_TEXTPROMPT                  110
 #define IDC_HAND_MOVE                   111
 #define IDD_SCRIPTGEN                   111
+#define IDD_BATCHDLG                    113
+#define IDD_UPDATEDLG                   114
+#define IDD_ABOUTBOX                    115
+#define IDD_NODATA                      116
 #define IDC_INPUT                       1001
 #define IDC_PROMPT                      1002
 #define IDC_SCRIPTMODE                  1003
@@ -43,20 +45,36 @@
 #define IDC_SCRIPT_DETAIL_SENTINEL      1028
 #define IDC_SCRIPT_DETAIL_SCOURGE       1029
 #define IDC_SCRIPT_DETAIL_SAVER         1030
-#define IDC_SCRIPT_DETAIL_SKILLS        1038
 #define IDC_SCRIPT_DETAIL_SKILLBUILD    1038
 #define IDC_SCRIPT_DETAIL_SKILLTIME     1039
 #define IDC_SCRIPT_DETAIL_ITEMBUILD     1041
 #define IDC_SCRIPT_DETAIL_ITEMTIME      1042
 #define IDC_SCRIPT_DETAIL_ITEMCOST      1043
+#define IDC_FROMFILE                    1044
+#define IDC_TOFILE                      1045
+#define IDC_BATCHPROGRESS               1046
+#define IDC_OPENWEB                     1047
+#define IDC_OPENFORUM                   1048
+#define IDC_UPDATEINFO                  1049
+#define IDC_APPINFO                     1050
+#define IDC_APPICON                     1051
+#define IDC_NODATA_TIP                  1052
+#define IDC_LOADMAPAUTO                 1053
+#define IDC_LOADMAP                     1054
+#define IDC_COPYVERSION                 1055
+#define IDC_ALWAYSLOAD                  1056
+#define IDC_SAVEDATA                    1057
+#define IDC_MAPTOLOAD                   1058
+#define IDC_MAPBROWSE                   1059
+#define IDC_VERSIONLIST                 1060
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        113
+#define _APS_NEXT_RESOURCE_VALUE        118
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1006
+#define _APS_NEXT_CONTROL_VALUE         1061
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

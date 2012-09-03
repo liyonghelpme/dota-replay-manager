@@ -5,10 +5,13 @@
 #include "base/utils.h"
 #include "base/mpqfile.h"
 #include "dota/consts.h"
+#include "frameui/dragdrop.h"
 
 #include "gameinfo.h"
 
-#define IDC_MAPIMAGE      100
+#define IDC_MAPIMAGE          100
+#define IDC_WATCHREPLAY       101
+#define IDC_COPYMATCHUP       102
 
 #define INFO_VERSION      0
 #define INFO_MAP          1
@@ -71,13 +74,26 @@ ReplayGameInfoTab::ReplayGameInfoTab(Frame* parent)
   players->setPoint(PT_BOTTOMRIGHT, -10, -10);
   players->setHeight(250);
   players->show();
-  map = new StaticFrame(this, IDC_MAPIMAGE, SS_BITMAP | SS_CENTERIMAGE, WS_EX_CLIENTEDGE);
-  map->setPoint(PT_BOTTOMRIGHT, players, PT_TOPRIGHT, 0, -10);
-  map->setSize(132, 132);
+
   info = new SimpleListFrame(this, 0, LVS_ALIGNLEFT | LVS_REPORT |
     LVS_NOCOLUMNHEADER | LVS_NOSCROLL | LVS_SINGLESEL | WS_DISABLED, WS_EX_STATICEDGE);
   info->setPoint(PT_TOPLEFT, 10, 10);
-  info->setPoint(PT_BOTTOMRIGHT, map, PT_BOTTOMLEFT, -10, 0);
+  info->setPoint(PT_TOPRIGHT, -200, 10);
+  info->setPoint(PT_BOTTOM, players, PT_TOP, 0, -10);
+
+  watchReplay = new ButtonFrame("Watch replay", this, IDC_WATCHREPLAY);
+  watchReplay->setHeight(23);
+  watchReplay->setPoint(PT_TOPLEFT, info, PT_TOPRIGHT, 6, 0);
+  watchReplay->setPoint(PT_TOPRIGHT, -10, 10);
+
+  copyMatchup = new ButtonFrame("Copy matchup", this, IDC_COPYMATCHUP);
+  copyMatchup->setHeight(23);
+  copyMatchup->setPoint(PT_TOPLEFT, watchReplay, PT_BOTTOMLEFT, 0, 5);
+  copyMatchup->setPoint(PT_TOPRIGHT, watchReplay, PT_BOTTOMRIGHT, 0, 5);
+
+  map = new StaticFrame(this, IDC_MAPIMAGE, SS_BITMAP | SS_CENTERIMAGE, WS_EX_CLIENTEDGE);
+  map->setPoint(PT_TOP, copyMatchup, PT_BOTTOM, 0, 10);
+  map->setSize(132, 132);
 
   mapCanvas = new Image(128, 128);
   mapCanvas->fill(0xFF00FF00);
@@ -110,6 +126,35 @@ void ReplayGameInfoTab::addInfo(String name, String value, bool utf8)
   else
     info->setItemText(pos, 2, value);
 }
+String ReplayGameInfoTab::getWatchCmd()
+{
+  if (w3g == NULL)
+  {
+    watchReplay->setText("Watch replay");
+    return "";
+  }
+  if (w3g->getFileInfo() == NULL)
+  {
+    watchReplay->setText("Unknown file location");
+    return "";
+  }
+  if (cfg.warPath.isEmpty())
+  {
+    watchReplay->setText("Warcraft III not found");
+    return "";
+  }
+  String exe = String::buildFullName(cfg.warPath, "War3.exe");
+  FileInfo fi;
+  if (!getFileInfo(exe, fi))
+  {
+    watchReplay->setText("Warcraft III not found");
+    return "";
+  }
+  String cmd = String::format("\"%s\" -loadfile \"%s\"", exe, w3g->getFileInfo()->path);
+  if (cfg.viewWindow)
+    cmd += " -window";
+  return cmd;
+}
 void ReplayGameInfoTab::onSetReplay()
 {
   players->clearColumns();
@@ -126,6 +171,8 @@ void ReplayGameInfoTab::onSetReplay()
   ReleaseDC(map->getHandle(), hDC);
   map->invalidate();
   players->enable(w3g != NULL);
+  watchReplay->enable(!getWatchCmd().isEmpty());
+  copyMatchup->enable(w3g != NULL);
   if (w3g == NULL)
     return;
 
@@ -172,6 +219,8 @@ void ReplayGameInfoTab::onSetReplay()
   }
   map->invalidate();
 
+  if (w3g->getFileInfo())
+    addInfo("Replay saved", format_systime(w3g->getFileInfo()->ftime, "%c"));
   addInfo("Warcraft version", formatVersion(w3g->getVersion()));
   addInfo("Map", String::getFileTitle(w3g->getGameInfo()->map));
   addInfo("Map location", String::getPath(w3g->getGameInfo()->map));
@@ -184,12 +233,40 @@ void ReplayGameInfoTab::onSetReplay()
   addInfo("Game length", format_time(w3g->getLength()));
   info->setColumnWidth(2, LVSCW_AUTOSIZE);
 
+  String observers = "";
+  for (int i = 0; i < w3g->getNumPlayers(); i++)
+  {
+    W3GPlayer* player = w3g->getPlayer(i);
+    if (player->slot.color > 11 || player->slot.slot_status == 0)
+    {
+      if (!observers.isEmpty()) observers += ", ";
+      observers += player->name;
+    }
+  }
+  if (!observers.isEmpty())
+    addInfo("Observers", observers, true);
+
   LockWindowUpdate(players->getHandle());
 
   ImageLibrary* ilib = getApp()->getImageLibrary();
 
   if (DotaInfo const* dotaInfo = w3g->getDotaInfo())
   {
+    addInfo("Players", String::format("%dv%d", dotaInfo->team_size[0], dotaInfo->team_size[1]));
+    addInfo("Score", String::format("%d/%d", dotaInfo->team_kills[0], dotaInfo->team_kills[1]));
+    if (w3g->getGameInfo()->winner == WINNER_UNKNOWN)
+      addInfo("Winner", "Unknown");
+    else if (w3g->getGameInfo()->winner == WINNER_SENTINEL)
+      addInfo("Winner", "Sentinel");
+    else if (w3g->getGameInfo()->winner == WINNER_GSENTINEL ||
+             w3g->getGameInfo()->winner == WINNER_PSENTINEL)
+      addInfo("Winner (guess)", "Sentinel");
+    else if (w3g->getGameInfo()->winner == WINNER_SCOURGE)
+      addInfo("Winner", "Scourge");
+    else if (w3g->getGameInfo()->winner == WINNER_GSCOURGE ||
+             w3g->getGameInfo()->winner == WINNER_PSCOURGE)
+      addInfo("Winner (guess)", "Scourge");
+
     players->insertColumn(PL_NAME, "Name");
     players->setColumnUTF8(PL_NAME, true);
     players->insertColumn(PL_LEVEL, "Level", LVCFMT_RIGHT);
@@ -226,15 +303,37 @@ void ReplayGameInfoTab::onSetReplay()
         players->setColumnWidth(i, cfg.giColWidth[i]);
     }
   }
+  else
+  {
+    players->insertColumn(PL_NAME, "Name");
+    players->setColumnUTF8(PL_NAME, true);
+    players->insertColumn(PL_TEAM, "Team");
+    players->insertColumn(PL_LAPM, "APM", LVCFMT_RIGHT);
+    players->insertColumn(PL_LLEFT, "Left", LVCFMT_RIGHT);
+
+    if (w3g->getGameInfo()->ladder_winner < 0)
+      addInfo("Winner", "Unknown");
+    else if (w3g->getGameInfo()->ladder_wplayer)
+      addInfo("Winner", w3g->getGameInfo()->ladder_wplayer->name, true);
+    else
+      addInfo("Winner", String::format("Team %d", w3g->getGameInfo()->ladder_winner + 1));
+
+    for (int i = 0; i < w3g->getNumPlayers(); i++)
+      addLadderPlayer(w3g->getPlayer(i));
+
+    for (int i = 0; i <= PL_LLEFT; i++)
+      players->setColumnWidth(i, cfg.giLColWidth[i]);
+  }
 
   LockWindowUpdate(NULL);
 }
 void ReplayGameInfoTab::addPlayer(W3GPlayer* player)
 {
   ImageLibrary* ilib = getApp()->getImageLibrary();
+  int i;
   if (player->hero && w3g->getLength())
   {
-    int i = players->addItem(player->name, ilib->getListIndex(player->hero->hero->icon),
+    i = players->addItem(player->name, ilib->getListIndex(player->hero->hero->icon),
       (player->player_id << 24) | getLightColor(player->slot.color));
     players->setItemText(i, PL_LEVEL, String(player->level));
     players->setItemText(i, PL_ITEM, String(player->item_cost));
@@ -249,6 +348,7 @@ void ReplayGameInfoTab::addPlayer(W3GPlayer* player)
         players->setItemText(i, PL_ASSISTS, String(player->stats[STAT_ASSISTS]));
         players->setItemText(i, PL_NEUTRALS, String(player->stats[STAT_NEUTRALS]));
       }
+      players->setItemText(i, PL_LANE, getLaneName(player->lane));
       String items = "";
       for (int it = 0; it < 6; it++)
       {
@@ -260,6 +360,29 @@ void ReplayGameInfoTab::addPlayer(W3GPlayer* player)
       players->setItemText(i, PL_ITEMBUILD, items);
     }
   }
+  else
+    i = players->addItem(player->name, ilib->getListIndex("Empty"),
+      (player->player_id << 24) | getLightColor(player->slot.color));
+  players->setItemText(i, PL_APM, String(player->apm()));
+  if (player->time >= w3g->getLength() || player->player_id >= 0x80)
+    players->setItemText(i, PL_LEFT, "End");
+  else
+    players->setItemText(i, PL_LEFT, w3g->formatTime(player->time));
+}
+void ReplayGameInfoTab::addLadderPlayer(W3GPlayer* player)
+{
+  if (player->slot.color > 11 || player->slot.slot_status == 0)
+    return;
+  ImageLibrary* ilib = getApp()->getImageLibrary();
+  int i = players->addItem(player->name,
+    ilib->getListIndex(getRaceIcon(player->race)),
+    (player->player_id << 24) | getLightColor(player->slot.color));
+  players->setItemText(i, PL_TEAM, String::format("Team %d", player->slot.team + 1));
+  players->setItemText(i, PL_LAPM, String(player->apm()));
+  if (player->time >= w3g->getLength() || player->player_id >= 0x80)
+    players->setItemText(i, PL_LLEFT, "End");
+  else
+    players->setItemText(i, PL_LLEFT, w3g->formatTime(player->time));
 }
 uint32 ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
@@ -271,42 +394,106 @@ uint32 ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam
       NMHEADER* header = (NMHEADER*) hdr;
       if (header->iItem >= 0 && header->iItem <= PL_LEFT &&
           header->pitem && header->pitem->mask & HDI_WIDTH)
-        cfg.giColWidth[header->iItem] = header->pitem->cxy;
+      {
+        if (w3g && w3g->getDotaInfo())
+          cfg.giColWidth[header->iItem] = header->pitem->cxy;
+        else if (header->iItem <= PL_LLEFT)
+          cfg.giLColWidth[header->iItem] = header->pitem->cxy;
+      }
     }
   }
   else if (message == WM_COMMAND)
   {
-    if (HIWORD(wParam) == STN_CLICKED && LOWORD(wParam) == IDC_MAPIMAGE)
+    switch (LOWORD(wParam))
     {
-      if (mapImages[curImage] && popout == NULL)
+    case IDC_MAPIMAGE:
+      if (HIWORD(wParam) == STN_CLICKED)
       {
-        RootWindow::setCapture(this);
-        RECT rc;
-        GetClientRect(map->getHandle(), &rc);
-        ClientToScreen(map->getHandle(), (POINT*) &rc.left);
-        ClientToScreen(map->getHandle(), (POINT*) &rc.right);
-        rc.left = (rc.left + rc.right - mapImages[curImage]->width()) / 2;
-        rc.top = (rc.top + rc.bottom - mapImages[curImage]->height()) / 2;
-        rc.right = rc.left + mapImages[curImage]->width();
-        rc.bottom = rc.top + mapImages[curImage]->height();
-        popout = new MapPopout(&rc, mapImages[curImage]);
-        ShowWindow(popout->getHandle(), SW_SHOWNA);
+        if (mapImages[curImage] && popout == NULL)
+        {
+          RootWindow::setCapture(this);
+          RECT rc;
+          GetClientRect(map->getHandle(), &rc);
+          ClientToScreen(map->getHandle(), (POINT*) &rc.left);
+          ClientToScreen(map->getHandle(), (POINT*) &rc.right);
+          rc.left = (rc.left + rc.right - mapImages[curImage]->width()) / 2;
+          rc.top = (rc.top + rc.bottom - mapImages[curImage]->height()) / 2;
+          rc.right = rc.left + mapImages[curImage]->width();
+          rc.bottom = rc.top + mapImages[curImage]->height();
+          popout = new MapPopout(&rc, mapImages[curImage]);
+          ShowWindow(popout->getHandle(), SW_SHOWNA);
+        }
+      }
+      else if (HIWORD(wParam) == STN_DBLCLK)
+      {
+        if (mapImages[1 - curImage])
+        {
+          curImage = 1 - curImage;
+          mapCanvas->fill(0);
+          BLTInfo info(mapImages[curImage]);
+          info.setDstSize(mapCanvas->width(), mapCanvas->height());
+          mapCanvas->blt(info);
+          HDC hDC = GetDC(map->getHandle());
+          mapCanvas->fillBitmap(mapBitmap, hDC);
+          ReleaseDC(map->getHandle(), hDC);
+          map->invalidate();
+        }
       }
       return 0;
-    }
-    else if (HIWORD(wParam) == STN_DBLCLK && LOWORD(wParam) == IDC_MAPIMAGE)
-    {
-      if (mapImages[1 - curImage])
+    case IDC_WATCHREPLAY:
       {
-        curImage = 1 - curImage;
-        mapCanvas->fill(0);
-        BLTInfo info(mapImages[curImage]);
-        info.setDstSize(mapCanvas->width(), mapCanvas->height());
-        mapCanvas->blt(info);
-        HDC hDC = GetDC(map->getHandle());
-        mapCanvas->fillBitmap(mapBitmap, hDC);
-        ReleaseDC(map->getHandle(), hDC);
-        map->invalidate();
+        String cmd = getWatchCmd();
+        if (!cmd.isEmpty())
+        {
+          STARTUPINFO info;
+          GetStartupInfo(&info);
+          PROCESS_INFORMATION pi;
+          CreateProcess(NULL, cmd.getBuffer(), NULL, NULL, FALSE, 0, NULL, NULL, &info, &pi);
+          CloseHandle(pi.hProcess);
+          CloseHandle(pi.hThread);
+        }
+      }
+      return 0;
+    case IDC_COPYMATCHUP:
+      if (w3g)
+      {
+        String result = "";
+        int marked[12];
+        memset(marked, 0, sizeof marked);
+        for (int i = 0; i < 12; i++)
+        {
+          if (marked[i])
+            continue;
+          W3GPlayer* team = w3g->getPlayerInSlot(i);
+          if (team)
+          {
+            if (!result.isEmpty())
+              result += " -VS- ";
+            bool first = true;
+            for (int j = 0; j < 12; j++)
+            {
+              W3GPlayer* player = w3g->getPlayerInSlot(j);
+              if (player && player->slot.team == team->slot.team)
+              {
+                marked[j] = 1;
+                if (!first)
+                  result += ", ";
+                first = false;
+                result += player->name;
+                if (w3g->getDotaInfo() && player->hero)
+                {
+                  String abbr = getApp()->getDotaLibrary()->getHeroAbbreviation(player->hero->hero->point);
+                  if (abbr.isEmpty())
+                    result += String::format(" (%s)", player->hero->hero->shortName);
+                  else
+                    result += String::format(" (%s)", abbr);
+                }
+              }
+            }
+          }
+        }
+        if (!result.isEmpty())
+          SetClipboard(CF_TEXT, CreateGlobalText(result));
       }
       return 0;
     }

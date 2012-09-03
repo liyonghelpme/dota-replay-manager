@@ -1,6 +1,8 @@
 #include "base/version.h"
 #include "base/mpqfile.h"
 #include "core/app.h"
+#include "graphics/imagelib.h"
+#include "frameui/window.h"
 
 #include "dotadata.h"
 
@@ -50,6 +52,8 @@ Dota::Dota(uint32 ver, File* file, DotaLibrary* lib)
   items[0].icon = "emptyslot";
   abilities[0].name = "None";
   abilities[0].icon = "Empty";
+
+  ImageLibrary* ilib = getApp()->getImageLibrary();
 
   numRecipes = 0;
   if (file)
@@ -103,6 +107,7 @@ Dota::Dota(uint32 ver, File* file, DotaLibrary* lib)
               abil->id = id;
             index.set(id, iAbil | numAbilities);
           }
+          ilib->setTooltip(abil->icon, abil->name);
           numAbilities++;
         }
       }
@@ -137,6 +142,7 @@ Dota::Dota(uint32 ver, File* file, DotaLibrary* lib)
               hero->id = id;
             index.set(id, iHero | point);
           }
+          ilib->setTooltip(hero->icon, hero->name);
         }
       }
     }
@@ -165,6 +171,7 @@ Dota::Dota(uint32 ver, File* file, DotaLibrary* lib)
               item->id = id;
             index.set(id, iItem | numItems);
           }
+          ilib->setTooltip(item->icon, item->name);
           numItems++;
         }
       }
@@ -305,12 +312,14 @@ Dota::Item* Dota::getItemByName(char const* name)
 
 void Dota::release()
 {
-  if (this && --ref <= 0)
+  if (this && InterlockedDecrement((LONG*) &ref) <= 0)
     library->delDota(version);
 }
 DotaLibrary::DotaLibrary()
   : itemPdTag(DictionaryMap::alNumNoCase)
 {
+  InitializeCriticalSection(&lock);
+
   MPQArchive* res = getApp()->getResources();
   File* common = res->openFile("dota\\common.txt", File::READ);
   if (common)
@@ -397,8 +406,6 @@ DotaLibrary::DotaLibrary()
     {
       String name = res->getFileName(i);
       Array<String> match;
-      if (name.substr(0, 6) == "dota\\6")
-        int asdf = 0;
       if (name.match("dota\\\\(\\d\\.\\d\\d[b-z]?).txt", &match))
       {
         uint32 ver = parseVersion(match[1]);
@@ -424,51 +431,170 @@ DotaLibrary::DotaLibrary()
 }
 DotaLibrary::~DotaLibrary()
 {
+  EnterCriticalSection(&lock);
   for (uint32 i = versions.enumStart(); i; i = versions.enumNext(i))
     delete ((Dota*) versions.enumGetValue(i));
+  LeaveCriticalSection(&lock);
+  DeleteCriticalSection(&lock);
 }
 
 void DotaLibrary::delDota(uint32 version)
 {
+  EnterCriticalSection(&lock);
   delete ((Dota*) versions.del(version));
+  LeaveCriticalSection(&lock);
 }
-Dota* DotaLibrary::getDota(uint32 version)
+
+struct NoDataStruct
 {
-  Dota* dota = (Dota*) versions.get(version);
-  if (dota == NULL)
+  int result;
+  bool save;
+  String path;
+  uint32 version;
+};
+INT_PTR CALLBACK DotaLibrary::NoDataDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
+{
+  NoDataStruct* nd = (NoDataStruct*) GetWindowLong(hDlg, DWL_USER);
+  switch (message)
   {
-    String path = String::format("dota\\%s.txt", formatVersion(version));
-    File* file = getApp()->getResources()->openFile(path, File::READ);
-    if (file)
+  case WM_INITDIALOG:
     {
-      dota = new Dota(version, file, this);
-      delete file;
+      nd = (NoDataStruct*) lParam;
+      SetWindowLong(hDlg, DWL_USER, (uint32) nd);
+      nd->result = (nd->path.isEmpty() ? IDC_LOADMAP : IDC_LOADMAPAUTO);
+      nd->save = false;
+
+      SetDlgItemText(hDlg, IDC_NODATA_TIP, String::format("No data for version %s",
+        formatVersion(nd->version)));
+
+      CheckDlgButton(hDlg, IDC_LOADMAPAUTO, nd->result == IDC_LOADMAPAUTO ? BST_CHECKED : BST_UNCHECKED);
+      CheckDlgButton(hDlg, IDC_LOADMAP, nd->result == IDC_LOADMAP ? BST_CHECKED : BST_UNCHECKED);
+      CheckDlgButton(hDlg, IDC_COPYVERSION, nd->result == IDC_COPYVERSION ? BST_CHECKED : BST_UNCHECKED);
+      SetDlgItemText(hDlg, IDC_MAPTOLOAD, nd->path);
+      CheckDlgButton(hDlg, IDC_ALWAYSLOAD, cfg.autoLoadMap ? BST_CHECKED : BST_UNCHECKED);
+
+      EnableWindow(GetDlgItem(hDlg, IDC_ALWAYSLOAD), nd->result == IDC_LOADMAPAUTO);
+
+      MPQArchive* res = getApp()->getResources();
+      int sel = -1;
+      int count = 0;
+      for (int i = 0; i < res->getHashSize(); i++)
+      {
+        if (res->fileExists(i) && res->getFileName(i))
+        {
+          String name = res->getFileName(i);
+          Array<String> match;
+          if (name.match("dota\\\\(\\d\\.\\d\\d[b-z]?).txt", &match))
+          {
+            uint32 ver = parseVersion(match[1]);
+            SendMessage(GetDlgItem(hDlg, IDC_VERSIONLIST), CB_ADDSTRING, 0, (LPARAM) match[1].c_str());
+            if (sel < 0 || ver <= nd->version)
+              sel = count;
+            count++;
+          }
+        }
+      }
+      SendMessage(GetDlgItem(hDlg, IDC_VERSIONLIST), CB_SETCURSEL, sel, 0);
+      if (count == 0)
+      {
+        EnableWindow(GetDlgItem(hDlg, IDC_COPYVERSION), FALSE);
+        EnableWindow(GetDlgItem(hDlg, IDC_VERSIONLIST), FALSE);
+      }
     }
-    else
-      return NULL;
-    if (latest == NULL || version > latest->version)
+    return TRUE;
+  case WM_COMMAND:
+    switch (LOWORD(wParam))
     {
-      if (latest)
-        latest->release();
-      latest = dota;
-      latest->ref++;
+    case IDC_LOADMAPAUTO:
+    case IDC_LOADMAP:
+    case IDC_COPYVERSION:
+      EnableWindow(GetDlgItem(hDlg, IDC_ALWAYSLOAD),
+        IsDlgButtonChecked(hDlg, IDC_LOADMAPAUTO) == BST_CHECKED);
+      return TRUE;
+    case IDC_MAPBROWSE:
+      {
+        String file = getOpenReplayName(NULL);
+        if (file)
+          SetDlgItemText(hDlg, IDC_MAPTOLOAD, file);
+      }
+      return TRUE;
+    case IDOK:
+      cfg.autoLoadMap = (IsDlgButtonChecked(hDlg, IDC_LOADMAPAUTO) == BST_CHECKED);
+      nd->save = (IsDlgButtonChecked(hDlg, IDC_SAVEDATA) == BST_CHECKED);
+      if (IsDlgButtonChecked(hDlg, IDC_LOADMAPAUTO) == BST_CHECKED)
+        nd->result = IDC_LOADMAPAUTO;
+      else if (IsDlgButtonChecked(hDlg, IDC_COPYVERSION) == BST_CHECKED)
+        nd->result = IDC_COPYVERSION;
+      else
+        nd->result = IDC_LOADMAP;
+      nd->path = Window::getWindowText(GetDlgItem(hDlg, IDC_MAPTOLOAD));
+      nd->version = parseVersion(Window::getWindowText(GetDlgItem(hDlg, IDC_VERSIONLIST)));
+
+      EndDialog(hDlg, IDOK);
+      return TRUE;
+    case IDCANCEL:
+      EndDialog(hDlg, IDCANCEL);
+      return TRUE;
     }
-    versions.set(version, (uint32) dota);
+    break;
   }
-  dota->ref++;
-  return dota;
+  return FALSE;
 }
-Dota* DotaLibrary::getDota(uint32 version, String mapPath)
+Dota* DotaLibrary::getDota(uint32 version, char const* mapPath)
 {
+  EnterCriticalSection(&lock);
   Dota* dota = (Dota*) versions.get(version);
+  if (dota)
+    InterlockedIncrement((LONG*) &dota->ref);
   if (dota == NULL)
   {
     String path = String::format("dota\\%s.txt", formatVersion(version));
     File* file = getApp()->getResources()->openFile(path, File::READ);
+    if (file == NULL && cfg.autoLoadMap && mapPath)
+    {
+      if (loadMap(mapPath, path))
+        file = getApp()->getResources()->openFile(path, File::READ);
+    }
     if (file == NULL)
     {
-      loadMap(mapPath, path);
-      file = getApp()->getResources()->openFile(path, File::READ);
+      NoDataStruct nd;
+      nd.path = (mapPath ? mapPath : "");
+      nd.version = version;
+      int result = DialogBoxParam(getInstance(), MAKEINTRESOURCE(IDD_NODATA), getApp()->getMainWindow(),
+        NoDataDlgProc, (LPARAM) &nd);
+      if (result == IDOK)
+      {
+        if (!nd.save)
+          path = "dota\\temp.txt";
+        if (nd.result == IDC_LOADMAPAUTO && mapPath)
+        {
+          loadMap(mapPath, path);
+          file = getApp()->getResources()->openFile(path, File::READ);
+        }
+        else if (nd.result == IDC_LOADMAP)
+        {
+          loadMap(nd.path, path);
+          file = getApp()->getResources()->openFile(path, File::READ);
+        }
+        else if (nd.result == IDC_COPYVERSION)
+        {
+          File* from = getApp()->getResources()->openFile(
+            String::format("dota\\%s.txt", formatVersion(nd.version)), File::READ);
+          if (from)
+          {
+            file = getApp()->getResources()->openFile(path, File::REWRITE);
+            if (file)
+            {
+              uint8* buf = new uint8[1024];
+              while (int count = from->read(buf, 1024))
+                file->write(buf, count);
+              delete file;
+              file = getApp()->getResources()->openFile(path, File::READ);
+            }
+            delete from;
+          }
+        }
+      }
     }
     if (file)
     {
@@ -482,10 +608,11 @@ Dota* DotaLibrary::getDota(uint32 version, String mapPath)
       if (latest)
         latest->release();
       latest = dota;
-      latest->ref++;
+      InterlockedIncrement((LONG*) &latest->ref);
     }
     versions.set(version, (uint32) dota);
+    InterlockedIncrement((LONG*) &dota->ref);
   }
-  dota->ref++;
+  LeaveCriticalSection(&lock);
   return dota;
 }

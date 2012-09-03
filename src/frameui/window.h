@@ -2,6 +2,7 @@
 #define __FRAMEUI_WINDOW_H__
 
 #include <windows.h>
+#include <commctrl.h>
 
 #include "base/types.h"
 #include "base/string.h"
@@ -12,6 +13,8 @@ class Window
   static LRESULT CALLBACK WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
   static ATOM windowClass;
   static IntDictionary handleMap;
+  struct TTData;
+  TTData* ttData;
   String regClass;
 protected:
   HWND hWnd;
@@ -24,6 +27,13 @@ protected:
     uint32 exStyle, HWND parent = NULL);
   void subclass(String wndClass, int x, int y, int width, int height, String text, uint32 style,
     uint32 exStyle, HWND parent = NULL);
+
+  struct ToolInfo
+  {
+    RECT rc;
+    String text;
+  };
+  virtual int toolHitTest(POINT pt, ToolInfo* ti);
 public:
   Window();
   virtual ~Window();
@@ -62,6 +72,10 @@ public:
   void setId(int id);
 
   void invalidate(bool erase = true);
+
+  void enableTooltips(bool enable = true);
+
+  static String getWindowText(HWND hWnd);
 };
 
 #endif // __FRAMEUI_WINDOW_H__

@@ -140,15 +140,18 @@ public:
 
 class MPQArchive
 {
+  int ref;
   MPQARCHIVE handle;
   MPQArchive(MPQARCHIVE mpq)
   {
     handle = mpq;
+    ref = 1;
   }
 public:
   MPQArchive(char const* filename, int mode = MPQFILE_MODIFY)
   {
     handle = MPQOpen(filename, mode);
+    ref = 1;
   }
   ~MPQArchive()
   {
@@ -317,49 +320,30 @@ public:
   {
     return handle;
   }
+
+  int addRef();
+  int release();
 };
 
 class MPQLoader : public FileLoader
 {
-  MPQLOADER handle;
+  uint32 _lock;
+  Array<MPQArchive*> archives;
+  String _prefix;
 public:
-  MPQLoader(char const* prefix = NULL)
-  {
-    handle = MPQCreateLoader(prefix);
-  }
-  ~MPQLoader()
-  {
-    MPQReleaseLoader(handle);
-  }
+  MPQLoader(char const* prefix = NULL);
+  MPQLoader(MPQLoader const& loader);
+  ~MPQLoader();
 
-  uint32 addArchive(MPQArchive const& archive)
-  {
-    return MPQAddArchive(handle, archive.getHandle());
-  }
-  uint32 removeArchive(MPQArchive const& archive)
-  {
-    return MPQRemoveArchive(handle, archive.getHandle());
-  }
-  uint32 loadArchive(char const* path)
-  {
-    return MPQLoadArchive(handle, path);
-  }
+  void lock();
+  void unlock();
 
-  File* load(char const* name)
-  {
-    MPQFILE file = MPQLoadFile(handle, name);
-    if (file)
-      return new MPQFile(file, true);
-    else
-      return NULL;
-  }
+  void clear();
+  void addArchive(MPQArchive* archive);
+  void removeArchive(MPQArchive* archive);
+  bool loadArchive(char const* path);
 
-  MPQLOADER getHandle() const
-  {
-    return handle;
-  }
+  File* load(char const* name);
 };
-
-extern MPQLoader* mpqLoader;
 
 #endif // __BASE_MPQFILE_H__

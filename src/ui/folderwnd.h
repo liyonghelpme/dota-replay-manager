@@ -40,6 +40,9 @@ class FolderWindow : public Frame, public DirChangeHandler
   String path;
   MainWnd* mainWnd;
 
+  HMENU ctxMenu;
+  bool selfDrag;
+
   void getSelList(Array<String>& sel);
 
   enum {ITEM_UPFOLDER = -1,

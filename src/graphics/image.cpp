@@ -772,3 +772,9 @@ void Image::modBrightness(float coeff)
               (bwork((_bits[i] >> 16) & 0xFF, coeff) << 16) |
               (_bits[i] & 0xFF000000);
 }
+void Image::replaceColor(unsigned int color, unsigned int with)
+{
+  for (int i = _width * _height - 1; i >= 0; i--)
+    if (_bits[i] == color)
+      _bits[i] = with;
+}

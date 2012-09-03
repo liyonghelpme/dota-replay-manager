@@ -100,6 +100,9 @@ W3GItem* W3GInventory::remRecipe(Dota::Recipe* recipe)
 }
 void W3GInventory::compute(uint32 time, Dota* dota, bool combine)
 {
+  if (dota == NULL)
+    return;
+
   comb.clear();
   for (int i = 0; i < items.length() && items[i].time <= time; i++)
     comb.push(items[i]);

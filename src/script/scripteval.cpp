@@ -55,14 +55,14 @@ namespace ExprParser
   }
   int next(eptr& expr, String& id)
   {
-    while (*expr && isspace(*expr))
+    while (*expr && s_isspace(*expr))
       expr++;
     if (*expr == 0)
       return opEnd;
-    if (isalpha(*expr) || *expr == '_')
+    if (s_isalpha(*expr) || *expr == '_')
     {
       id = "";
-      while (isalnum(*expr) || *expr == '_' || *expr == '.')
+      while (s_isalnum(*expr) || *expr == '_' || *expr == '.')
         id += *expr++;
       if (!id.icompare("not"))
         return opNot;
@@ -72,12 +72,12 @@ namespace ExprParser
         return opOr;
       return opVar;
     }
-    if (isdigit(*expr) || *expr == '-')
+    if (s_isdigit(*expr) || *expr == '-')
     {
       id = "";
       if (*expr == '-')
         id += *expr++;
-      while (isdigit(*expr))
+      while (s_isdigit(*expr))
         id += *expr++;
       return opLit;
     }

@@ -48,3 +48,27 @@ void file_delete (char const* filename)
   int res = DeleteFile (filename);
 }
 
+uint32 createCriticalSection()
+{
+  CRITICAL_SECTION* lock = new CRITICAL_SECTION;
+  InitializeCriticalSection(lock);
+  return (uint32) lock;
+}
+void deleteCriticalSection(uint32 lock)
+{
+  CRITICAL_SECTION* l = (CRITICAL_SECTION*) lock;
+  DeleteCriticalSection(l);
+  delete l;
+}
+void enterCriticalSection(uint32 lock)
+{
+  EnterCriticalSection((CRITICAL_SECTION*) lock);
+}
+bool tryEnterCriticalSection(uint32 lock)
+{
+  return TryEnterCriticalSection((CRITICAL_SECTION*) lock) != FALSE;
+}
+void leaveCriticalSection(uint32 lock)
+{
+  LeaveCriticalSection((CRITICAL_SECTION*) lock);
+}

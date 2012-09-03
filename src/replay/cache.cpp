@@ -34,6 +34,8 @@ void CacheManager::readReplay(W3GReplay* replay, GameCache& gc)
   gc.winner = gameInfo->winner;
 
   gc.players = 0;
+  gc.host = -1;
+  gc.saver = -1;
   for (int i = 0; i < replay->getNumPlayers() && gc.players < 10; i++)
   {
     W3GPlayer* player = replay->getPlayer(i);
@@ -48,11 +50,15 @@ void CacheManager::readReplay(W3GReplay* replay, GameCache& gc)
         gc.pstats[p][s] = player->stats[s];
       gc.ptime[p] = player->time;
       gc.plane[p] = player->lane;
-      //TODO: lane should be none/solo/double/triple instead of actual lane id
       gc.plevel[p] = (player->hero ? player->hero->level : 0);
       gc.pgold[p] = player->item_cost;
       gc.papm[p] = player->apm();
     }
+
+    if (player->name == replay->getGameInfo()->creator)
+      gc.host = i;
+    if (player == replay->getGameInfo()->saver)
+      gc.saver = i;
   }
 }
 CacheManager::CacheManager()
@@ -84,6 +90,8 @@ CacheManager::CacheManager()
         file->read(&gc.winner, sizeof gc.winner);
 
         file->read(&gc.players, sizeof gc.players);
+        file->read(&gc.host, sizeof gc.host);
+        file->read(&gc.saver, sizeof gc.saver);
         for (uint8 i = 0; i < gc.players; i++)
         {
           gc.pname[i] = file->readString();
@@ -129,6 +137,8 @@ CacheManager::~CacheManager()
       file->write(&gc.winner, sizeof gc.winner);
 
       file->write(&gc.players, sizeof gc.players);
+      file->write(&gc.host, sizeof gc.host);
+      file->write(&gc.saver, sizeof gc.saver);
       for (uint8 i = 0; i < gc.players; i++)
       {
         file->writeString(gc.pname[i]);
@@ -162,26 +172,28 @@ GameCache* CacheManager::getGame(String path, GameCache* dst)
   getFileInfo(path, info);
   GameCache* result = NULL;
   EnterCriticalSection(&lock);
-  if (dst == NULL)
-    dst = &temp;
   if (cache.has(path) && cache.get(path).ftime == info.ftime)
     result = &cache.get(path);
+  LeaveCriticalSection(&lock);
   if (result == NULL)
   {
     W3GReplay* replay = W3GReplay::load(path, true);
     if (replay)
     {
+      EnterCriticalSection(&lock);
       if (cache.has(path) && cache.get(path).ftime == info.ftime)
         result = &cache.get(path);
       else
       {
+        if (dst == NULL)
+          dst = &temp;
         readReplay(replay, *dst);
         result = dst;
       }
+      LeaveCriticalSection(&lock);
       delete replay;
     }
   }
-  LeaveCriticalSection(&lock);
   return result;
 }
 GameCache* CacheManager::getGameNow(String path)
@@ -205,4 +217,158 @@ void CacheManager::addGame(W3GReplay* replay)
     readReplay(replay, gc);
     LeaveCriticalSection(&lock);
   }
+}
+void CacheManager::duplicate(String path, GameCache* game)
+{
+  EnterCriticalSection(&lock);
+  GameCache& gc = cache.create(path);
+  gc = *game;
+  LeaveCriticalSection(&lock);
+}
+
+////////////////////////////////////////////////////
+
+String GameCache::format(char const* fmt, char const* dst, char const* src)
+{
+  String result = "";
+  int npos = -1;
+  for (int i = 0; fmt[i]; i++)
+  {
+    if (fmt[i] == '<')
+    {
+      int prev = i++;
+      String tag = "";
+      while (fmt[i] && fmt[i] != '>')
+        tag += fmt[i++];
+      if (fmt[i] != '>')
+        tag = "";
+
+      if (tag.icompare("n") == 0)
+        npos = result.length();
+      else if (tag.icompare("version") == 0)
+        result += formatVersion(wc3_version);
+      else if (tag.icompare("map") == 0)
+        result += formatVersion(map_version);
+      else if (tag.icompare("name") == 0)
+        result += game_name;
+      else if (tag.icompare("sentinel") == 0)
+      {
+        int count = 0;
+        for (int i = 0; i < players; i++)
+          if (pteam[i] == 0)
+            count++;
+        result += String(count);
+      }
+      else if (tag.icompare("scourge") == 0)
+      {
+        int count = 0;
+        for (int i = 0; i < players; i++)
+          if (pteam[i] == 1)
+            count++;
+        result += String(count);
+      }
+      else if (tag.icompare("sentinel kills") == 0)
+      {
+        int count = 0;
+        for (int i = 0; i < players; i++)
+          if (pteam[i] == 1)
+            count += pstats[i][STAT_DEATHS];
+        result += String(count);
+      }
+      else if (tag.icompare("scourge kills") == 0)
+      {
+        int count = 0;
+        for (int i = 0; i < players; i++)
+          if (pteam[i] == 0)
+            count += pstats[i][STAT_DEATHS];
+        result += String(count);
+      }
+      else if (tag.substring(0, 5).icompare("time ") == 0)
+        result += format_systime(ftime, tag.substring(5));
+      else if (tag.icompare("winner") == 0)
+      {
+        if (winner == WINNER_SENTINEL || WINNER_GSENTINEL || WINNER_PSENTINEL)
+          result += "Sentinel";
+        else if (winner == WINNER_SCOURGE || WINNER_GSCOURGE || WINNER_PSCOURGE)
+          result += "Scourge";
+        else
+          result += "Unknown";
+      }
+      else if (tag.substring(0, 7).icompare("player ") == 0 ||
+               tag.substring(0, 5).icompare("hero ") == 0 ||
+               tag.substring(0, 4).icompare("win ") == 0 ||
+               tag.substring(0, 6).icompare("kills ") == 0 ||
+               tag.substring(0, 7).icompare("deaths ") == 0 ||
+               tag.substring(0, 7).icompare("creeps ") == 0 ||
+               tag.substring(0, 7).icompare("denies ") == 0)
+      {
+        int id = -1;
+        String cmd = tag.substring(0, tag.indexOf(' ')).toLower();
+        String pid = tag.substring(tag.indexOf(' ') + 1).toLower();
+        if (pid == "host")
+          id = host;
+        else if (pid == "saver")
+          id = saver;
+        else
+          id = pid.toInt() - 1;
+        if (id >= 0 && id < players)
+        {
+          if (cmd == "player")
+            result += pname[id];
+          else if (cmd == "hero")
+          {
+            Dota* dota = getApp()->getDotaLibrary()->getDota();
+            Dota::Hero* hero = dota->getHero(phero[id]);
+            if (hero)
+              result += hero->name;
+          }
+          else if (cmd == "win")
+          {
+            if (winner == WINNER_SENTINEL || WINNER_GSENTINEL || WINNER_PSENTINEL)
+              result += (pteam[id] == 0 ? "Won" : "Lost");
+            else if (winner == WINNER_SCOURGE || WINNER_GSCOURGE || WINNER_PSCOURGE)
+              result += (pteam[id] == 1 ? "Won" : "Lost");
+            else
+              result += "?";
+          }
+          else if (cmd == "kills")
+            result += String(pstats[id][STAT_KILLS]);
+          else if (cmd == "deaths")
+            result += String(pstats[id][STAT_DEATHS]);
+          else if (cmd == "creeps")
+            result += String(pstats[id][STAT_CREEPS]);
+          else if (cmd == "denies")
+            result += String(pstats[id][STAT_DENIES]);
+        }
+      }
+      else if (tag.icompare("file") == 0)
+        result += (src ? String::getFileTitle(src) : "");
+      else if (tag.icompare("path") == 0)
+        result += (src ? String::getPath(src) : "");
+      else
+        i = prev;
+    }
+    else if (fmt[i] == '/')
+      result += '\\';
+    else if (fmt[i] != '>' && fmt[i] != ':' && fmt[i] != '*' && fmt[i] != '?' &&
+             fmt[i] != '"' && fmt[i] != '|' && fmt[i] >= ' ')
+      result += fmt[i];
+  }
+
+  result += ".w3g";
+  if (npos >= 0 && dst)
+  {
+    String fmt = result;
+    for (int number = 1;; number++)
+    {
+      result = fmt;
+      result.insert(npos, String(number));
+      FILE* test = fopen(String::buildFullName(dst, result), "rb");
+      if (test)
+        fclose(test);
+      else
+        break;
+    }
+  }
+  return result;
 }

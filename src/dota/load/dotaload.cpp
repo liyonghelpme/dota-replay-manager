@@ -31,18 +31,18 @@ static char oldTaverns[numOldTaverns][256] = {
 
 class DotaLoader
 {
-  MPQLoader* loader;
+  MPQLoader loader;
   MPQArchive* map;
   void addNewImage(String path, bool big = false)
   {
     String title = String::getFileTitle(path);
     if (getApp()->getImageLibrary()->hasImage(title))
       return;
-    File* file = loader->load(path);
+    File* file = loader.load(path);
     if (file == NULL)
     {
       String::setExtension(path, ".blp");
-      file = loader->load(path);
+      file = loader.load(path);
     }
     if (file)
     {
@@ -365,16 +365,14 @@ class DotaLoader
 public:
   DotaLoader()
     : iname(DictionaryMap::alNumNoCase)
+    , loader(*getApp()->getWarLoader())
   {
-    loader = getApp()->getWarLoader();
     map = NULL;
     curid = 'Xx00';
   }
   ~DotaLoader()
   {
-    if (map)
-      loader->removeArchive(*map);
-    delete map;
+    map->release();
   }
   bool load(String path)
   {
@@ -383,13 +381,13 @@ public:
       map = MPQArchive::open(String::buildFullName(cfg.warPath, path), MPQFILE_READ);
     if (map == NULL)
       return false;
-    loader->addArchive(*map);
+    loader.addArchive(map);
 
     DotaLibrary* dotaLib = getApp()->getDotaLibrary();
 
     // Parsing object data...
     GameData data;
-    LoadGameData(data, loader, WC3_LOAD_UNITS | WC3_LOAD_ITEMS | WC3_LOAD_ABILITIES);
+    LoadGameData(data, &loader, WC3_LOAD_UNITS | WC3_LOAD_ITEMS | WC3_LOAD_ABILITIES);
 
     // Parsing taverns and shops...
     Array<String> list;
@@ -596,9 +594,10 @@ public:
                       int cpos = iname.get(name);
                       if (prevOr)
                       {
-                        int np = recipes.push(recipes[r]);
-                        recipes[np].src[recipes[np].numSrc - 1] = cpos;
-                        recipes[np].srccount[recipes[np].numSrc - 1] = count;
+                        Recipe& nr = recipes.push();
+                        nr = recipes[r];
+                        nr.src[nr.numSrc - 1] = cpos;
+                        nr.srccount[nr.numSrc - 1] = count;
                       }
                       else
                       {
@@ -738,13 +737,17 @@ public:
   }
 };
 
-void DotaLibrary::loadMap(String map, String dest)
+bool DotaLibrary::loadMap(String map, String dest)
 {
+  EnterCriticalSection(&lock);
   MPQArchive* res = getApp()->getResources();
   DotaLoader loader;
-  loader.load(map);
+  if (!loader.load(map))
+    return false;
   File* file = res->openFile(dest, File::REWRITE);
   loader.write(file);
   delete file;
   res->flushListFile();
+  LeaveCriticalSection(&lock);
+  return true;
 }

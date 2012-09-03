@@ -161,13 +161,13 @@ int ReplayTree::fillmonth(Array<FileInfo>& files, int& cur, HTREEITEM parent, TV
     uint64 cday = files[cur].ftime / (60 * 60 * 24);
     if (day == cday)
       treeView->setItemText(hItem, String::format("Today, %s (%d)",
-        format_systime(files[pos].ftime, "%d %b %Y"), cnt));
+        format_systime(files[pos].ftime, "%x"), cnt));
     else if (day - 1 == cday)
       treeView->setItemText(hItem, String::format("Yesterday, %s (%d)",
-        format_systime(files[pos].ftime, "%d %b %Y"), cnt));
+        format_systime(files[pos].ftime, "%x"), cnt));
     else
       treeView->setItemText(hItem, String::format("%s (%d)",
-        format_systime(files[pos].ftime, "%d %b %Y"), cnt));
+        format_systime(files[pos].ftime, "%x"), cnt));
     count += cnt;
   }
   return count;
@@ -190,7 +190,7 @@ int ReplayTree::fillday(Array<FileInfo>& files, int& cur, HTREEITEM parent)
   {
     if (cur == 0 || files[cur - 1].ftime != files[cur].ftime)
     {
-      String fname = format_systime(files[cur].ftime, "%H:%M:%S ") +
+      String fname = format_systime(files[cur].ftime, "%X ") +
         String::getFileTitle(files[cur].path);
       tvis.item.pszText = fname.getBuffer();
       tvis.item.lParam = items.length();
@@ -214,6 +214,7 @@ void ReplayTree::setPath(String thePath)
 }
 void ReplayTree::onDirChange()
 {
+  PostMessage(getApp()->getMainWindow(), WM_UPDATEFILE, 0, 0);
   PostMessage(treeView->getHandle(), WM_REBUILDTREE, 0, 0);
 }
 void ReplayTree::rebuild()

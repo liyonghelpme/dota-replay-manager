@@ -122,19 +122,46 @@ File* W3GReplay::unpack(File* f, W3GHeader& hdr)
   delete[] source;
   return File::memfile(dest, dest_pos);
 }
-W3GReplay* W3GReplay::load(File* replay, bool quick)
+W3GReplay* W3GReplay::load(File* replay, bool quick, uint32* error)
 {
+  uint32 localError;
+  if (error == NULL)
+    error = &localError;
+  *error = 0;
+
   W3GHeader hdr;
   File* unpacked = unpack(replay, hdr);
   if (unpacked)
-    return new W3GReplay(unpacked, hdr, quick);
+  {
+    W3GReplay* w3g = new W3GReplay(unpacked, hdr, quick, error);
+    if (*error)
+    {
+      delete w3g;
+      w3g = NULL;
+    }
+    return w3g;
+  }
   else
+  {
+    *error = eBadFile;
     return NULL;
+  }
 }
-W3GReplay* W3GReplay::load(char const* path, bool quick)
+W3GReplay* W3GReplay::load(char const* path, bool quick, uint32* error)
 {
-  File* file = File::open(path, File::READ);
-  W3GReplay* replay = (file ? load(file, quick) : NULL);
+  uint32 localError;
+  if (error == NULL)
+    error = &localError;
+  *error = 0;
+
+  File* file;
+  if (cfg.enableUrl && File::isValidURL(path))
+    file = File::openURL(path);
+  else
+    file = File::open(path, File::READ);
+  W3GReplay* replay = (file ? load(file, quick, error) : NULL);
+  if (file == NULL)
+    *error = eNoFile;
   delete file;
 
   if (replay)
@@ -149,7 +176,7 @@ void W3GReplay::setPath(char const* path)
   ::getFileInfo(path, *fileInfo);
   getApp()->getCache()->addGame(this);
 }
-W3GReplay::W3GReplay(File* unpacked, W3GHeader const& header, bool quick)
+W3GReplay::W3GReplay(File* unpacked, W3GHeader const& header, bool quick, uint32* error)
 {
   fileInfo = NULL;
   quickLoad = quick;
@@ -173,6 +200,11 @@ W3GReplay::W3GReplay(File* unpacked, W3GHeader const& header, bool quick)
   if (dotaInfo)
   {
     dota = getApp()->getDotaLibrary()->getDota(dotaInfo->version, game->map);
+    if (dota == NULL)
+    {
+      *error = eNoMap;
+      return;
+    }
     for (int i = 0; i < numPlayers; i++)
       plist[i]->actions.start(quick, plist[i]->slot.team);
   }
@@ -181,7 +213,10 @@ W3GReplay::W3GReplay(File* unpacked, W3GHeader const& header, bool quick)
 
   blockPos = replay->tell();
   if (!parseBlocks())
+  {
+    *error = eBadFile;
     return;
+  }
 
   analyze();
 }
@@ -313,7 +348,7 @@ DotaInfo* DotaInfo::getDota(String map)
 {
   map.toLower();
   Array<String> sub;
-  if (map.rfind("dota{{_| }allstars}?{_| }v(\\d)\\.(\\d\\d)([b-z])?", 0, &sub) < 0)
+  if (map.rfind("dota{{_| }allstars}?{_| }v(\\d)\\.(\\d\\d)([b-z]?)[^b-z]", 0, &sub) < 0)
     return NULL;
   DotaInfo* data = new DotaInfo;
   memset(data, 0, sizeof(DotaInfo));
@@ -493,7 +528,7 @@ void W3GReplay::analyze()
     W3GPlayer* uplayer = NULL;
     for (int j = 0; j < numPlayers; j++)
     {
-      if (plist[j]->hero == &heroes[i])
+      if (plist[j]->hero && plist[j]->hero->hero == heroes[i].hero)
       {
         if (player == NULL || heroes[i].actions[player->index] < heroes[i].actions[j])
           player = plist[j];
@@ -505,7 +540,7 @@ void W3GReplay::analyze()
     if (uplayer)
       player = uplayer;
     for (int j = 0; j < numPlayers; j++)
-      if (plist[j]->hero == &heroes[i] && plist[j] != player)
+      if (plist[j]->hero && plist[j]->hero->hero == heroes[i].hero && plist[j] != player)
         plist[j]->hero = NULL;
   }
   for (int i = 0; i < numPlayers; i++)

@@ -1,6 +1,8 @@
 #ifndef __DOTA_DOTADATA_H__
 #define __DOTA_DOTADATA_H__
 
+#include <windows.h>
+
 #include "base/types.h"
 #include "base/string.h"
 #include "base/dictionary.h"
@@ -134,6 +136,8 @@ public:
 
 class DotaLibrary
 {
+  CRITICAL_SECTION lock;
+
   IntDictionary versions;
   void delDota(uint32 version);
   friend class Dota;
@@ -151,7 +155,8 @@ class DotaLibrary
   String heroPdTagWide[256];
   Dota* latest;
   Dictionary<String> itemPdTag;
-  void loadMap(String map, String dest);
+  bool loadMap(String map, String dest);
+  static INT_PTR CALLBACK NoDataDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 public:
   DotaLibrary();
   ~DotaLibrary();
@@ -201,8 +206,7 @@ public:
   {
     return latest;
   }
-  Dota* getDota(uint32 version);
-  Dota* getDota(uint32 version, String mapPath);
+  Dota* getDota(uint32 version, char const* mapPath = NULL);
 };
 
 #endif // __DOTA_DOTADATA_H__

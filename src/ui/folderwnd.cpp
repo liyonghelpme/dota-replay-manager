@@ -3,6 +3,8 @@
 
 #include "folderwnd.h"
 #include "ui/mainwnd.h"
+#include "graphics/imagelib.h"
+#include "ui/batchdlg.h"
 
 uint32 DropListFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
@@ -23,11 +25,27 @@ DropListFrame::DropListFrame(Frame* parent, int id, int style, int styleEx)
   target = new DropTarget(this, CF_HDROP, DROPEFFECT_MOVE | DROPEFFECT_COPY);
 }
 
+#define ID_MENU_OPEN          1560
+#define ID_MENU_BACKUP        1561
+#define ID_MENU_CUT           1562
+#define ID_MENU_COPY          1563
+#define ID_MENU_PASTE         1564
+#define ID_MENU_RENAME        1565
+#define ID_MENU_DELETE        1566
+#define ID_MENU_FOLDER        1567
+
 /////////////////////////////////////////////////////////
+
+#define ADDITEM(i,text,id)                \
+  mii.dwTypeData = text;                  \
+  mii.cch = strlen(mii.dwTypeData);       \
+  mii.wID = id;                           \
+  InsertMenuItem(ctxMenu, i, TRUE, &mii);
 
 FolderWindow::FolderWindow(Frame* parent, MainWnd* pMainWnd)
   : Frame(parent)
 {
+  selfDrag = false;
   tracker = NULL;
   filler = NULL;
   mainWnd = pMainWnd;
@@ -35,9 +53,48 @@ FolderWindow::FolderWindow(Frame* parent, MainWnd* pMainWnd)
   list = new DropListFrame(this, 0, LVS_EDITLABELS | LVS_SHOWSELALWAYS,
     LVS_EX_HEADERDRAGDROP | LVS_EX_FULLROWSELECT);
   list->setAllPoints();
+
+  Image* sortImg = getApp()->getImageLibrary()->getImage("SortUp");
+  if (sortImg)
+    sortImg->replaceColor(sortImg->getPixel(0, 0), 0xFF000000 |
+      Image::flip_color(GetSysColor(COLOR_MENU)));
+  sortImg = getApp()->getImageLibrary()->getImage("SortDown");
+  if (sortImg)
+    sortImg->replaceColor(sortImg->getPixel(0, 0), 0xFF000000 |
+      Image::flip_color(GetSysColor(COLOR_MENU)));
+
+  ctxMenu = CreatePopupMenu();
+
+  MENUITEMINFO miiSep;
+  memset(&miiSep, 0, sizeof miiSep);
+  miiSep.cbSize = sizeof miiSep;
+  miiSep.fMask = MIIM_FTYPE;
+  miiSep.fType = MFT_SEPARATOR;
+
+  MENUITEMINFO mii;
+  memset(&mii, 0, sizeof mii);
+  mii.cbSize = sizeof mii;
+
+  mii.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_STATE | MIIM_ID;
+  mii.fType = MFT_STRING;
+  mii.fState = MFS_DEFAULT;
+
+  ADDITEM(0, "Open", ID_MENU_OPEN);
+  mii.fMask &= ~MIIM_STATE;
+
+  ADDITEM(1, "Backup", ID_MENU_BACKUP);
+  InsertMenuItem(ctxMenu, 2, TRUE, &miiSep);
+  ADDITEM(3, "Copy", ID_MENU_COPY);
+  ADDITEM(4, "Paste", ID_MENU_PASTE);
+  InsertMenuItem(ctxMenu, 5, TRUE, &miiSep);
+  ADDITEM(6, "Rename", ID_MENU_RENAME);
+  ADDITEM(7, "Delete", ID_MENU_DELETE);
+  InsertMenuItem(ctxMenu, 8, TRUE, &miiSep);
+  ADDITEM(9, "New Folder", ID_MENU_FOLDER);
 }
 FolderWindow::~FolderWindow()
 {
+  DestroyMenu(ctxMenu);
   delete tracker;
   releaseFillers();
 }
@@ -71,6 +128,125 @@ uint32 FolderWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
   switch (message)
   {
+  case WM_CONTEXTMENU:
+    {
+      POINT pt;
+      GetCursorPos(&pt);
+
+      int count = ListView_GetSelectedCount(list->getHandle());
+      int item = ListView_GetNextItem(list->getHandle(), -1, LVNI_SELECTED);
+      if (item >= 0)
+      {
+        int pos = list->getItemParam(item);
+        while (count > 1 && item >= 0 && items[pos].type != ITEM_FOLDER &&
+          items[pos].type != ITEM_REPLAY)
+        {
+          item = ListView_GetNextItem(list->getHandle(), item, LVNI_SELECTED);
+          pos = (item > 0 ? list->getItemParam(item) : -1);
+        }
+
+        EnableMenuItem(ctxMenu, ID_MENU_OPEN, count > 1 ? MF_GRAYED : MF_ENABLED);
+        if (pos >= 0 && (items[pos].type == ITEM_FOLDER || items[pos].type == ITEM_REPLAY))
+        {
+          EnableMenuItem(ctxMenu, ID_MENU_BACKUP, MF_ENABLED);
+          EnableMenuItem(ctxMenu, ID_MENU_COPY, MF_ENABLED);
+          EnableMenuItem(ctxMenu, ID_MENU_DELETE, MF_ENABLED);
+          EnableMenuItem(ctxMenu, ID_MENU_RENAME, count > 1 ? MF_GRAYED : MF_ENABLED);
+        }
+        else
+        {
+          EnableMenuItem(ctxMenu, ID_MENU_BACKUP, MF_GRAYED);
+          EnableMenuItem(ctxMenu, ID_MENU_COPY, MF_GRAYED);
+          EnableMenuItem(ctxMenu, ID_MENU_DELETE, MF_GRAYED);
+          EnableMenuItem(ctxMenu, ID_MENU_RENAME, MF_GRAYED);
+        }
+      }
+      else
+      {
+        EnableMenuItem(ctxMenu, ID_MENU_OPEN, MF_GRAYED);
+        EnableMenuItem(ctxMenu, ID_MENU_BACKUP, MF_GRAYED);
+        EnableMenuItem(ctxMenu, ID_MENU_COPY, MF_GRAYED);
+        EnableMenuItem(ctxMenu, ID_MENU_DELETE, MF_GRAYED);
+        EnableMenuItem(ctxMenu, ID_MENU_RENAME, MF_GRAYED);
+      }
+      ClipboardReader cbReader(CF_HDROP);
+      EnableMenuItem(ctxMenu, ID_MENU_PASTE, cbReader.getData() ? MF_ENABLED : MF_GRAYED);
+
+      int result = TrackPopupMenuEx(ctxMenu, TPM_HORIZONTAL | TPM_LEFTALIGN |
+        TPM_RETURNCMD | TPM_NONOTIFY, pt.x, pt.y, list->getHandle(), NULL);
+
+      switch (result)
+      {
+      case ID_MENU_OPEN:
+        {
+          NMITEMACTIVATE ia;
+          memset(&ia, 0, sizeof ia);
+          ia.hdr.code = LVN_ITEMACTIVATE;
+          ia.hdr.hwndFrom = list->getHandle();
+          ia.iItem = item;
+          onMessage(WM_NOTIFY, 0, (uint32) &ia);
+        }
+        break;
+      case ID_MENU_BACKUP:
+        {
+          BatchDialog batch(BatchDialog::mCopy);
+          for (int item = ListView_GetNextItem(list->getHandle(), -1, LVNI_SELECTED);
+              item >= 0; item = ListView_GetNextItem(list->getHandle(), item, LVNI_SELECTED))
+          {
+            int pos = list->getItemParam(item);
+            if (pos >= 0 && items[pos].type == ITEM_REPLAY)
+              batch.addReplay(items[pos].path);
+            else if (pos >= 0 && items[pos].type == ITEM_FOLDER)
+              batch.addFolder(items[pos].path);
+          }
+          batch.run(list->getHandle());
+        }
+        break;
+      case ID_MENU_COPY:
+      case ID_MENU_PASTE:
+      case ID_MENU_DELETE:
+      case ID_MENU_RENAME:
+        {
+          NMLVKEYDOWN kd;
+          memset(&kd, 0, sizeof kd);
+          kd.hdr.code = LVN_KEYDOWN;
+          kd.hdr.hwndFrom = list->getHandle();
+          if (result == ID_MENU_COPY)
+            kd.wVKey = 'C';
+          else if (result == ID_MENU_PASTE)
+            kd.wVKey = 'V';
+          else if (result == ID_MENU_DELETE)
+            kd.wVKey = VK_DELETE;
+          else if (result == ID_MENU_RENAME)
+            kd.wVKey = VK_F2;
+          onMessage(WM_NOTIFY, VK_CONTROL, (uint32) &kd);
+        }
+        break;
+      case ID_MENU_FOLDER:
+        {
+          String newdir = "New Folder";
+          String fulldir = String::buildFullName(path, newdir);
+          FileInfo fi;
+          for (int num = 1; pathFileExists(fulldir); num++)
+          {
+            newdir = String::format("New Folder (%d)", num);
+            fulldir = String::buildFullName(path, newdir);
+          }
+          if (CreateDirectory(fulldir, NULL))
+          {
+            int pos = list->addItem(newdir,
+              getApp()->getImageLibrary()->getListIndex("IconClosedFolder"), items.length());
+            ViewItem& item = items.push();
+            item.path = fulldir;
+            item.pos = pos;
+            item.type = ITEM_FOLDER;
+            ListView_EditLabel(list->getHandle(), pos);
+          }
+        }
+        break;
+      }
+    }
+    break;
   case WM_NOTIFY:
     {
       NMHDR* pnm = (NMHDR*) lParam;
@@ -96,7 +272,11 @@ uint32 FolderWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         {
           HGLOBAL data = CreateFileDrop(sel);
           if (data)
+          {
+            selfDrag = true;
             DoDragDrop(CF_HDROP, data, DROPEFFECT_MOVE | DROPEFFECT_COPY | DROPEFFECT_LINK);
+            selfDrag = false;
+          }
         }
         return TRUE;
       }
@@ -131,7 +311,7 @@ uint32 FolderWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
           op.wFunc = FO_RENAME;
           op.pFrom = src;
           op.pTo = dst;
-          if (SHFileOperation(&op) == 0)
+          if (SHFileOperationEx(&op) == 0)
           {
             items[pos].path = String::buildFullName(String::getPath(items[pos].path), di->item.pszText);
             if (items[pos].type == ITEM_REPLAY)
@@ -139,6 +319,7 @@ uint32 FolderWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
             return TRUE;
           }
         }
+        rebuild();
         return FALSE;
       }
       else if (pnm->code == LVN_COLUMNCLICK)
@@ -197,7 +378,8 @@ uint32 FolderWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       else if (pnm->code == LVN_KEYDOWN)
       {
         NMLVKEYDOWN* kd = (NMLVKEYDOWN*) lParam;
-        if (kd->wVKey == 'C' && (GetAsyncKeyState(VK_CONTROL) & 0x8000))
+        bool controlKey = ((GetAsyncKeyState(VK_CONTROL) & 0x8000) || wParam == VK_CONTROL);
+        if (kd->wVKey == 'C' && controlKey)
         {
           Array<String> sel;
           getSelList(sel);
@@ -207,7 +389,7 @@ uint32 FolderWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
             SetClipboard(CF_HDROP, hDrop);
           }
         }
-        else if (kd->wVKey == 'V' && (GetAsyncKeyState(VK_CONTROL) & 0x8000))
+        else if (kd->wVKey == 'V' && controlKey)
         {
           ClipboardReader clip(CF_HDROP);
           HGLOBAL hDrop = clip.getData();
@@ -225,7 +407,7 @@ uint32 FolderWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
             memset(&fileop, 0, sizeof fileop);
             fileop.wFunc = FO_DELETE;
             fileop.pFrom = str;
-            SHFileOperation(&fileop);
+            SHFileOperationEx(&fileop);
           }
         }
         else if (kd->wVKey == VK_F2)
@@ -253,12 +435,17 @@ uint32 FolderWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         if (ht.iItem >= 0)
         {
           lvi.iItem = ht.iItem;
-          lvi.mask = LVIF_PARAM;
+          lvi.mask = LVIF_PARAM | LVIF_STATE;
+          lvi.stateMask = LVIS_SELECTED;
           ListView_GetItem(list->getHandle(), &lvi);
           if (lvi.lParam < 0 || lvi.lParam >= items.length() ||
               (items[lvi.lParam].type != ITEM_UPFOLDER && items[lvi.lParam].type != ITEM_FOLDER))
             ht.iItem = -1;
+          if (selfDrag && (lvi.state & LVIS_SELECTED))
+            ht.iItem = -1;
         }
+        if (wParam && selfDrag && ht.iItem == -1 && *(DWORD*) wParam == DROPEFFECT_MOVE)
+          *(DWORD*) wParam = DROPEFFECT_NONE;
       }
       else
         ht.iItem = -1;
@@ -319,7 +506,8 @@ uint32 FolderWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     }
     break;
   case WM_REBUILDLIST:
-    rebuild();
+    if (ListView_GetEditControl(list->getHandle()) == NULL)
+      rebuild();
     break;
   case WM_UPDATELISTITEM:
     updateListItem(wParam, lParam);
@@ -360,7 +548,7 @@ void FolderWindow::doPaste(HGLOBAL hDrop, uint32 effect, String opTo)
   op.pTo = opTo;
   if (effect == DROPEFFECT_COPY)
     op.fFlags = FOF_RENAMEONCOLLISION;
-  SHFileOperation(&op);
+  SHFileOperationEx(&op);
   if (df->fWide)
     delete opFrom;
   GlobalUnlock(hDrop);

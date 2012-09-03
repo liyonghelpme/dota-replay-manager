@@ -50,6 +50,8 @@ void ReplayPlayerGoldTab::onSetReplay()
 {
   graph->w3g = w3g;
   graph->clear();
+  if (w3g == NULL)
+    return;
   int teamSize[2] = {0, 0};
   for (int i = 0; i < 10; i++)
     buttons[i].frame->hide();

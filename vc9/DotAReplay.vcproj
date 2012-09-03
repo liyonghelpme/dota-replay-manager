@@ -260,6 +260,14 @@
 				>
 			</File>
 			<File
+				RelativePath="..\res\sortdown.ico"
+				>
+			</File>
+			<File
+				RelativePath="..\res\sortup.ico"
+				>
+			</File>
+			<File
 				RelativePath="..\res\vsplit.cur"
 				>
 			</File>
@@ -350,6 +358,10 @@
 				</File>
 				<File
 					RelativePath="..\src\base\intdict.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\base\mpqfile.cpp"
 					>
 				</File>
 				<File
@@ -542,6 +554,14 @@
 				Filter="h;hpp;hxx;hm;inl;inc;xsd"
 				>
 				<File
+					RelativePath="..\src\ui\aboutdlg.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\ui\batchdlg.h"
+					>
+				</File>
+				<File
 					RelativePath="..\src\ui\dirchange.h"
 					>
 				</File>
@@ -563,6 +583,10 @@
 				</File>
 				<File
 					RelativePath="..\src\ui\settingswnd.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\ui\updatedlg.h"
 					>
 				</File>
 				<File
@@ -619,6 +643,14 @@
 				Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
 				>
 				<File
+					RelativePath="..\src\ui\aboutdlg.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\ui\batchdlg.cpp"
+					>
+				</File>
+				<File
 					RelativePath="..\src\ui\dirchange.cpp"
 					>
 				</File>
@@ -652,6 +684,10 @@
 				</File>
 				<File
 					RelativePath="..\src\ui\settingswnd.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\ui\updatedlg.cpp"
 					>
 				</File>
 				<File
@@ -889,6 +925,10 @@
 				</File>
 				<File
 					RelativePath="..\src\rmpq\mpqcompress.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\rmpq\mpqsync.h"
 					>
 				</File>
 				<File

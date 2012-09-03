@@ -1,3 +1,5 @@
+#include "core/app.h"
+
 #include <windows.h>
 #include <shlobj.h>
 #include <time.h>
@@ -140,6 +142,12 @@ uint32 flip_int(uint32 i)
          ((i << 24) & 0xFF000000);
 }
 
+uint64 sysTime()
+{
+  uint64 t;
+  _time64((__time64_t*) &t);
+  return t;
+}
 String format_systime(uint64 time, char const* fmt)
 {
   tm temp;
@@ -149,18 +157,76 @@ String format_systime(uint64 time, char const* fmt)
   return buf;
 }
 
-void getFileInfo(char const* path, FileInfo& fi)
+bool getFileInfo(char const* path, FileInfo& fi)
 {
   fi.path = path;
+  fi.ftime = 0;
   HANDLE hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_DELETE |
     FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-  if (hFile)
+  if (hFile != INVALID_HANDLE_VALUE)
   {
     FILETIME ft;
     GetFileTime(hFile, NULL, NULL, &ft);
     CloseHandle(hFile);
     fi.ftime = uint64(ft.dwLowDateTime) | (uint64(ft.dwHighDateTime) << 32);
     fi.ftime = fi.ftime / 10000000ULL - 11644473600ULL;
+    fi.size = GetFileSize(hFile, NULL);
     FileTimeToSystemTime(&ft, &fi.time);
+    return true;
   }
+  return false;
+}
+bool pathFileExists(char const* path)
+{
+  HANDLE hFile = CreateFile(path, GENERIC_READ, FILE_SHARE_DELETE |
+    FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+    FILE_FLAG_BACKUP_SEMANTICS, NULL);
+  if (hFile != INVALID_HANDLE_VALUE)
+  {
+    CloseHandle(hFile);
+    return true;
+  }
+  return false;
+}
+
+bool createPath(String path)
+{
+  for (int i = 0; i <= path.length(); i++)
+    if (path[i] == '\\')
+      CreateDirectory(path.substring(0, i + 1), NULL);
+  return true;
+}
+
+#include "ui/dirchange.h"
+
+int SHFileOperationEx(SHFILEOPSTRUCT* pFileOp)
+{
+  if (pFileOp->wFunc == FO_RENAME)
+    return SHFileOperation(pFileOp);
+  DirChangeTracker::freezeUpdates(true);
+  int result = SHFileOperation(pFileOp);
+  DirChangeTracker::freezeUpdates(false);
+  return result;
+}
+
+String getOpenReplayName(HWND hWnd)
+{
+  if (hWnd == NULL)
+    hWnd = getApp()->getMainWindow();
+
+  OPENFILENAME ofn;
+  memset(&ofn, 0, sizeof ofn);
+  ofn.lStructSize = sizeof ofn;
+  ofn.hwndOwner = hWnd;
+  ofn.lpstrFilter = "Warcraft III Replay Files (*.w3g)\0*.w3g\0All Files\0*\0\0";
+  char buf[512] = "";
+  ofn.lpstrFile = buf;
+  ofn.nMaxFile = sizeof buf;
+  ofn.lpstrDefExt = "w3g";
+  ofn.lpstrInitialDir = cfg.replayPath;
+  ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_HIDEREADONLY;
+  ofn.FlagsEx = OFN_EX_NOPLACESBAR;
+  if (!GetOpenFileName(&ofn))
+    return "";
+  return buf;
 }

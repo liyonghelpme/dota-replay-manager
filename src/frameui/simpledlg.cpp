@@ -1,5 +1,6 @@
 #include "core/app.h"
 #include "simpledlg.h"
+#include "frameui/window.h"
 
 struct TextPromptDlgParam
 {
@@ -29,12 +30,7 @@ static INT_PTR CALLBACK TextPromptDlgFunc(HWND hDlg, UINT message, WPARAM wParam
         String* text = (String*) GetWindowLong(hDlg, DWL_USER);
         HWND hInput = GetDlgItem(hDlg, IDC_INPUT);
         if (text && hInput)
-        {
-          int length = GetWindowTextLength(hInput);
-          text->resize(length);
-          GetWindowText(hInput, text->getBuffer(), text->getBufferSize());
-          text->setLength(length);
-        }
+          *text = Window::getWindowText(hInput);
       }
       EndDialog(hDlg, LOWORD(wParam));
       return TRUE;

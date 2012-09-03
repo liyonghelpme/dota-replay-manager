@@ -53,7 +53,7 @@ ScriptParser::ScriptParser(String script)
           next->col -= cur.length() - 1;
           next->text = cur.substring(1, cur.length() - 1).toLower();
           int subpos = 1;
-          while (cur[subpos] != '}' && cur[subpos] != ':' && !isspace(cur[subpos]))
+          while (cur[subpos] != '}' && cur[subpos] != ':' && !s_isspace(cur[subpos]))
             subpos++;
           String keyword = cur.substring(1, subpos);
           if (!keyword.icompare("if"))

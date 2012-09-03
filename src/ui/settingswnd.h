@@ -35,6 +35,7 @@ class SettingsWindow : public Frame
 
   void addAllItems();
 
+  void updateExtra();
   uint32 handleExtra(uint32 message, uint32 wParam, uint32 lParam);
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:

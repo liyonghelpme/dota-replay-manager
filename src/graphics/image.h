@@ -30,11 +30,6 @@ class Image
   bool loadBLP2 (File* file);
   bool load (File* file);
 
-  static unsigned long flip_color(unsigned long clr)
-  {
-    return (clr & 0xFF00FF00) | ((clr >> 16) & 0x0000FF) | ((clr << 16) & 0xFF0000);
-  }
-
   Rect clipRect;
 
   void make_premult();
@@ -74,6 +69,10 @@ public:
     return _height;
   }
 
+  static unsigned long flip_color(unsigned long clr)
+  {
+    return (clr & 0xFF00FF00) | ((clr >> 16) & 0x0000FF) | ((clr << 16) & 0xFF0000);
+  }
   static unsigned int clr(int r, int g, int b, int a = 255)
   {
     return (((unsigned char) a) << 24) | (((unsigned char) r) << 16) | (((unsigned char) g) << 8) | ((unsigned char) b);
@@ -110,10 +109,15 @@ public:
 
   bool getRect(int& left, int& top, int& right, int& bottom) const;
 
+  unsigned int getPixel(int x, int y)
+  {
+    return _bits[x + y * _width];
+  }
   void setPixel(int x, int y, unsigned int color)
   {
     _bits[x + y * _width] = color;
   }
+  void replaceColor(unsigned int color, unsigned int with);
 
   HBITMAP createBitmap(HDC hDC = NULL);
   void fillBitmap(HBITMAP hBitmap, HDC hDC);

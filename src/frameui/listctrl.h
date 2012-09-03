@@ -30,6 +30,7 @@ class ListFrame : public WindowFrame
 
   int drawItemText(HDC hDC, String text, RECT* rc, uint32 format, bool utf8);
   void drawItem(DRAWITEMSTRUCT* dis);
+  int toolHitTest(POINT pt, ToolInfo* ti);
 protected:
   wchar_t* wcBuf;
   int convertUtf8(String text);

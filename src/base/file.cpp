@@ -6,6 +6,7 @@
 #include <stdarg.h>
 
 #include "file.h"
+#include "base/utils.h"
 
 class NullFile : public File
 {
@@ -361,6 +362,13 @@ File* File::openURL (char const* url)
   uint8* buf = __open_url (url, len);
   return new MemFile (buf, len, true);
 }
+bool File::isValidURL(char const* url)
+{
+  return strnicmp(url, "http:", 5) == 0 ||
+    strnicmp(url, "https:", 6) == 0 ||
+    strnicmp(url, "ftp:", 4) == 0 ||
+    strnicmp(url, "gopher:", 7) == 0;
+}
 
 File* File::memfile (void const* data, int length)
 {
@@ -414,4 +422,21 @@ String File::gets(bool all)
   String result;
   gets(result, all);
   return result;
+}
+
+uint32 File::crc32()
+{
+  uint32 crc = 0xFFFFFFFF;
+  uint8* buf = new uint8[1024];
+
+  __int64 pos = tell64();
+  seek(0, SEEK_SET);
+
+  while (int count = read(buf, sizeof buf))
+    crc = update_crc(crc, buf, count);
+
+  seek64(pos, SEEK_SET);
+
+  delete buf;
+  return ~crc;
 }

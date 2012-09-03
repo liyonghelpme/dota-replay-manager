@@ -2,6 +2,9 @@
 #include "frameui/fontsys.h"
 #include "graphics/imagelib.h"
 #include "frameui/controlframes.h"
+#include "ui/batchdlg.h"
+#include "ui/updatedlg.h"
+#include "ui/aboutdlg.h"
 
 #include "settingswnd.h"
 
@@ -122,8 +125,34 @@ uint32 SettingsWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         }
         return 0;
       }
+      else if (id == IDC_CACHEREPLAYS)
+      {
+        BatchDialog batch(BatchDialog::mCache);
+        batch.addFolder(cfg.replayPath);
+        batch.run();
+      }
+      else if (id == IDC_RESETSETTINGS)
+      {
+        if (MessageBox(getApp()->getMainWindow(),
+          "Are you sure you want to reset all settings to default values?", "Warning",
+          MB_ICONWARNING | MB_YESNO) == IDYES)
+        {
+          cfg.reset();
+          updateKey(NULL);
+          updateExtra();
+        }
+      }
+      else if (id == IDC_LOOKFORUPDATES)
+        UpdateDialog::run();
+      else if (id == IDC_README)
+      {
+        ShellExecute(NULL, "open", String::buildFullName(getApp()->getRootPath(),
+          "readme.txt"), NULL, NULL, SW_SHOWNORMAL);
+      }
+      else if (id == IDC_ABOUT)
+        AboutDialog::run();
     }
-    break;
+    return 0;
   }
   return M_UNHANDLED;
 }
@@ -136,13 +165,13 @@ void SettingsWindow::updateKey(void* item)
       switch (items[i].type)
       {
       case ITEM_STRING:
-        items[i].ctrl->setText(*(String*) item);
+        items[i].ctrl->setText(*(String*) items[i].item);
         break;
       case ITEM_INT:
-        items[i].ctrl->setText(String(*(int*) item));
+        items[i].ctrl->setText(String(*(int*) items[i].item));
         break;
       case ITEM_BOOL:
-        ((ButtonFrame*) items[i].ctrl)->setCheck(((*(int*) item) & items[i].mask) != 0);
+        ((ButtonFrame*) items[i].ctrl)->setCheck(((*(int*) items[i].item) & items[i].mask) != 0);
         break;
       }
     }

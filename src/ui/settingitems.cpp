@@ -163,7 +163,7 @@ void SettingsWindow::addAllItems()
   item2->setSize(228, 16);
 
   item1 = addBoolItem(0, &cfg.autoView);
-  item1->setText("Automatically detect new replays");
+  item1->setText("Automatically open new replays");
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 5);
   item1->setSize(228, 16);
 
@@ -240,14 +240,19 @@ void SettingsWindow::addAllItems()
   item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 5);
 
   item1 = addBoolItem(0, &cfg.autoUpdate);
-  item1->setText("Check for updates automatically (once a day)");
+  item1->setText("Automatically check for updates");
   item1->setSize(300, 16);
   item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 5);
+
+  item2 = addBoolItem(0, &cfg.autoLoadMap);
+  item2->setText("Automatically load missing map data");
+  item2->setSize(300, 16);
+  item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 5);
 
   openWithThis = new ButtonFrame("Set this program as default for opening replays",
     tab, IDC_OPENWITHTHIS, BS_AUTOCHECKBOX);
   openWithThis->setSize(300, 16);
-  openWithThis->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 5);
+  openWithThis->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 5);
   String cmd;
   if (getRegString(HKEY_CURRENT_USER, "Software\\Classes\\Warcraft3.Replay\\shell\\open\\command", "", cmd) &&
       cmd == getAppPath(true) + " \"%1\"")
@@ -320,10 +325,11 @@ void SettingsWindow::addAllItems()
   item1->setSize(180, 16);
   WindowFrame* item3 = item1;
 
-  item2 = addBoolItem(1, &cfg.skillColors);
-  item2->setText("Color skills in build view");
-  item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 4);
-  item2->setSize(180, 16);
+  //item2 = addBoolItem(1, &cfg.skillColors);
+  //item2->setText("Color skills in build view");
+  //item2->setPoint(PT_TOPLEFT, item1, PT_BOTTOMLEFT, 0, 4);
+  //item2->setSize(180, 16);
+  item2 = item1;
 
   item1 = addBoolItem(1, &cfg.smoothGold);
   item1->setText("Smoother gold timeline");
@@ -347,10 +353,11 @@ void SettingsWindow::addAllItems()
 
   item3 = item1;
 
-  item1 = addBoolItem(1, &cfg.syncSelect);
-  item1->setText("Synchronize selection in build view");
-  item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 4);
-  item1->setSize(180, 16);
+  //item1 = addBoolItem(1, &cfg.syncSelect);
+  //item1->setText("Synchronize selection in build view");
+  //item1->setPoint(PT_TOPLEFT, item2, PT_BOTTOMLEFT, 0, 4);
+  //item1->setSize(180, 16);
+  item1 = item2;
 
   item2 = addBoolItem(1, &cfg.chatHeroes);
   item2->setText("Show hero names in chat");
@@ -389,6 +396,14 @@ void SettingsWindow::addAllItems()
   item1->setSize(180, 16);
 }
 
+void SettingsWindow::updateExtra()
+{
+  chatColorMode->setCurSel(cfg.chatColors);
+
+  getApp()->reloadWarData();
+  notify(WM_UPDATEPATH, 0, 0);
+  InvalidateRect(chatColors->getHandle(), NULL, TRUE);
+}
 uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
 {
   if (message == WM_COMMAND && lParam)
@@ -405,6 +420,7 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
           "InstallPath", warPath);
         cfg.warPath = warPath;
         updateKey(&cfg.warPath);
+        getApp()->reloadWarData();
       }
       break;
     case IDC_BROWSEWARPATH:
@@ -415,6 +431,7 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
         {
           cfg.warPath = warPath;
           updateKey(&cfg.warPath);
+          getApp()->reloadWarData();
         }
       }
       break;
@@ -450,6 +467,38 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
     case IDC_COPYFORMATHELP:
       if (code == BN_CLICKED)
       {
+        MessageBox(getApp()->getMainWindow(),
+            "Specify the name of the destination file.\n"
+            "Extension .w3g will be appended automatically\n\n"
+            "You can use the following tags (tags are text in angle brackets):\n"
+            "<n> - insert an integer number so that the filename becomes unique.\n"
+            "<version> - insert Warcraft patch version used in the game (e.g. \"1.21\")\n"
+            "<map> - DotA version (e.g. \"6.49b\")\n"
+            "<name> - game name (e.g. \"dota -ap no noobs\")\n"
+            "<sentinel> - number of sentinel players\n"
+            "<scourge> - number of scourge players\n"
+            "<sentinel kills> - sentinel score (may be wrong)\n"
+            "<scourge kills> - scourge score (may be wrong)\n"
+            "<time fmt> - date of the replay file, fmt can contain the following:\n"
+            "  %y - Year without century, %Y - Year with century\n"
+            "  %b - Short month name, %B - Full month name, %m - Month as number\n"
+            "  %d - Day of month, %j - Day of year\n"
+            "  %a - Short day of week, %A - Full day of week, %w - Weekday as number\n"
+            "  %H - Hour in 24-hour format, %I - Hour in 12-hour format, %p - A.M./P.M.\n"
+            "  %M - Minute, %S - Second\n"
+            "<winner> - game winner (\"Unknown\", \"Sentinel\" or \"Scourge\")\n"
+            "In the following tags ID can be either player index (1-10), \"host\" or \"saver\":\n"
+            "<player ID> - player name\n"
+            "<hero ID> - player's hero\n"
+            "<win ID> - whether the player won or lost (\"Won\" or \"Lost\")\n"
+            "<kills ID> - player's hero kills\n"
+            "<deaths ID> - player's deaths\n"
+            "<creeps ID> - player's creep kills\n"
+            "<denies ID> - player's creep denies\n\n"
+            "For batch copying replays the following tags are available:\n"
+            "<file> - original file title (e.g. \"LastReplay\")\n"
+            "<path> - original file path (e.g. \"Dota\\IHL\\\")",
+          "Help", MB_OK);
       }
       break;
     case IDC_OPENWITHTHIS:

@@ -125,15 +125,11 @@ void FolderWindow::readCacheInfo(GameCache* cache, FolderFoundItem& item, int* c
   item.gameLength = cache->game_length;
   if (colPos[colLineup] >= 0 && dota && cache->map_version)
   {
-    bool gotAny[2] = {false, false};
+    int count[2] = {0, 0};
     for (int team = 0; team < 2; team++)
     {
       if (team == 1)
-      {
-        if (!gotAny[0])
-          item.lineup += "(none)";
         item.lineup += " vs ";
-      }
       for (uint8 i = 0; i < cache->players; i++)
       {
         if (cache->pteam[i] == team && cache->phero[i])
@@ -143,14 +139,14 @@ void FolderWindow::readCacheInfo(GameCache* cache, FolderFoundItem& item, int* c
             item.lineup += String::format("$%d$", lib->getListIndex(hero->icon, "Unknown"));
           else
             item.lineup += String::format("$%d$", lib->getListIndex("Unknown"));
-          gotAny[team] = true;
+          count[team]++;
         }
       }
+      if (team == 0 && count[team] < 5)
+        item.lineup = String("$0$") * (5 - count[team]) + item.lineup;
     }
-    if (!gotAny[0] && !gotAny[1])
+    if (!count[0] && !count[1])
       item.lineup = "";
-    else if (!gotAny[1])
-      item.lineup += "(none)";
   }
 }
 void FolderWindow::rebuild()
@@ -228,15 +224,11 @@ void FolderWindow::rebuild()
           {
             item.size = 0;
             item.ftime = 0;
-            HANDLE hFile = CreateFile(fname, GENERIC_READ, FILE_SHARE_DELETE |
-              FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-            if (hFile)
+            FileInfo fi;
+            if (getFileInfo(fname, fi))
             {
-              FILETIME ft;
-              GetFileTime(hFile, NULL, NULL, &ft);
-              item.size = GetFileSize(hFile, NULL);
-              CloseHandle(hFile);
-              item.ftime = uint64(ft.dwLowDateTime) | (uint64(ft.dwHighDateTime) << 32);
+              item.size = fi.size;
+              item.ftime = fi.ftime;
             }
           }
           if (cfg.selColumns & (COL_NAME | COL_RATIO | COL_LENGTH | COL_MODE))
@@ -330,21 +322,8 @@ void FolderWindow::rebuild()
         t.pos = pos;
       }
 
-      if (colShow[colDate])
-      {
-        char date[256];
-        char time[256];
-        FILETIME ft;
-        ft.dwLowDateTime = DWORD(fitem.ftime);
-        ft.dwHighDateTime = DWORD(fitem.ftime >> 32);
-        SYSTEMTIME st;
-        FileTimeToSystemTime(&ft, &st);
-        GetDateFormat(LOCALE_USER_DEFAULT, 0, &st, NULL, date, sizeof date);
-        int len = (int) strlen(date);
-        date[len] = ' ';
-        GetTimeFormat(LOCALE_USER_DEFAULT, 0, &st, NULL, date + len + 1, sizeof date - len - 1);
-        list->setItemText(pos, colPos[colDate], date);
-      }
+      if (colShow[colDate] && fitem.ftime)
+        list->setItemText(pos, colPos[colDate], format_systime(fitem.ftime, "%c"));
       if (colShow[colSize])
         list->setItemText(pos, colPos[colSize], String::format("%d KB", (fitem.size + 1023) / 1024));
       if (colShow[colName])

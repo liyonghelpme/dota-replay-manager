@@ -13,15 +13,24 @@ public:
 
 class DirChangeTracker
 {
+  static DirChangeTracker* trackers;
+  DirChangeTracker* prev;
+  DirChangeTracker* next;
+
+  enum {sRunning, sFrozen, sFrozenPending};
+  int state;
+
+  HANDLE terminate;
   HANDLE findChange;
   HANDLE thread;
   DirChangeHandler* handler;
-  bool terminate;
   static uint32 WINAPI threadProc(void* arg);
 public:
   DirChangeTracker(DirChangeHandler* handler, String path, bool subtree,
     uint32 filter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME);
   ~DirChangeTracker();
+
+  static void freezeUpdates(bool freeze);
 };
 
 #endif // __UI_DIRCHANGE_H__

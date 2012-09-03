@@ -22,6 +22,8 @@ class ReplayGameInfoTab : public ReplayTab
   void addInfo(String name, String value, bool utf8 = false);
   SimpleListFrame* info;
   ListFrame* players;
+  ButtonFrame* watchReplay;
+  ButtonFrame* copyMatchup;
   StaticFrame* map;
   MapPopout* popout;
   Image* mapImages[2];
@@ -30,7 +32,9 @@ class ReplayGameInfoTab : public ReplayTab
   int curImage;
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
   void onSetReplay();
+  void addLadderPlayer(W3GPlayer* player);
   void addPlayer(W3GPlayer* player);
+  String getWatchCmd();
 public:
   ReplayGameInfoTab(Frame* parent);
   ~ReplayGameInfoTab();
