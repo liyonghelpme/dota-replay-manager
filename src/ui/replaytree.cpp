@@ -37,6 +37,7 @@ ReplayTree::ReplayTree(String thePath, MainWnd* parent)
   tracker = NULL;
   updating = false;
   selfDrag = NULL;
+  hasSearchRes = false;
 
   treeView = new DropTreeViewFrame(this, 0, TVS_HASBUTTONS | TVS_HASLINES |
     TVS_LINESATROOT | TVS_SHOWSELALWAYS | TVS_EDITLABELS | WS_HSCROLL | WS_TABSTOP);
@@ -84,6 +85,10 @@ uint32 ReplayTree::onMessage(uint32 message, uint32 wParam, uint32 lParam)
               mainWnd->pushView(new ReplayViewItem(items[pos].path));
             else if (items[pos].type == MAINWND_SETTINGS)
               mainWnd->pushView(new SettingsViewItem());
+            else if (items[pos].type == MAINWND_SEARCH)
+              mainWnd->pushView(new SearchViewItem());
+            else if (items[pos].type == MAINWND_SEARCHRES)
+              mainWnd->pushView(new SearchResViewItem());
           }
         }
         return TRUE;
@@ -155,7 +160,7 @@ uint32 ReplayTree::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     }
     break;
   case WM_REBUILDTREE:
-    rebuild();
+    rebuild(wParam != 0);
     break;
   case WM_DRAGOVER:
   case WM_DRAGLEAVE:

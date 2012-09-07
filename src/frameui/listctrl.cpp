@@ -551,7 +551,7 @@ ComboFrameEx::ComboFrameEx(Frame* parent, int id, int style)
   : WindowFrame(parent)
 {
   boxHeight = 500;
-  create("ComboBox", "", style | WS_CHILD | CBS_OWNERDRAWFIXED | WS_TABSTOP, 0);
+  create("ComboBox", "", style | WS_CHILD | CBS_OWNERDRAWFIXED | WS_TABSTOP | WS_VSCROLL, 0);
   setFont(FontSys::getSysFont());
   setId(id);
   ComboBox_SetItemHeight(hWnd, -1, 16);
@@ -598,6 +598,7 @@ int ComboFrameEx::getCurSel() const
 void ComboFrameEx::setCurSel(int sel)
 {
   SendMessage(hWnd, CB_SETCURSEL, sel, 0);
+  onMessage(WM_COMMAND, MAKELONG(id(), CBN_SELCHANGE), (uint32) hWnd);
 }
 
 void ComboFrameEx::onMove(uint32 data)
@@ -652,8 +653,8 @@ uint32 ComboFrameEx::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     rc.left += 2;
     rc.right -= 2;
     if (item.icon != 0xFFFFFFFF)
-      ImageList_Draw(getApp()->getImageLibrary()->getImageList(), item.icon,
-        dis->hDC, rc.left, (rc.top + rc.bottom) / 2 - 8, ILD_NORMAL);
+      getApp()->getImageLibrary()->drawAlpha(dis->hDC, item.icon,
+        rc.left, (rc.top + rc.bottom) / 2 - 8, 16, 16);
     rc.left += 18;
 
     DrawTextW(dis->hDC, item.wtext, -1, &rc, DT_LEFT | DT_SINGLELINE | DT_VCENTER);

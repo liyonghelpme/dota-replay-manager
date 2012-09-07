@@ -6,19 +6,6 @@
 
 #include "replay/cache.h"
 
-struct FolderFoundItem
-{
-  bool folder;
-  String name;
-
-  bool nodata;
-  uint32 size;
-  uint64 ftime;
-  String gameName;
-  String lineup;
-  uint32 gameLength;
-  String gameMode;
-};
 struct FolderFillerTask
 {
   String path;
@@ -120,10 +107,10 @@ void FolderWindow::readCacheInfo(GameCache* cache, FolderFoundItem& item, int* c
   Dota* dota = getApp()->getDotaLibrary()->getDota();
 
   item.gameName = cache->game_name;
-  if (colPos[colMode] >= 0)
+  if (colPos == NULL || colPos[colMode] >= 0)
     item.gameMode = formatMode(cache->game_mode);
   item.gameLength = cache->game_length;
-  if (colPos[colLineup] >= 0 && dota && cache->map_version)
+  if ((colPos == NULL || colPos[colLineup] >= 0) && dota && cache->map_version)
   {
     int count[2] = {0, 0};
     for (int team = 0; team < 2; team++)
@@ -181,7 +168,14 @@ void FolderWindow::rebuild()
   for (int i = 0; i < items.length(); i++)
     if (ListView_GetItemState(list->getHandle(), items[i].pos, LVIS_SELECTED))
       selected.set(items[i].path, 1);
-  int scrollPos = GetScrollPos(list->getHandle(), SB_VERT);
+  int scrollPosX = GetScrollPos(list->getHandle(), SB_HORZ);
+  int scrollPosY = GetScrollPos(list->getHandle(), SB_VERT);
+  if (items.length() > 0)
+  {
+    RECT rc;
+    ListView_GetItemRect(list->getHandle(), 0, &rc, LVIR_BOUNDS);
+    scrollPosY *= rc.bottom - rc.top;
+  }
 
   list->setRedraw(false);
   list->clear();
@@ -351,7 +345,7 @@ void FolderWindow::rebuild()
     if (colShow[i])
       list->setColumnWidth(colPos[i], cfg.colWidth[i]);
   list->setRedraw(true);
-  SetScrollPos(list->getHandle(), SB_VERT, scrollPos, TRUE);
+  ListView_Scroll(list->getHandle(), scrollPosX, scrollPosY);
 
   FillerThreadData* lastFiller = NULL;
   FillerThreadData* curFiller = filler;

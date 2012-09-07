@@ -135,7 +135,7 @@ class DotaLoader
     int wood = item->getIntData("lumbercost");
     String name = strip_item(item->getStringData("Name"));
     String descr = item->getStringData("Ubertip");
-    int reqpos = descr.find("Requires:", 0, FIND_CASE_INSENSITIVE);
+    int reqpos = descr.ifind("Requires:");
     if ((wood || gold == 0) && reqpos < 0)
       return false;
     if (!iname.has(name))

@@ -7,42 +7,33 @@
 
 class CharacterClass
 {
-  uint32 mask[8];
+  bool invert;
+  int count;
+  struct range
+  {
+    uint32 begin;
+    uint32 end;
+  };
+  static int __cdecl rangecomp(void const* a, void const* b);
+  range* data;
 public:
   CharacterClass()
   {
-    memset(mask, 0, sizeof mask);
+    invert = false;
+    count = 0;
+    data = NULL;
   }
-  CharacterClass(char const* src, bool plain = false)
+  CharacterClass(char const* src, uint32* table = NULL)
   {
-    init(src, plain);
+    init(src, table);
   }
-  CharacterClass(CharacterClass const& cc)
-  {
-    memcpy(mask, cc.mask, sizeof mask);
-  }
+  CharacterClass(CharacterClass const& cc);
+  ~CharacterClass();
 
-  CharacterClass& operator = (CharacterClass const& cc)
-  {
-    memcpy(mask, cc.mask, sizeof mask);
-    return *this;
-  }
+  CharacterClass& operator = (CharacterClass const& cc);
 
-  int init(char const* src, bool plain = false);
-  CharacterClass& add(char c)
-  {
-    mask[uint32(c) >> 5] |= (1 << (c & 31));
-    return *this;
-  }
-  CharacterClass& remove(char c)
-  {
-    mask[uint32(c) >> 5] &= ~(1 << (c & 31));
-    return *this;
-  }
-  bool match(char c) const
-  {
-    return (mask[c >> 5] & (1 << (c & 31))) != 0;
-  }
+  uint8_ptr init(char const* src, uint32* table = NULL);
+  bool match(uint32 c) const;
 
   static const CharacterClass word;
   static const CharacterClass non_word;
@@ -55,12 +46,16 @@ public:
   static const CharacterClass any;
 };
 
+#define REGEXP_CASE_INSENSITIVE       0x0001
+#define REGEXP_DOTALL                 0x0002
+#define REGEXP_MULTILINE              0x0004
+
 class RegExp
 {
   struct Prog;
   Prog* prog;
 public:
-  RegExp(char const* expr);
+  RegExp(char const* expr, uint32 flags = 0);
   ~RegExp();
 
   bool match(char const* text, Array<String>* sub = NULL) const;

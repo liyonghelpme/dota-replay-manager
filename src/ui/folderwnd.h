@@ -24,7 +24,19 @@ public:
 };
 
 struct GameCache;
-struct FolderFoundItem;
+struct FolderFoundItem
+{
+  bool folder;
+  String name;
+
+  bool nodata;
+  uint32 size;
+  uint64 ftime;
+  String gameName;
+  String lineup;
+  uint32 gameLength;
+  String gameMode;
+};
 struct FolderFillerTask;
 class FolderWindow : public Frame, public DirChangeHandler
 {
@@ -58,10 +70,6 @@ class FolderWindow : public Frame, public DirChangeHandler
   void releaseFillers();
   void updateListItem(uint32 wParam, uint32 lParam);
 
-  static int compItems(FolderFoundItem const& a, FolderFoundItem const& b);
-
-  static void readCacheInfo(GameCache* cache, FolderFoundItem& item, int* colPos);
-
   void doPaste(HGLOBAL hDrop, uint32 effect, String opTo);
 
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
@@ -72,6 +80,13 @@ public:
   ~FolderWindow();
 
   void setPath(String path);
+  String getPath() const
+  {
+    return path;
+  }
+
+  static int compItems(FolderFoundItem const& a, FolderFoundItem const& b);
+  static void readCacheInfo(GameCache* cache, FolderFoundItem& item, int* colPos);
 };
 
 #endif // __UI_FOLDERWND__

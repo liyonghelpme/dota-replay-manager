@@ -217,8 +217,11 @@ void ReplayTree::onDirChange()
   PostMessage(getApp()->getMainWindow(), WM_UPDATEFILE, 0, 0);
   PostMessage(treeView->getHandle(), WM_REBUILDTREE, 0, 0);
 }
-void ReplayTree::rebuild()
+void ReplayTree::rebuild(bool addSearchRes)
 {
+  if (addSearchRes)
+    hasSearchRes = true;
+
   treeView->setRedraw(false);
 
   updating = true;
@@ -245,6 +248,8 @@ void ReplayTree::rebuild()
     rootName.replace(0, rootName[0] - 'a' + 'A');
   items.clear();
 
+  int pos = 0;
+
   TVINSERTSTRUCT tvis;
   memset(&tvis, 0, sizeof tvis);
   tvis.hInsertAfter = TVI_LAST;
@@ -253,23 +258,47 @@ void ReplayTree::rebuild()
   tvis.item.pszText = "Settings";
   tvis.item.iImage = getApp()->getImageLibrary()->getListIndex("IconSettings");
   tvis.item.iSelectedImage = tvis.item.iImage;
-  tvis.item.lParam = 0;
+  tvis.item.lParam = pos;
 
   items.push();
-  items[0].type = MAINWND_SETTINGS;
-  items[0].treeItem = treeView->insertItem(&tvis);
-  items[0].path = "#settings";
+  items[pos].type = MAINWND_SETTINGS;
+  items[pos].treeItem = treeView->insertItem(&tvis);
+  items[pos].path = "#settings";
 
+  pos++;
+  tvis.item.pszText = "Search";
+  tvis.item.iImage = getApp()->getImageLibrary()->getListIndex("IconSearch");
+  tvis.item.iSelectedImage = tvis.item.iImage;
+  tvis.item.lParam = pos;
+  items.push();
+  items[pos].type = MAINWND_SEARCH;
+  items[pos].treeItem = treeView->insertItem(&tvis);
+  items[pos].path = "#search";
+
+  if (hasSearchRes)
+  {
+    pos++;
+    tvis.item.pszText = "Search results";
+    tvis.item.iImage = getApp()->getImageLibrary()->getListIndex("IconSearchResults");
+    tvis.item.iSelectedImage = tvis.item.iImage;
+    tvis.item.lParam = pos;
+    items.push();
+    items[pos].type = MAINWND_SEARCHRES;
+    items[pos].treeItem = treeView->insertItem(&tvis);
+    items[pos].path = "#searchres";
+  }
+
+  pos++;
   tvis.item.pszText = rootName.getBuffer();
   tvis.item.iImage = getApp()->getImageLibrary()->getListIndex("IconClosedFolder");
   tvis.item.iSelectedImage = getApp()->getImageLibrary()->getListIndex("IconOpenFolder");
-  tvis.item.lParam = 1;
+  tvis.item.lParam = pos;
   replayRoot = treeView->insertItem(&tvis);
 
   items.push();
-  items[1].type = MAINWND_FOLDER;
-  items[1].path = path;
-  items[1].treeItem = replayRoot;
+  items[pos].type = MAINWND_FOLDER;
+  items[pos].path = path;
+  items[pos].treeItem = replayRoot;
 
   int count = 0;
   if (cfg.byDate)

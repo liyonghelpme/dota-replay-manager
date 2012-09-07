@@ -4,11 +4,6 @@
 #include <string.h>
 #include "base/array.h"
 
-#define  FIND_CASE_INSENSITIVE   1
-#define  FIND_REVERSE            2
-#define  FIND_WHOLE_WORD         4
-#define  REPLACE_ALL             8
-
 #define s_isalnum(x)       isalnum((unsigned char) (x))
 #define s_isalpha(x)       isalpha((unsigned char) (x))
 #define s_iscntrl(x)       iscntrl((unsigned char) (x))
@@ -79,12 +74,9 @@ public:
   }
   int icompare(String str) const
   {
-    return buf == str.buf ? 0 : stricmp(buf, str.buf);
+    return buf == str.buf ? 0 : icompare(str.buf);
   }
-  int icompare(char const* str) const
-  {
-    return stricmp(buf, str);
-  }
+  int icompare(char const* str) const;
 
   operator const char * () const
   {
@@ -219,25 +211,15 @@ public:
 
   String& toUpper()
   {
-    if ((*(int*)(buf - 8)) > 1) splice();
-    strupr(buf);
-    return *this;
+    return *this = upper();
   }
-  String upper() const
-  {
-    return String(*this).toUpper();
-  }
+  String upper() const;
 
   String& toLower()
   {
-    if ((*(int*)(buf - 8)) > 1) splice();
-    strlwr(buf);
-    return *this;
+    return *this = lower();
   }
-  String lower() const
-  {
-    return String(*this).toLower();
-  }
+  String lower() const;
 
   int toInt() const;
   float toFloat() const;
@@ -268,16 +250,12 @@ public:
   String& removeTrailingSpaces();
 
   bool isWordBoundary(int pos) const;
-  int find(char const* str, int start = 0, int options = 0) const;
-  int find(char ch, int start = 0, int options = 0) const;
-  int indexOf(char ch) const
-  {
-    return find(ch);
-  }
-  int lastIndexOf(char ch) const
-  {
-    return find(ch, toTheEnd, FIND_REVERSE);
-  }
+  int find(char const* str, int start = 0) const;
+  int ifind(char const* str, int start = 0) const;
+  int find(char ch, int start = 0) const;
+  int ifind(char ch, int start = 0) const;
+  int indexOf(char ch) const;
+  int lastIndexOf(char ch) const;
 
   String& replace(int pos, char ch);
   String& replace(int start, int len, char const* str);
@@ -313,6 +291,8 @@ public:
   void toWide(wchar_t* ptr, int length) const;
 
   String& toAnsi();
+  int getUtfLength() const;
+  int fromUtfPos(int pos) const;
 
   static void parseString(String str, String& cmd, String& args);
 

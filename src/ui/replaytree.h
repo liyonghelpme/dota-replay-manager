@@ -37,6 +37,7 @@ class ReplayTree : public Frame, public DirChangeHandler
   String path;
   MainWnd* mainWnd;
   HTREEITEM selfDrag;
+  bool hasSearchRes;
 
   void enumfiles(Array<FileInfo>& files, String path);
   static int compfiles(FileInfo const& a, FileInfo const& b);
@@ -51,8 +52,6 @@ class ReplayTree : public Frame, public DirChangeHandler
   bool updating;
   int populate (HTREEITEM parent, String path);
 
-  void rebuild();
-
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
 public:
   ReplayTree(String path, MainWnd* parent);
@@ -61,6 +60,7 @@ public:
 
   void setCurFile(String path);
 
+  void rebuild(bool addSearchRes = false);
   void onDirChange();
 };
 

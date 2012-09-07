@@ -220,27 +220,11 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 			<File
-				RelativePath="..\res\cursor1.cur"
-				>
-			</File>
-			<File
-				RelativePath="..\res\cursor2.cur"
-				>
-			</File>
-			<File
-				RelativePath="..\res\DotAReplay.ico"
-				>
-			</File>
-			<File
 				RelativePath=".\DotAReplay.rc"
 				>
 			</File>
 			<File
 				RelativePath="..\res\hmove.cur"
-				>
-			</File>
-			<File
-				RelativePath="..\res\icon1.ico"
 				>
 			</File>
 			<File
@@ -252,19 +236,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\res\replays.ico"
-				>
-			</File>
-			<File
 				RelativePath="..\res\sentinel.cur"
-				>
-			</File>
-			<File
-				RelativePath="..\res\sortdown.ico"
-				>
-			</File>
-			<File
-				RelativePath="..\res\sortup.ico"
 				>
 			</File>
 			<File
@@ -332,6 +304,10 @@
 					>
 				</File>
 				<File
+					RelativePath="..\src\base\utf8.h"
+					>
+				</File>
+				<File
 					RelativePath="..\src\base\utils.h"
 					>
 				</File>
@@ -378,6 +354,10 @@
 				</File>
 				<File
 					RelativePath="..\src\base\string.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\base\utf8.cpp"
 					>
 				</File>
 				<File
@@ -582,6 +562,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\src\ui\searchres.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\ui\searchwnd.h"
+					>
+				</File>
+				<File
 					RelativePath="..\src\ui\settingswnd.h"
 					>
 				</File>
@@ -679,6 +667,14 @@
 					>
 				</File>
 				<File
+					RelativePath="..\src\ui\searchres.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\ui\searchwnd.cpp"
+					>
+				</File>
+				<File
 					RelativePath="..\src\ui\settingitems.cpp"
 					>
 				</File>
@@ -703,6 +699,10 @@
 					</File>
 					<File
 						RelativePath="..\src\ui\replay\actions.cpp"
+						>
+					</File>
+					<File
+						RelativePath="..\src\ui\replay\chatfilters.cpp"
 						>
 					</File>
 					<File

@@ -232,7 +232,12 @@ Window::~Window()
 
 void Window::setText(String text)
 {
-  SetWindowText(hWnd, text);
+  int wsize = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), text.length(), NULL, 0);
+  wchar_t* buf = new wchar_t[wsize + 1];
+  MultiByteToWideChar(CP_UTF8, 0, text.c_str(), text.length(), buf, wsize);
+  buf[wsize] = 0;
+  SetWindowTextW(hWnd, buf);
+  delete[] buf;
 }
 String Window::getText() const
 {
@@ -240,12 +245,16 @@ String Window::getText() const
 }
 String Window::getWindowText(HWND hWnd)
 {
-  int length = GetWindowTextLength(hWnd);
-  String buf;
-  buf.resize(length);
-  GetWindowText(hWnd, buf.getBuffer(), buf.getBufferSize());
-  buf.setLength(length);
-  return buf;
+  int wsize = GetWindowTextLengthW(hWnd);
+  wchar_t* buf = new wchar_t[wsize + 1];
+  GetWindowTextW(hWnd, buf, wsize + 1);
+  int size = WideCharToMultiByte(CP_UTF8, 0, buf, wsize, NULL, 0, NULL, NULL);
+  String str;
+  str.resize(size);
+  WideCharToMultiByte(CP_UTF8, 0, buf, wsize, str.getBuffer(), size, NULL, NULL);
+  str.setLength(size);
+  delete[] buf;
+  return str;
 }
 
 void Window::setFont(HFONT hFont)

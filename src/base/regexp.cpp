@@ -1,52 +1,103 @@
 #include <string.h>
 
 #include "regexp.h"
+#include "utf8.h"
 
-int CharacterClass::init(char const* src, bool plain)
+CharacterClass::CharacterClass(CharacterClass const& cc)
 {
-  if (plain)
+  invert = cc.invert;
+  count = cc.count;
+  data = new range[count];
+  memcpy(data, cc.data, sizeof(range) * count);
+}
+CharacterClass::~CharacterClass()
+{
+  delete[] data;
+}
+
+CharacterClass& CharacterClass::operator = (CharacterClass const& cc)
+{
+  if (cc.count > count)
   {
-    memset(mask, 0, sizeof mask);
-    int length = 0;
-    while (src[length])
-      add(src[length++]);
-    return length;
+    delete[] data;
+    data = new range[cc.count];
   }
-  else
+  invert = cc.invert;
+  count = cc.count;
+  memcpy(data, cc.data, sizeof(range) * count);
+  return *this;
+}
+
+int __cdecl CharacterClass::rangecomp(void const* a, void const* b)
+{
+  return int(((range*) a)->begin - ((range*) b)->begin);
+}
+uint8_ptr CharacterClass::init(char const* src, uint32* table)
+{
+  invert = (*src == '^');
+  int size = 0;
+  uint8_ptr pos = (uint8_ptr)(invert ? src + 1 : src);
+  while(*pos && (pos == (uint8_ptr) src || *pos != ']'))
   {
-    bool invert = false;
-    if (*src == '^')
+    uint32 cp = utf8::parse(utf8::transform(&pos, table));
+    size++;
+    if (*pos == '-' && pos[1] && pos[1] != ']')
     {
-      memset(mask, 0xFF, sizeof mask);
-      invert = true;
-      src++;
+      pos++;
+      utf8::transform(&pos, table);
+    }
+  }
+  if (size > count)
+  {
+    delete[] data;
+    data = new range[size];
+  }
+  count = 0;
+  pos = (uint8_ptr)(invert ? src + 1 : src);
+  while (*pos && (pos == (uint8_ptr) src || *pos != ']'))
+  {
+    data[count].begin = utf8::parse(utf8::transform(&pos, table));
+    if (*pos == '-' && pos[1] && pos[1] != ']')
+    {
+      pos++;
+      data[count].end = utf8::parse(utf8::transform(&pos, table));
     }
     else
-      memset(mask, 0, sizeof mask);
-    int i = 0;
-    for (; src[i] && (i == 0 || src[i] != ']'); i++)
-    {
-      if (src[i + 1] == '-' && src[i + 2] && src[i + 2] != ']')
-      {
-        for (char c = src[i]; c <= src[i + 2]; c++)
-        {
-          if (invert)
-            remove(c);
-          else
-            add(c);
-        }
-        i += 2;
-      }
-      else
-      {
-        if (invert)
-          remove(src[i]);
-        else
-          add(src[i]);
-      }
-    }
-    return i + (invert ? 1 : 0);
+      data[count].end = data[count].begin;
+    count++;
   }
+  qsort(data, count, sizeof(range), rangecomp);
+  int shift = 0;
+  for (int i = 0; i < count; i++)
+  {
+    if (data[i].end < data[i].begin || (i - shift > 0 && data[i].end <= data[i - shift - 1].end))
+      shift++;
+    else if (i - shift > 0 && data[i].begin <= data[i - shift - 1].end + 1)
+    {
+      data[i - shift - 1].end = data[i].end;
+      shift++;
+    }
+    else if (shift)
+      data[i - shift] = data[i];
+  }
+  count -= shift;
+  return pos;
+}
+bool CharacterClass::match(uint32 c) const
+{
+  int left = 0;
+  int right = count - 1;
+  while (left <= right)
+  {
+    int mid = (left + right) / 2;
+    if (c >= data[mid].begin && c <= data[mid].end)
+      return !invert;
+    if (c < data[mid].begin)
+      right = mid - 1;
+    else
+      left = mid + 1;
+  }
+  return invert;
 }
 
 const CharacterClass CharacterClass::word("A-Za-z0-9_");
@@ -103,7 +154,7 @@ struct State
   union
   {
     CharacterClass const* mask;
-    char chr;
+    uint32 chr;
     int subid;
     State* left;
   };
@@ -335,44 +386,47 @@ struct Thread
 
 struct RegExp::Prog
 {
+  uint32 flags;
   _re::State* start;
   _re::State* states;
   int numStates;
   CharacterClass* masks;
   int numCaptures;
 
-  Prog(char const* expr);
+  Prog(char const* expr, uint32 flags);
   ~Prog();
 
   int maxThreads;
   _re::Thread* threads;
   int cur;
-  int pos;
   int numThreads[2];
   char const* matchText;
   void addthread(_re::State* state, _re::Match const& match);
-  void advance(_re::State* state, _re::Match const& match, char const* c, char const* ref);
+  void advance(_re::State* state, _re::Match const& match, uint32 cp, char const* ref);
 
   int run(char const* text, bool exact, bool (*callback) (_re::Match const& match, void* arg), void* arg);
 };
-RegExp::Prog::Prog(char const* expr)
+RegExp::Prog::Prog(char const* expr, uint32 f)
 {
+  flags = f;
   _re::Compiler comp;
   comp.init(expr);
 
-  int pos = 0;
+  uint32* ut_table = (flags & REGEXP_CASE_INSENSITIVE ? utf8::tf_lower : NULL);
+
+  uint8_ptr pos = (uint8_ptr) expr;
   while (true)
   {
     int type = _re::State::CHAR;
     CharacterClass const* mask = NULL;
-    switch (expr[pos])
+    switch (*pos)
     {
     case '\\':
       pos++;
-      if (_re::maskmap[expr[pos]])
+      if (_re::maskmap[*pos])
       {
         type = _re::State::CCLASS;
-        mask = _re::maskmap[expr[pos]];
+        mask = _re::maskmap[*pos];
       }
       break;
     case 0:
@@ -410,31 +464,30 @@ RegExp::Prog::Prog(char const* expr)
       break;
     case '.':
       type = _re::State::CCLASS;
-      mask = &CharacterClass::dot;
+      mask = (flags & REGEXP_DOTALL ? &CharacterClass::any : &CharacterClass::dot);
       break;
     case '[':
       type = _re::State::CCLASS;
       CharacterClass* tmask = &comp.masks[comp.numMasks++];
-      pos += tmask->init(expr + pos + 1) + 1;
+      pos = tmask->init((char*) pos + 1, ut_table);
       mask = tmask;
       break;
     }
     //if (expr[pos] == 0)
     //  type = _re::State::END;
+    uint32 cp = utf8::parse(utf8::transform(&pos, ut_table));
     if (type < _re::State::OPERAND)
       comp.pushator(type);
     else
     {
       _re::State* s = comp.operand(type);
       if (type == _re::State::CHAR)
-        s->chr = expr[pos];
+        s->chr = cp;
       else if (type == _re::State::CCLASS)
         s->mask = mask;
     }
     if (type == _re::State::END)
       break;
-    else
-      pos++;
   }
   comp.evaluntil(_re::State::START);
 
@@ -494,54 +547,73 @@ void RegExp::Prog::addthread(_re::State* state, _re::Match const& match)
     memcpy(&thread->match, &match, sizeof match);
   }
 }
-void RegExp::Prog::advance(_re::State* state, _re::Match const& match, char const* c, char const* ref)
+void RegExp::Prog::advance(_re::State* state, _re::Match const& match, uint32 cp, char const* ref)
 {
   if (state->type == _re::State::OR)
   {
-    advance(state->left, match, c, ref);
-    advance(state->right, match, c, ref);
+    advance(state->left, match, cp, ref);
+    advance(state->right, match, cp, ref);
   }
   else if (state->type == _re::State::LBRA)
   {
     _re::Match m2;
     memcpy(&m2, &match, sizeof m2);
     m2.start[state->subid] = ref;
-    advance(state->next, m2, c, ref);
+    advance(state->next, m2, cp, ref);
   }
   else if (state->type == _re::State::RBRA)
   {
     _re::Match m2;
     memcpy(&m2, &match, sizeof m2);
     m2.end[state->subid] = ref;
-    advance(state->next, m2, c, ref);
+    advance(state->next, m2, cp, ref);
   }
   else if (state->type == _re::State::BOL)
   {
-    if (ref == matchText || ref[-1] == '\n')
-      advance(state->next, match, NULL, ref);
+    if (flags & REGEXP_MULTILINE)
+    {
+      if (ref == matchText || ref[-1] == '\n')
+        advance(state->next, match, 0xFFFFFFFF, ref);
+    }
+    else
+    {
+      if (ref == matchText)
+        advance(state->next, match, 0xFFFFFFFF, ref);
+    }
   }
   else if (state->type == _re::State::EOL)
   {
-    if (*ref == 0 || *ref == '\r' || *ref == '\n')
-      advance(state->next, match, NULL, ref);
+    if (flags & REGEXP_MULTILINE)
+    {
+      if (*ref == 0 || *ref == '\r' || *ref == '\n')
+        advance(state->next, match, 0xFFFFFFFF, ref);
+    }
+    else
+    {
+      if (*ref == 0)
+        advance(state->next, match, 0xFFFFFFFF, ref);
+    }
   }
   else
   {
-    if (c == NULL)
+    if (cp == 0xFFFFFFFF)
       addthread(state, match);
-    else if ((state->type == _re::State::CHAR && *c == state->chr) ||
-             (state->type == _re::State::CCLASS && state->mask->match(*c)))
-      advance(state->next, match, NULL, ref + 1);
+    else if ((state->type == _re::State::CHAR && cp == state->chr) ||
+             (state->type == _re::State::CCLASS && state->mask->match(cp)))
+      advance(state->next, match, 0xFFFFFFFF, (char*) utf8::next((uint8_ptr) ref));
   }
 }
-int RegExp::Prog::run(char const* text, bool exact, bool (*callback) (_re::Match const& match, void* arg), void* arg)
+int RegExp::Prog::run(char const* text, bool exact,
+                      bool (*callback) (_re::Match const& match, void* arg), void* arg)
 {
   cur = 0;
   numThreads[0] = 0;
   numThreads[1] = 0;
-  pos = 0;
+  int pos = 0;
   matchText = text;
   int count = 0;
+  uint32* ut_table = (flags & REGEXP_CASE_INSENSITIVE ? utf8::tf_lower : NULL);
+
   while (true)
   {
     for (int i = 0; i < numStates; i++)
@@ -561,19 +633,23 @@ int RegExp::Prog::run(char const* text, bool exact, bool (*callback) (_re::Match
       states[i].list = -1;
     }
     numThreads[1 - cur] = 0;
+    uint8_ptr next = (uint8_ptr) (text + pos);
+    uint32 cp = utf8::parse(utf8::transform(&next, ut_table));
+    if (cp == '\r' && *next == '\n')
+      next++;
     for (int i = 0; i < numThreads[cur]; i++)
-      advance(threads[cur * maxThreads + i].state, threads[cur * maxThreads + i].match, text + pos, text + pos);
+      advance(threads[cur * maxThreads + i].state, threads[cur * maxThreads + i].match, cp, text + pos);
     if (pos == 0 || !exact)
     {
       _re::Match match;
       memset(&match, 0, sizeof match);
       match.start[0] = text + pos;
-      advance(start, match, text + pos, text + pos);
+      advance(start, match, cp, text + pos);
     }
     cur = 1 - cur;
     if (text[pos] == 0)
       break;
-    pos++;
+    pos = (char*) next - text;
   }
   for (int i = 0; i < numStates; i++)
   {
@@ -592,9 +668,9 @@ int RegExp::Prog::run(char const* text, bool exact, bool (*callback) (_re::Match
   return count;
 }
 
-RegExp::RegExp(char const* expr)
+RegExp::RegExp(char const* expr, uint32 flags)
 {
-  prog = new Prog(expr);
+  prog = new Prog(expr, flags);
 }
 RegExp::~RegExp()
 {

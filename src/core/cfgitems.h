@@ -104,4 +104,6 @@ regstrarray(fmtPresets);
 regstring(fmtScript, "");
 regbasic(uint64, fmtGenerator, 0);
 
+regbasic(uint32, chatFilters, 0xFFFFFFFF);
+
 regbasic(int, autoLoadMap, 0);

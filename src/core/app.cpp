@@ -43,7 +43,7 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
   iccex.dwSize = sizeof iccex;
   iccex.dwICC = ICC_STANDARD_CLASSES | ICC_PROGRESS_CLASS |
       ICC_BAR_CLASSES | ICC_TREEVIEW_CLASSES | ICC_LISTVIEW_CLASSES |
-      ICC_TAB_CLASSES | ICC_UPDOWN_CLASS;
+      ICC_TAB_CLASSES | ICC_UPDOWN_CLASS | ICC_DATE_CLASSES;
   InitCommonControlsEx(&iccex);
   LoadLibrary("Riched20.dll");
   OleInitialize(NULL);

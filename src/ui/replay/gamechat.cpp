@@ -4,13 +4,58 @@
 #include "frameui/controlframes.h"
 
 #include "base/utils.h"
+#include "base/regexp.h"
 #include "dota/colors.h"
+
+#define IDC_SEARCH_MODE       1098
+#define IDC_SEARCH_TEXT       1099
+#define IDC_SEARCH_PLAYER     1100
+#define IDC_SEARCH_PLAYERE    1101
+#define IDC_SEARCH_PREV       1102
+#define IDC_SEARCH_NEXT       1103
+#define IDC_CHAT_FILTERS      1104
+
+#define SEARCH_CONTAINS       0
+#define SEARCH_EQUALS         1
+#define SEARCH_STARTSWITH     2
+#define SEARCH_REGEXP         3
+#define SEARCH_PLAYERCHAT     4
+#define SEARCH_PLAYEREVENT    5
 
 ReplayGameChatTab::ReplayGameChatTab(Frame* parent)
   : ReplayTab(parent)
 {
+  searchMode = new ComboFrame(this, IDC_SEARCH_MODE);
+
+  searchText = new EditFrame(this, IDC_SEARCH_TEXT);
+  searchPlayer = new ComboFrameEx(this, IDC_SEARCH_PLAYER);
+  searchPlayerEvent = new ComboFrameEx(this, IDC_SEARCH_PLAYERE);
+  searchPrev = new ButtonFrame("Find prev", this, IDC_SEARCH_PREV);
+  searchNext = new ButtonFrame("Find next", this, IDC_SEARCH_NEXT);
+  chatFilters = new ButtonFrame("Filters", this, IDC_CHAT_FILTERS);
+
+  searchMode->setWidth(120);
+  searchText->setHeight(21);
+  searchPrev->setSize(70, 21);
+  searchNext->setSize(70, 21);
+  chatFilters->setSize(70, 21);
+
+  searchMode->setPoint(PT_TOPLEFT, 10, 10);
+  searchText->setPoint(PT_TOPLEFT, searchMode, PT_TOPRIGHT, 5, 0);
+  searchPlayer->setPoint(PT_TOPLEFT, searchMode, PT_TOPRIGHT, 5, 0);
+  searchPlayerEvent->setPoint(PT_TOPLEFT, searchMode, PT_TOPRIGHT, 5, 0);
+  chatFilters->setPoint(PT_TOPRIGHT, -10, 10);
+  searchPrev->setPoint(PT_TOPRIGHT, chatFilters, PT_TOPLEFT, -5, 0);
+  searchNext->setPoint(PT_TOPRIGHT, searchPrev, PT_TOPLEFT, -5, 0);
+  searchText->setPoint(PT_TOPRIGHT, searchNext, PT_TOPLEFT, -5, 0);
+  searchPlayer->setPoint(PT_TOPRIGHT, searchNext, PT_TOPLEFT, -5, 0);
+  searchPlayerEvent->setPoint(PT_TOPRIGHT, searchNext, PT_TOPLEFT, -5, 0);
+
+  searchPlayer->hide();
+  searchPlayerEvent->hide();
+
   chatFrame = new RichEditFrame(this);
-  chatFrame->setPoint(PT_TOPLEFT, 10, 10);
+  chatFrame->setPoint(PT_TOPLEFT, searchMode, PT_BOTTOMLEFT, 0, 5);
   chatFrame->setPoint(PT_BOTTOMRIGHT, -10, -10);
 }
 ReplayGameChatTab::~ReplayGameChatTab()
@@ -179,8 +224,9 @@ String ReplayGameChatTab::sanitizeNotify(String str)
   }
   return result;
 }
-void ReplayGameChatTab::onSetReplay()
+void ReplayGameChatTab::refill()
 {
+  lines.clear();
   if (w3g == NULL)
   {
     chatFrame->setText("");
@@ -226,12 +272,13 @@ void ReplayGameChatTab::onSetReplay()
     text += "\\b";
   text += "\n";
 
-  int numLines = 0;
   uint32 prevTime = 0x7FFFFFFF;
 
   for (int i = 0; i < w3g->getNumMessages(); i++)
   {
     W3GMessage& msg = w3g->getMessage(i);
+    if (!FilterMessage(msg))
+      continue;
     String line = "";
     switch (msg.mode)
     {
@@ -270,11 +317,11 @@ void ReplayGameChatTab::onSetReplay()
       if (msg.time > prevTime + 30000)
       {
         text += "\\line\n";
-        numLines++;
+        lines.push(NULL);
       }
       prevTime = msg.time;
       text += line;
-      msg.line = numLines++;
+      lines.push(&msg);
     }
   }
 
@@ -282,4 +329,216 @@ void ReplayGameChatTab::onSetReplay()
 
   chatFrame->setBackgroundColor(cfg.chatBg);
   chatFrame->setRichText(text);
+}
+void ReplayGameChatTab::onSetReplay()
+{
+  int sMode = searchMode->getCurSel();
+  if (sMode < 0)
+    sMode = 0;
+  searchMode->reset();
+  searchPlayer->reset();
+  searchPlayerEvent->reset();
+  searchMode->enable(w3g != NULL);
+  searchPlayer->enable(w3g != NULL);
+  searchText->enable(w3g != NULL);
+  searchNext->enable(w3g != NULL);
+  searchPrev->enable(w3g != NULL);
+  chatFilters->enable(w3g != NULL);
+  if (w3g)
+  {
+    searchMode->addString("Text contains");
+    searchMode->addString("Text equals");
+    searchMode->addString("Text starts with");
+    searchMode->addString("Regular expression");
+    searchMode->addString("Player chat");
+    if (w3g->getDotaInfo())
+      searchMode->addString("Player event");
+
+    searchMode->setCurSel(0);
+    if (DotaInfo const* dota = w3g->getDotaInfo())
+    {
+      for (int team = 0; team < 2; team++)
+      {
+        searchPlayer->addString(team == 0 ? "The Sentinel" : "The Scourge",
+          0, team == 0 ? "RedBullet" : "GreenBullet", 0);
+        searchPlayerEvent->addString(team == 0 ? "The Sentinel" : "The Scourge",
+          0xFFFFFF, team == 0 ? "RedBullet" : "GreenBullet", -team - 1);
+        for (int i = 0; i < dota->team_size[team]; i++)
+        {
+          W3GPlayer* player = dota->teams[team][i];
+          searchPlayer->addString(player->name, getLightColor(player->slot.color),
+            player->hero ? player->hero->hero->icon : "Empty", player->slot.color);
+          searchPlayerEvent->addString(player->name, getLightColor(player->slot.color),
+            player->hero ? player->hero->hero->icon : "Empty", player->slot.color);
+        }
+      }
+      searchPlayerEvent->addString("Neutral Creeps",
+        0xFFFFFF, "random", -3);
+    }
+    else
+    {
+      for (int i = 0; i < w3g->getNumPlayers(); i++)
+      {
+        W3GPlayer* player = w3g->getPlayer(i);
+        searchPlayer->addString(player->name, getLightColor(player->slot.color),
+          getRaceIcon(player->race), player->slot.color);
+        searchPlayerEvent->addString(player->name, getLightColor(player->slot.color),
+          getRaceIcon(player->race), player->slot.color);
+      }
+    }
+
+    searchMode->setCurSel(sMode);
+    searchPlayer->setCurSel(0);
+    searchPlayerEvent->setCurSel(0);
+  }
+  refill();
+}
+
+uint32 ReplayGameChatTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+{
+  if (message == WM_COMMAND)
+  {
+    switch (LOWORD(wParam))
+    {
+    case IDC_CHAT_FILTERS:
+      DialogBoxParam(getInstance(), MAKEINTRESOURCE(IDD_CHATFILTERS), getApp()->getMainWindow(),
+        FiltersDlgProc, w3g == NULL || w3g->getDotaInfo() == NULL);
+      onSetReplay();
+      return 0;
+    case IDC_SEARCH_MODE:
+      if (searchMode->getCurSel() == SEARCH_PLAYERCHAT)
+      {
+        searchText->hide();
+        searchPlayer->show();
+        searchPlayerEvent->hide();
+        wParam = MAKELONG(IDC_SEARCH_PLAYER, CBN_SELCHANGE);
+      }
+      else if (searchMode->getCurSel() == SEARCH_PLAYEREVENT)
+      {
+        searchText->hide();
+        searchPlayer->hide();
+        searchPlayerEvent->show();
+        wParam = MAKELONG(IDC_SEARCH_PLAYERE, CBN_SELCHANGE);
+      }
+      else
+      {
+        searchText->show();
+        searchPlayer->hide();
+        searchPlayerEvent->hide();
+        return 0;
+      }
+    case IDC_SEARCH_PLAYER:
+    case IDC_SEARCH_PLAYERE:
+      {
+        ComboFrameEx* src = (LOWORD(wParam) == IDC_SEARCH_PLAYER ?
+          searchPlayer : searchPlayerEvent);
+        ComboFrameEx* dst = (LOWORD(wParam) == IDC_SEARCH_PLAYER ?
+          searchPlayerEvent : searchPlayer);
+        int sel = src->getCurSel();
+        int dsel = 0;
+        if (sel >= 0)
+        {
+          int id = src->getItemData(sel);
+          for (int i = 0; i < dst->getCount(); i++)
+            if (dst->getItemData(i) == id)
+              dsel = i;
+        }
+        dst->setCurSel(dsel);
+      }
+      return 0;
+    case IDC_SEARCH_NEXT:
+    case IDC_SEARCH_PREV:
+      {
+        int line = SendMessage(chatFrame->getHandle(), EM_LINEFROMCHAR, -1, 0);
+        int dir = (LOWORD(wParam) == IDC_SEARCH_NEXT ? 1 : -1);
+        int count = 0;
+
+        int mode = searchMode->getCurSel();
+        String text = "";
+        RegExp* re = NULL;
+        if (mode == SEARCH_CONTAINS || mode == SEARCH_EQUALS ||
+            mode == SEARCH_STARTSWITH || mode == SEARCH_REGEXP)
+        {
+          text = searchText->getText();
+          if (mode == SEARCH_REGEXP)
+            re = new RegExp(text, REGEXP_CASE_INSENSITIVE);
+        }
+        else if (mode == SEARCH_PLAYERCHAT || mode == SEARCH_PLAYEREVENT)
+        {
+          ComboFrameEx* box = (mode == SEARCH_PLAYERCHAT ?
+            searchPlayer : searchPlayerEvent);
+          int sel = box->getCurSel();
+          if (sel >= 0)
+          {
+            int id = box->getItemData(sel);
+            if (id >= 0)
+              text.printf("@%d@", id);
+            else if (id == -1)
+              text = "@s@";
+            else if (id == -2)
+              text = "@u@";
+            else if (id == -3)
+              text = "@n@";
+          }
+        }
+
+        while (count < lines.length())
+        {
+          line += dir;
+          if (line < 0) line = lines.length() - 1;
+          if (line >= lines.length()) line = 0;
+
+          if (lines[line])
+          {
+            if (mode == SEARCH_CONTAINS)
+            {
+              if (lines[line]->text.ifind(text) >= 0)
+                break;
+            }
+            else if (mode == SEARCH_EQUALS)
+            {
+              if (lines[line]->text.icompare(text) == 0)
+                break;
+            }
+            else if (mode == SEARCH_STARTSWITH)
+            {
+              if (lines[line]->text.substring(0, lines[line]->text.fromUtfPos(
+                  text.getUtfLength())).icompare(text) == 0)
+                break;
+            }
+            else if (mode == SEARCH_REGEXP)
+            {
+              if (re->find(lines[line]->text) >= 0)
+                break;
+            }
+            else if (mode == SEARCH_PLAYERCHAT)
+            {
+              if (lines[line]->mode != CHAT_NOTIFY && lines[line]->text.find(text))
+                break;
+            }
+            else if (mode == SEARCH_PLAYEREVENT)
+            {
+              if (lines[line]->mode == CHAT_NOTIFY && lines[line]->text.find(text))
+                break;
+            }
+          }
+
+          count++;
+        }
+
+        if (count < lines.length())
+        {
+          int start = SendMessage(chatFrame->getHandle(), EM_LINEINDEX, line, 0);
+          int end = SendMessage(chatFrame->getHandle(), EM_LINEINDEX, line + 1, 0) - 1;
+          if (start >= 0 && end >= 0)
+          {
+            SendMessage(chatFrame->getHandle(), EM_SETSEL, start, end);
+            SetFocus(chatFrame->getHandle());
+          }
+        }
+      }
+      return 0;
+    }
+  }
+  return M_UNHANDLED;
 }

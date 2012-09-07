@@ -14,6 +14,7 @@ FontSys::FontSys()
   lf.lfHeight = -11;
   lf.lfWeight = FW_NORMAL;
   strcpy (lf.lfFaceName, "MS Shell Dlg 2");
+  lf.lfCharSet = DEFAULT_CHARSET;
   //GetObject (GetStockObject (ANSI_VAR_FONT), sizeof lf, &lf);
 
   maxFonts = 16;

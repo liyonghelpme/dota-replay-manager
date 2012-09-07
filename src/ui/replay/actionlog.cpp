@@ -9,6 +9,7 @@
 
 #include "replay/orders.h"
 #include "replay/action.h"
+#include "frameui/dragdrop.h"
 
 #define IDC_LOADREPLAY        120
 #define IDC_RAWCODES          121
@@ -42,7 +43,7 @@ public:
   W3GReplay* w3g;
   int lastColumnWidth;
   ActionListFrame(Frame* parent, int id)
-    : ListFrame(parent, id, LVS_NOCOLUMNHEADER | LVS_SINGLESEL | LVS_SHOWSELALWAYS)
+    : ListFrame(parent, id, LVS_NOCOLUMNHEADER | LVS_SHOWSELALWAYS)
     , mapData(NULL)
     , w3g(NULL)
     , rawCodes(false)
@@ -750,7 +751,6 @@ void ReplayActionLogTab::parseReplay()
     loadButton->setText("Failed");
     return;
   }
-  loadButton->setText("Done");
 
   searchMode->enable();
   searchPlayer->reset();
@@ -799,6 +799,8 @@ void ReplayActionLogTab::parseReplay()
   parseBlocks(w3g->getFile());
 
   actionList->setRedraw(true);
+
+  loadButton->setText("Done");
 }
 void ReplayActionLogTab::onSetReplay()
 {
@@ -817,10 +819,23 @@ void ReplayActionLogTab::onSetReplay()
   loadButton->setText("Load");
   loadButton->enable();
 }
+#define ID_ACTION_COPY        100
 ReplayActionLogTab::ReplayActionLogTab(Frame* parent)
   : ReplayTab(parent)
 {
   mapData = NULL;
+
+  ctxMenu = CreatePopupMenu();
+  MENUITEMINFO mii;
+  memset(&mii, 0, sizeof mii);
+  mii.cbSize = sizeof mii;
+  mii.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_STATE | MIIM_ID;
+  mii.fType = MFT_STRING;
+  mii.fState = MFS_DEFAULT;
+  mii.dwTypeData = "Copy";
+  mii.cch = strlen(mii.dwTypeData);
+  mii.wID = ID_ACTION_COPY;
+  InsertMenuItem(ctxMenu, 0, TRUE, &mii);
 
   loadButton = new ButtonFrame("Load", this, IDC_LOADREPLAY);
   rawCodes = new ButtonFrame("Show raw codes", this, IDC_RAWCODES, BS_AUTOCHECKBOX);
@@ -858,6 +873,7 @@ ReplayActionLogTab::ReplayActionLogTab(Frame* parent)
 }
 ReplayActionLogTab::~ReplayActionLogTab()
 {
+  DestroyMenu(ctxMenu);
   delete mapData;
 }
 
@@ -865,6 +881,30 @@ uint32 ReplayActionLogTab::onMessage(uint32 message, uint32 wParam, uint32 lPara
 {
   switch (message)
   {
+  case WM_CONTEXTMENU:
+    if (w3g && ListView_GetSelectedCount(actionList->getHandle()) > 0)
+    {
+      POINT pt;
+      GetCursorPos(&pt);
+      int result = TrackPopupMenuEx(ctxMenu, TPM_HORIZONTAL | TPM_LEFTALIGN |
+        TPM_RETURNCMD | TPM_NONOTIFY, pt.x, pt.y, actionList->getHandle(), NULL);
+      if (result == ID_ACTION_COPY)
+      {
+        String result = "";
+        for (int sel = ListView_GetNextItem(actionList->getHandle(), -1, LVNI_SELECTED);
+          sel >= 0; sel = ListView_GetNextItem(actionList->getHandle(), sel, LVNI_SELECTED))
+        {
+          if (!result.isEmpty())
+            result += "\r\n";
+          result += String::format("%6s ", w3g->formatTime(actionList->actions[sel].time));
+          if (actionList->actions[sel].player)
+            result += String::format("<%s> ", actionList->actions[sel].player->name);
+          result += actionList->transform(actionList->actions[sel].text);
+        }
+        SetClipboard(CF_TEXT, CreateGlobalText(result));
+      }
+    }
+    break;
   case WM_COMMAND:
     switch (LOWORD(wParam))
     {
@@ -882,9 +922,9 @@ uint32 ReplayActionLogTab::onMessage(uint32 message, uint32 wParam, uint32 lPara
         int spnum = searchPlayer->getCurSel();
         uint32 pid = (spnum < 0 ? -1 : searchPlayer->getItemData(spnum));
         W3GPlayer* player = (pid == -1 ? NULL : (W3GPlayer*) pid);
-        String text = searchText->getText().toLower();
+        String text = searchText->getText();
         int dir = (LOWORD(wParam) == IDC_SEARCHNEXT ? 1 : -1);
-        RegExp* re = (mode == 3 ? new RegExp(text) : NULL);
+        RegExp* re = (mode == 3 ? new RegExp(text, REGEXP_CASE_INSENSITIVE) : NULL);
 
         bool match = false;
         int cur = ListView_GetNextItem(actionList->getHandle(), -1, LVNI_SELECTED);
@@ -899,13 +939,14 @@ uint32 ReplayActionLogTab::onMessage(uint32 message, uint32 wParam, uint32 lPara
             match = (actionList->actions[cur].player == player);
           if (match)
           {
-            String line = actionList->transform(actionList->actions[cur].text).toLower();
+            String line = actionList->transform(actionList->actions[cur].text);
             if (mode == 0)
-              match = (line.find(text) >= 0);
+              match = (line.ifind(text) >= 0);
             else if (mode == 1)
-              match = (line == text);
+              match = (line.icompare(text) == 0);
             else if (mode == 2)
-              match = (line.substring(0, text.length()) == text);
+              match = (line.substring(0, line.fromUtfPos(
+                text.getUtfLength())).icompare(text) == 0);
             else if (mode == 3)
               match = (re->find(line) >= 0);
           }

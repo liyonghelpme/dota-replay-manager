@@ -23,6 +23,8 @@ class ReplayActionLogTab : public ReplayTab
 
   MapData* mapData;
 
+  HMENU ctxMenu;
+
   struct ParseState;
   void parseActions(File* file, int length, ParseState& state);
   void parseBlocks(File* file);

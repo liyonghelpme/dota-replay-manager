@@ -57,6 +57,14 @@ public:
   void setFgColor(uint32 color);
   void setBgColor(uint32 color);
 };
+class IconEditFrame : public WindowFrame
+{
+  int icon;
+  uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
+public:
+  IconEditFrame(Frame* parent, int id = 0, int style = ES_AUTOHSCROLL);
+  void setIcon(int i);
+};
 
 class ComboFrame : public WindowFrame
 {
@@ -64,6 +72,7 @@ class ComboFrame : public WindowFrame
   int boxHeight;
 public:
   ComboFrame(Frame* parent, int id = 0, int style = CBS_DROPDOWNLIST);
+  void reset();
   int addString(String text, int data = 0);
   void delString(int pos);
   int getItemData(int item) const;
@@ -194,6 +203,18 @@ public:
   }
 
   void setItemText(HTREEITEM item, String text);
+};
+
+class DateTimeFrame : public WindowFrame
+{
+public:
+  DateTimeFrame(Frame* parent, int id = 0, int style = DTS_SHORTDATEFORMAT);
+  void setFormat(char const* fmt);
+
+  bool isDateSet() const;
+  uint64 getDate() const;
+  void setNoDate();
+  void setDate(uint64 date);
 };
 
 #endif // __FRAMEUI_CONTROLFRAMES_H__

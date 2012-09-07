@@ -2,6 +2,7 @@
 
 #include "frameui/framewnd.h"
 #include "frameui/fontsys.h"
+#include "graphics/imagelib.h"
 
 #include "controlframes.h"
 
@@ -193,6 +194,68 @@ void EditFrame::setBgColor(uint32 color)
 
 ///////////////////////////////////////////////////////
 
+#define WM_POSTRESIZE           (WM_USER+129)
+uint32 IconEditFrame::onMessage(uint32 message, uint32 wParam, uint32 lParam)
+{
+  if (message == WM_SIZE || message == WM_SETFONT)
+  {
+    uint32 result = Window::onWndMessage(message, wParam, lParam);
+    RECT rc;
+    SendMessage(hWnd, EM_GETRECT, 0, (LPARAM) &rc);
+    rc.left = 16 + 6;
+    SendMessage(hWnd, EM_SETRECT, 0, (LPARAM) &rc);
+    return result;
+  }
+  else if (message == WM_PAINT)
+  {
+    if (icon)
+    {
+      PAINTSTRUCT ps;
+      HDC hDC = BeginPaint(hWnd, &ps);
+      RECT rc;
+      GetClientRect(hWnd, &rc);
+      getApp()->getImageLibrary()->drawAlpha(hDC, icon, 2, rc.bottom / 2 - 8, 16, 16);
+      uint32 result = Window::onWndMessage(WM_PAINT, (WPARAM) hDC, 0);
+      EndPaint(hWnd, &ps);
+      return result;
+    }
+  }
+  else if (message == WM_SETTEXT)
+  {
+    icon = 0;
+    invalidate();
+  }
+  else if (message == WM_CHAR)
+  {
+    if (wParam == VK_RETURN)
+    {
+      PostMessage(GetParent(hWnd), WM_COMMAND, IDOK, (LPARAM) hWnd);
+      return 0;
+    }
+    else
+    {
+      icon = 0;
+      invalidate();
+    }
+  }
+  return M_UNHANDLED;
+}
+IconEditFrame::IconEditFrame(Frame* parent, int id, int style)
+  : WindowFrame(parent)
+{
+  icon = 0;
+  create("Edit", "", style | ES_MULTILINE | WS_CHILD | WS_TABSTOP, WS_EX_CLIENTEDGE);
+  setFont(FontSys::getSysFont());
+  setId(id);
+}
+void IconEditFrame::setIcon(int i)
+{
+  icon = i;
+  invalidate();
+}
+
+///////////////////////////////////////////////////////
+
 void ComboFrame::onMove(uint32 data)
 {
   if (hWnd)
@@ -221,10 +284,14 @@ ComboFrame::ComboFrame(Frame* parent, int id, int style)
   : WindowFrame(parent)
 {
   boxHeight = 500;
-  create("ComboBox", "", style | WS_CHILD | WS_TABSTOP, 0);
+  create("ComboBox", "", style | WS_CHILD | WS_TABSTOP | WS_VSCROLL, 0);
   setFont(FontSys::getSysFont());
   setId(id);
   setHeight(21);
+}
+void ComboFrame::reset()
+{
+  SendMessage(hWnd, CB_RESETCONTENT, 0, 0);
 }
 int ComboFrame::addString(String text, int data)
 {
@@ -326,6 +393,7 @@ void RichEditFrame::setRichText(String text)
   es.dwCookie = (DWORD_PTR) &cookie;
   es.dwError = 0;
   es.pfnCallback = StreamCallback;
+  SendMessage(hWnd, EM_EXLIMITTEXT, 0, (text.length() < 32768 ? 32768 : text.length() + 1));
   SendMessage(hWnd, EM_STREAMIN, SF_RTF, (uint32) &es);
 }
 
@@ -537,4 +605,49 @@ void TreeViewFrame::setItemText(HTREEITEM item, String text)
   tvi.mask = TVIF_TEXT;
   tvi.pszText = text.getBuffer();
   TreeView_SetItem(hWnd, &tvi);
+}
+
+////////////////////////////////////
+
+DateTimeFrame::DateTimeFrame(Frame* parent, int id, int style)
+  : WindowFrame(parent)
+{
+  create(DATETIMEPICK_CLASS, "", style | WS_CHILD | WS_VISIBLE, 0);
+  setId(id);
+  setFont(FontSys::getSysFont());
+}
+void DateTimeFrame::setFormat(char const* fmt)
+{
+  DateTime_SetFormat(hWnd, fmt);
+}
+
+bool DateTimeFrame::isDateSet() const
+{
+  SYSTEMTIME st;
+  return (DateTime_GetSystemtime(hWnd, &st) == GDT_VALID);
+}
+uint64 DateTimeFrame::getDate() const
+{
+  SYSTEMTIME st;
+  if (DateTime_GetSystemtime(hWnd, &st) != GDT_VALID)
+    return 0;
+  FILETIME ft;
+  SystemTimeToFileTime(&st, &ft);
+  uint64 result = uint64(ft.dwLowDateTime) | (uint64(ft.dwHighDateTime) << 32);
+  result = result / 10000000ULL - 11644473600ULL;
+  return result;
+}
+void DateTimeFrame::setNoDate()
+{
+  DateTime_SetSystemtime(hWnd, GDT_NONE, NULL);
+}
+void DateTimeFrame::setDate(uint64 date)
+{
+  date = (date + 11644473600ULL) * 10000000ULL;
+  FILETIME ft;
+  ft.dwLowDateTime = uint32(date);
+  ft.dwHighDateTime = uint32(date >> 32);
+  SYSTEMTIME st;
+  FileTimeToSystemTime(&ft, &st);
+  DateTime_SetSystemtime(hWnd, GDT_VALID, &st);
 }

@@ -111,7 +111,7 @@ bool W3GReplay::parseBlocks()
             msg.text.setLength(length - 6);
             msg.time = state.time;
 
-            if (msg.text.find("ff", 0, FIND_CASE_INSENSITIVE))
+            if (msg.text.ifind("ff"))
               players[id]->said_ff = true;
           }
         }
@@ -456,7 +456,7 @@ bool W3GReplay::parseActions(int length, void* arg)
               msg.text = text;
               msg.time = state.time;
 
-              if (msg.text.find("ff", 0, FIND_CASE_INSENSITIVE))
+              if (msg.text.ifind("ff"))
                 player->said_ff = true;
             }
           }

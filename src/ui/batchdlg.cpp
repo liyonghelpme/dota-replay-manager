@@ -11,6 +11,7 @@ class BatchDialog::BatchJob
 public:
   int mode;
 
+  BatchFunc* func;
   String format;
   String dest;
   Array<String> source;
@@ -24,6 +25,18 @@ public:
     mode = md;
     dest = (dst ? dst : cfg.replayPath);
     format = (fmt ? fmt : cfg.copyFormat);
+    func = NULL;
+
+    ref = 1;
+    pos = 0;
+    hDlg = NULL;
+    hThread = NULL;
+  }
+  BatchJob(int md, BatchFunc* f, String name)
+  {
+    mode = md;
+    func = f;
+    dest = name;
 
     ref = 1;
     pos = 0;
@@ -34,6 +47,7 @@ public:
   {
     if (hThread)
       CloseHandle(hThread);
+    delete func;
   }
 
   int addRef()
@@ -52,6 +66,10 @@ public:
 BatchDialog::BatchDialog(int mode, char const* dst, char const* fmt)
 {
   job = new BatchJob(mode, dst, fmt);
+}
+BatchDialog::BatchDialog(int mode, BatchFunc* func, String name)
+{
+  job = new BatchJob(mode, func, name);
 }
 BatchDialog::~BatchDialog()
 {
@@ -140,12 +158,18 @@ INT_PTR CALLBACK BatchDialog::DlgProc(HWND hDlg, UINT message, WPARAM wParam, LP
           wParam, job->source.length()));
         SetDlgItemText(hDlg, IDC_FROMFILE, String::format("File: %s", job->source[wParam]));
       }
-      else
+      else if (job->mode == mCopy)
       {
         SetWindowText(hDlg, String::format("Batch copy (%d/%d)",
           wParam, job->source.length()));
         SetDlgItemText(hDlg, IDC_FROMFILE, String::format("From: %s", job->source[wParam]));
         SetDlgItemText(hDlg, IDC_TOFILE, String::format("To: %s", job->output[wParam]));
+      }
+      else
+      {
+        SetWindowText(hDlg, String::format("%s (%d/%d)",
+          job->dest, wParam, job->source.length()));
+        SetDlgItemText(hDlg, IDC_FROMFILE, String::format("File: %s", job->source[wParam]));
       }
       SendMessage(GetDlgItem(hDlg, IDC_BATCHPROGRESS), PBM_SETPOS, wParam, 0);
     }
@@ -183,6 +207,8 @@ DWORD WINAPI BatchDialog::ThreadProc(LPVOID param)
           getApp()->getCache()->duplicate(path, cache);
       }
     }
+    if (cache && job->mode == mFunc && job->func)
+      job->func->handle(job->source[job->pos], cache);
 
     job->pos++;
     if (job->hDlg)

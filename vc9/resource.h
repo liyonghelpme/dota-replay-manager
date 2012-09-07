@@ -15,6 +15,7 @@
 #define IDD_UPDATEDLG                   114
 #define IDD_ABOUTBOX                    115
 #define IDD_NODATA                      116
+#define IDD_CHATFILTERS                 117
 #define IDC_INPUT                       1001
 #define IDC_PROMPT                      1002
 #define IDC_SCRIPTMODE                  1003
@@ -67,6 +68,28 @@
 #define IDC_MAPTOLOAD                   1058
 #define IDC_MAPBROWSE                   1059
 #define IDC_VERSIONLIST                 1060
+#define IDC_MSG_CHAT                    1061
+#define IDC_MSG_ALLCHAT                 1062
+#define IDC_MSG_ALLYCHAT                1063
+#define IDC_MSG_OBSERVERCHAT            1064
+#define IDC_MSG_PRIVATECHAT             1065
+#define IDC_MSG_CHATCMD                 1066
+#define IDC_MSG_GAME                    1067
+#define IDC_MSG_LEAVERS                 1068
+#define IDC_MSG_PAUSES                  1069
+#define IDC_MSG_CONTROL                 1070
+#define IDC_MSG_HEROKILLS               1071
+#define IDC_MSG_TOWERKILLS              1072
+#define IDC_MSG_RAXKILLS                1073
+#define IDC_MSG_COURIERKILLS            1074
+#define IDC_MSG_TREEHEALTH              1075
+#define IDC_MSG_ROSHAN                  1076
+#define IDC_MSG_AEGIS                   1077
+#define IDC_MSG_GAMEMODE                1078
+#define IDC_MSG_RUNES                   1079
+#define IDC_MSG_PICKSBANS               1080
+#define IDC_MSG_FASTKILLS               1081
+#define IDC_MSG_SPREES                  1082
 
 // Next default values for new objects
 // 
@@ -74,7 +97,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        118
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1061
+#define _APS_NEXT_CONTROL_VALUE         1083
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

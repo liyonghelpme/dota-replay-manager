@@ -62,6 +62,23 @@ public:
   }
 };
 
+class SearchViewItem : public ViewItem
+{
+public:
+  void apply(MainWnd* wnd);
+  bool equal(ViewItem* item);
+  bool isPermanent() const
+  {
+    return false;
+  }
+};
+class SearchResViewItem : public ViewItem
+{
+public:
+  void apply(MainWnd* wnd);
+  bool equal(ViewItem* item);
+};
+
 class FolderViewItem : public ViewItem
 {
   String path;

@@ -6,6 +6,9 @@
 #include <winuser.h>
 
 #include "string.h"
+#include "base/utf8.h"
+
+#define ENABLE_UTF8
 
 #define BASIC_ALLOC         16
 #define ALLOC_STEP          1024
@@ -323,10 +326,9 @@ bool String::isWordBoundary(int pos) const
 {
   return pos <= 0 || pos >= _len(buf) || isIdChar(buf[pos]) != isIdChar(buf[pos - 1]);
 }
-int String::find(char const* str, int start, int options) const
+int String::find(char const* str, int start) const
 {
   static int kmpbuf[256];
-#define comp(a,b) (options&FIND_CASE_INSENSITIVE?s_tolower(a)==s_tolower(b):(a)==(b))
   if (start < 0) start += _len(buf);
   if (start < 0) start = 0;
   if (start > _len(buf)) start = _len(buf);
@@ -337,94 +339,89 @@ int String::find(char const* str, int start, int options) const
     kmp = new int[len];
   kmp[0] = 0;
   int result = -1;
-  if (options & FIND_REVERSE)
+  for (int i = 1; i < len; i++)
   {
-    for (int i = 1; i < len; i++)
-    {
-      kmp[i] = kmp[i - 1];
-      while (kmp[i] && !comp(str[len - 1 - kmp[i]], str[len - 1 - i]))
-        kmp[i] = kmp[kmp[i] - 1];
-      if (comp(str[len - 1 - kmp[i]], str[len - 1 - i]))
-        kmp[i]++;
-    }
-    int cur = 0;
-    for (int i = start - 1; i >= 0; i--)
-    {
-      while (cur && !comp(str[len - 1 - cur], buf[_len(buf) - 1 - i]))
-        cur = kmp[cur - 1];
-      if (comp(str[len - 1 - cur], buf[_len(buf) - 1 - i]))
-        cur++;
-      if (cur == len)
-      {
-        if ((options & FIND_WHOLE_WORD) == 0 || (
-          isWordBoundary(i) && isWordBoundary(i + len)))
-        {
-          result = i;
-          break;
-        }
-      }
-    }
+    kmp[i] = kmp[i - 1];
+    while (kmp[i] && str[kmp[i]] != str[i])
+      kmp[i] = kmp[kmp[i] - 1];
+    if (str[kmp[i]] == str[i])
+      kmp[i]++;
   }
-  else
+  int cur = 0;
+  for (int i = start; i < _len(buf); i++)
   {
-    for (int i = 1; i < len; i++)
+    while (cur && str[cur] != buf[i])
+      cur = kmp[cur - 1];
+    if (str[cur] == buf[i])
+      cur++;
+    if (cur == len)
     {
-      kmp[i] = kmp[i - 1];
-      while (kmp[i] && !comp(str[kmp[i]], str[i]))
-        kmp[i] = kmp[kmp[i] - 1];
-      if (comp(str[kmp[i]], str[i]))
-        kmp[i]++;
-    }
-    int cur = 0;
-    for (int i = start; i < _len(buf); i++)
-    {
-      while (cur && !comp(str[cur], buf[i]))
-        cur = kmp[cur - 1];
-      if (comp(str[cur], buf[i]))
-        cur++;
-      if (cur == len)
-      {
-        if ((options & FIND_WHOLE_WORD) == 0 || (
-          isWordBoundary(i - len + 1) && isWordBoundary(i + 1)))
-        {
-          result = i - len + 1;
-          break;
-        }
-      }
+      result = i - len + 1;
+      break;
     }
   }
   if (kmp != kmpbuf)
     delete[] kmp;
   return result;
 }
-
-int String::find(char ch, int start, int options) const
+int String::ifind(char const* str, int start) const
 {
   if (start < 0) start += _len(buf);
   if (start < 0) start = 0;
   if (start > _len(buf)) start = _len(buf);
-  if (options & FIND_CASE_INSENSITIVE)
-    ch = s_tolower(ch);
-  if (options & FIND_REVERSE)
+  if (*str == 0) return start;
+  // just brute force it
+  uint8_ptr self = (uint8_ptr) buf + start;
+  uint8_ptr other = (uint8_ptr) str;
+  uint32 cp0 = utf8::transform(&other, utf8::tf_lower);
+  while (*self)
   {
-    for (int i = start - 1; i >= 0; i--)
+    int pos = (self - (uint8_ptr) buf);
+    if (utf8::transform(&self, utf8::tf_lower) == cp0)
     {
-      if ((options & FIND_CASE_INSENSITIVE ? s_tolower(buf[i]) == ch : buf[i] == ch) &&
-        ((options & FIND_WHOLE_WORD) == 0 || (
-        isWordBoundary(i) && isWordBoundary(i + 1))))
-        return i;
+      uint8_ptr a = self;
+      uint8_ptr b = other;
+      bool found = true;
+      while (*b && found)
+      {
+        if (utf8::transform(&a, utf8::tf_lower) !=
+            utf8::transform(&b, utf8::tf_lower))
+          found = false;
+      }
+      if (found)
+        return pos;
     }
   }
-  else
-  {
-    for (int i = start; i < _len(buf); i++)
-    {
-      if ((options & FIND_CASE_INSENSITIVE ? s_tolower(buf[i]) == ch : buf[i] == ch) &&
-        ((options & FIND_WHOLE_WORD) == 0 || (
-        isWordBoundary(i) && isWordBoundary(i + 1))))
-        return i;
-    }
-  }
+  return -1;
+}
+
+int String::find(char ch, int start) const
+{
+  for (int i = start; buf[i]; i++)
+    if (buf[i] == ch)
+      return i;
+  return -1;
+}
+int String::ifind(char ch, int start) const
+{
+  ch = s_tolower(ch);
+  for (int i = start; buf[i]; i++)
+    if (s_tolower(buf[i]) == ch)
+      return i;
+  return -1;
+}
+int String::indexOf(char ch) const
+{
+  for (int i = 0; buf[i]; i++)
+    if (buf[i] == ch)
+      return i;
+  return -1;
+}
+int String::lastIndexOf(char ch) const
+{
+  for (int i = _len(buf) - 1; i >= 0; i--)
+    if (buf[i] == ch)
+      return i;
   return -1;
 }
 
@@ -763,8 +760,26 @@ String& String::toAnsi()
   WideCharToMultiByte(CP_ACP, 0, wide, count, buf, ncount, NULL, NULL);
   _len(buf) = ncount;
   buf[ncount] = 0;
+  delete[] wide;
 
   return *this;
+}
+int String::getUtfLength() const
+{
+  int length = 0;
+  for (uint8_ptr ptr = (uint8_ptr) buf; *ptr; ptr = utf8::next(ptr))
+    length++;
+  return length;
+}
+int String::fromUtfPos(int pos) const
+{
+  uint8_ptr ptr = (uint8_ptr) buf;
+  while (*ptr && pos)
+  {
+    ptr = utf8::next(ptr);
+    pos--;
+  }
+  return ptr - (uint8_ptr) buf;
 }
 
 bool String::toClipboard() const
@@ -888,8 +903,8 @@ int String::split(Array<String>& res, char const* seplist, bool quotes)
 
 int String::smartCompare(String a, String b)
 {
-  unsigned char const* ta = (unsigned char*) a.buf;
-  unsigned char const* tb = (unsigned char*) b.buf;
+  uint8_ptr ta = (uint8_ptr) a.buf;
+  uint8_ptr tb = (uint8_ptr) b.buf;
   while (*ta || *tb)
   {
     if (*ta >= '0' && *ta <= '9' && *tb >= '0' && *tb <= '9')
@@ -905,11 +920,105 @@ int String::smartCompare(String a, String b)
     }
     else
     {
-      unsigned char ca = s_tolower(*ta++);
-      unsigned char cb = s_tolower(*tb++);
+      uint32 ca = utf8::transform(&ta, utf8::tf_lower);
+      uint32 cb = utf8::transform(&tb, utf8::tf_lower);
       if (ca != cb)
         return int(ca) - int(cb);
     }
   }
   return 0;
 }
+
+#ifdef ENABLE_UTF8
+
+int String::icompare(char const* str) const
+{
+  uint8_ptr a = (uint8_ptr) buf;
+  uint8_ptr b = (uint8_ptr) str;
+  while (*a || *b)
+  {
+    uint32 wa = utf8::transform(&a, utf8::tf_lower);
+    uint32 wb = utf8::transform(&b, utf8::tf_lower);
+    if (wa != wb)
+      return int(wa) - int(wb);
+  }
+  return 0;
+}
+
+String String::lower() const
+{
+  char* result = _new(_size(buf));
+  int len = 0;
+  uint8_ptr ptr = (uint8_ptr) buf;
+  while (*ptr)
+  {
+    uint32 cp = utf8::transform(&ptr, utf8::tf_lower);
+    while (cp)
+    {
+      result[len++] = char(cp);
+      cp >>= 8;
+
+      if (len >= _size(result))
+      {
+        int newsize = (_size(result) < ALLOC_STEP ? _size(result) * 2 : _size(result) + ALLOC_STEP);
+        if (newsize <= len)
+          newsize = len + 1;
+        char* tmp = _new(newsize);
+        memcpy(tmp, result, len);
+        _del(result);
+        result = tmp;
+      }
+    }
+  }
+  result[len] = 0;
+  _len(result) = len;
+  _ref(result) = 1;
+  return frombuf(result);
+}
+String String::upper() const
+{
+  char* result = _new(_size(buf));
+  int len = 0;
+  uint8_ptr ptr = (uint8_ptr) buf;
+  while (*ptr)
+  {
+    uint32 cp = utf8::transform(&ptr, utf8::tf_upper);
+    while (cp)
+    {
+      result[len++] = char(cp);
+      cp >>= 8;
+
+      if (len >= _size(result))
+      {
+        int newsize = (_size(result) < ALLOC_STEP ? _size(result) * 2 : _size(result) + ALLOC_STEP);
+        if (newsize <= len)
+          newsize = len + 1;
+        char* tmp = _new(newsize);
+        memcpy(tmp, result, len);
+        _del(result);
+        result = tmp;
+      }
+    }
+  }
+  result[len] = 0;
+  _len(result) = len;
+  _ref(result) = 1;
+  return frombuf(result);
+}
+
+#else
+
+int String::icompare(char const* str) const
+{
+  return stricmp(buf, str);
+}
+
+String String::lower() const
+{
+  String result(*this);
+  result.splice();
+  strlwr(result.buf);
+  return result;
+}
+
+#endif

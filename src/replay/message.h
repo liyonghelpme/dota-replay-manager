@@ -36,7 +36,6 @@ struct W3GMessage
   float y;
   uint32 time;
   String text;
-  int line;
 
   W3GMessage()
   {
@@ -46,7 +45,6 @@ struct W3GMessage
     x = 0;
     y = 0;
     time = 0;
-    line = -1;
   }
 };
 

@@ -3,7 +3,10 @@
 #include "ui/settingswnd.h"
 #include "ui/replaywnd.h"
 #include "ui/folderwnd.h"
+#include "ui/searchwnd.h"
+#include "ui/searchres.h"
 #include "frameui/controlframes.h"
+#include "graphics/imagelib.h"
 
 #include "replay/cache.h"
 
@@ -49,7 +52,7 @@ MainWnd::MainWnd()
   replayTree->setPoint(PT_BOTTOM, 0, -10);
   replayTree->setWidth(cfg.splitterPos - 10);
 
-  addressBar = new EditFrame(this, IDC_ADDRESSBAR);
+  addressBar = new IconEditFrame(this, IDC_ADDRESSBAR, ES_AUTOHSCROLL);
   addressBar->setHeight(23);
 
   hForward = new ButtonFrame("Forward", this, IDC_FORWARD);
@@ -78,6 +81,8 @@ MainWnd::MainWnd()
   views[MAINWND_SETTINGS] = new SettingsWindow(this);
   views[MAINWND_REPLAY] = new ReplayWindow(this);
   views[MAINWND_FOLDER] = new FolderWindow(this, this);
+  views[MAINWND_SEARCH] = new SearchWindow(this);
+  views[MAINWND_SEARCHRES] = new SearchResults(this);
   for (int i = 0; i < MAINWND_NUM_VIEWS; i++)
   {
     views[i]->setPoint(PT_TOPLEFT, addressBar, PT_BOTTOMLEFT, 0, 10);
@@ -228,6 +233,17 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       }
     }
     break;
+  case WM_REBUILDTREE:
+    replayTree->rebuild(wParam != 0);
+    return 0;
+
+  case WM_SETVIEW:
+    return (uint32) setView(wParam);
+  case WM_GETVIEW:
+    return (uint32) getView(wParam);
+  case WM_PUSHVIEW:
+    pushView((ViewItem*) wParam);
+    return 0;
 
   case WM_DESTROY:
     destroyTrayIcon();
@@ -294,20 +310,22 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     }
     return 0;
   case WM_COMMAND:
-    if (HIWORD(wParam) == BN_CLICKED)
+    switch (LOWORD(wParam))
     {
-      if (LOWORD(wParam) == IDC_BACK || LOWORD(wParam) == IDC_FORWARD)
+    case IDC_BACK:
+    case IDC_FORWARD:
+      if (history)
+        history = (LOWORD(wParam) == IDC_BACK ? history->back() : history->forward());
+      if (history)
+        history->apply(this);
+      hBack->enable(history && history->hasPrev());
+      hForward->enable(history && history->hasNext());
+      return 0;
+    case IDOK:
+    case IDC_OPEN:
+    case IDC_BROWSE:
       {
-        if (history)
-          history = (LOWORD(wParam) == IDC_BACK ? history->back() : history->forward());
-        if (history)
-          history->apply(this);
-        hBack->enable(history && history->hasPrev());
-        hForward->enable(history && history->hasNext());
-        return 0;
-      }
-      else if (LOWORD(wParam) == IDC_OPEN || LOWORD(wParam) == IDC_BROWSE)
-      {
+        SetFocus(hWnd);
         String path;
         if (LOWORD(wParam) == IDC_BROWSE)
         {
@@ -316,7 +334,14 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
             return 0;
         }
         else
+        {
+          if (addressBar->getText().icompare("Search results") == 0)
+          {
+            pushView(new SearchResViewItem());
+            return 0;
+          }
           path = String::fixPath(addressBar->getText());
+        }
         if (cfg.enableUrl && File::isValidURL(path))
           pushView(new ReplayViewItem(path));
         else
@@ -327,8 +352,8 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
           else
             pushView(new ReplayViewItem(path));
         }
-        return 0;
       }
+      return 0;
     }
     break;
   case WM_UPDATEPATH:
@@ -434,6 +459,10 @@ Frame* MainWnd::setView(int view)
     views[i]->show(i == view);
   return views[view];
 }
+Frame* MainWnd::getView(int view)
+{
+  return views[view];
+}
 void MainWnd::pushView(ViewItem* item)
 {
   history = (history ? history->push(item) : item);
@@ -448,6 +477,44 @@ void MainWnd::pushView(ViewItem* item)
 }
 void MainWnd::setAddress(String text)
 {
-  addressBar->setText(text);
+  replayTree->setCurFile(text);
+  String icon = "";
+  if (text == "#settings")
+  {
+    addressBar->setText("Settings");
+    icon = "IconSettings";
+  }
+  else if (text == "#search")
+  {
+    addressBar->setText("Search");
+    icon = "IconSearch";
+  }
+  else if (text == "#searchres")
+  {
+    addressBar->setText("Search results");
+    icon = "IconSearchResults";
+  }
+  else
+  {
+    addressBar->setText(text);
+    if (cfg.enableUrl && File::isValidURL(text))
+      icon = "";
+    else
+    {
+      uint32 attr = GetFileAttributes(text);
+      if (attr != INVALID_FILE_ATTRIBUTES)
+      {
+        if (attr & FILE_ATTRIBUTE_DIRECTORY)
+          icon = "IconClosedFolder";
+        else
+          icon = "IconReplay";
+      }
+    }
+  }
+  if (!icon.isEmpty())
+    addressBar->setIcon(getApp()->getImageLibrary()->getListIndex(icon));
+}
+void MainWnd::setTreeAddress(String text)
+{
   replayTree->setCurFile(text);
 }

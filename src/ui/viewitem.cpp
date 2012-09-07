@@ -2,6 +2,10 @@
 
 #include "ui/mainwnd.h"
 #include "viewitem.h"
+#include "ui/searchwnd.h"
+#include "ui/searchres.h"
+#include "ui/folderwnd.h"
+#include "ui/replaywnd.h"
 
 ViewItem* ViewItem::push(ViewItem* item)
 {
@@ -71,7 +75,30 @@ bool SettingsViewItem::equal(ViewItem* item)
   return (other != NULL);
 }
 
-#include "ui/folderwnd.h"
+
+void SearchViewItem::apply(MainWnd* wnd)
+{
+  SearchWindow* search = (SearchWindow*) wnd->setView(MAINWND_SEARCH);
+  search->setPath(((FolderWindow*) wnd->getView(MAINWND_FOLDER))->getPath());
+}
+bool SearchViewItem::equal(ViewItem* item)
+{
+  SearchViewItem* other = dynamic_cast<SearchViewItem*>(item);
+  return (other != NULL);
+}
+
+void SearchResViewItem::apply(MainWnd* wnd)
+{
+  wnd->setAddress("#searchres");
+  SearchResults* search = (SearchResults*) wnd->setView(MAINWND_SEARCHRES);
+  search->rebuild();
+}
+bool SearchResViewItem::equal(ViewItem* item)
+{
+  SearchResViewItem* other = dynamic_cast<SearchResViewItem*>(item);
+  return (other != NULL);
+}
+
 
 void FolderViewItem::apply(MainWnd* wnd)
 {
@@ -85,7 +112,6 @@ bool FolderViewItem::equal(ViewItem* item)
   return (other && path.icompare(other->path) == 0);
 }
 
-#include "ui/replaywnd.h"
 
 void ReplayViewItem::apply(MainWnd* wnd)
 {

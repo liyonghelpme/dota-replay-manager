@@ -167,10 +167,10 @@ bool getFileInfo(char const* path, FileInfo& fi)
   {
     FILETIME ft;
     GetFileTime(hFile, NULL, NULL, &ft);
+    fi.size = GetFileSize(hFile, NULL);
     CloseHandle(hFile);
     fi.ftime = uint64(ft.dwLowDateTime) | (uint64(ft.dwHighDateTime) << 32);
     fi.ftime = fi.ftime / 10000000ULL - 11644473600ULL;
-    fi.size = GetFileSize(hFile, NULL);
     FileTimeToSystemTime(&ft, &fi.time);
     return true;
   }
