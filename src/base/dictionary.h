@@ -79,7 +79,7 @@ public:
     root = newnode(0);
     nil = (T*) malloc(sizeof(T));
     memset(nil, 0, sizeof(T));
-    new(nil) T();
+    new(nil) T;
   }
   ~Dictionary()
   {
@@ -104,7 +104,7 @@ public:
     if (!n->data[0])
     {
       n->data[0] = 1;
-      new(n->data + 1) T();
+      new(n->data + 1) T;
     }
     return *((T*) (n->data + 1));
   }

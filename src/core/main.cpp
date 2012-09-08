@@ -64,8 +64,3 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
   return result;
 }
-
-//TODO: GameInfo player list context menu
-//TODO: Search
-//TODO: Hero chart
-//TODO: Player search

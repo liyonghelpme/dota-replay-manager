@@ -14,7 +14,13 @@ class TimePicture : public WindowFrame
   W3GReplay* w3g;
   uint32 time;
 
-  Dictionary<uint32> images;
+  struct ImageInfo
+  {
+    uint32 tex;
+    double tx;
+    double ty;
+  };
+  Dictionary<ImageInfo> images;
 
   HDC hDC;
 

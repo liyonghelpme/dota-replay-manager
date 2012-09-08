@@ -97,7 +97,12 @@ uint32 TimePicture::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     if (!gl->isOk())
       MessageBox(hWnd, "Error initializing OpenGL!", "Error", MB_OK | MB_ICONERROR);
     else
-      images.set("dota_map", gl->genTexture(getApp()->getImageLibrary()->getImage("dota_map")));
+    {
+      ImageInfo& info = images.create("dota_map");
+      info.tex = gl->genTexture(getApp()->getImageLibrary()->getImage("dota_map"));
+      info.tx = 1;
+      info.ty = 1;
+    }
     break;
   case WM_SIZE:
     if (gl)
@@ -352,44 +357,62 @@ void TimePicture::drawNotify(int alpha, int x, int y, String text)
   }
 }
 
+static inline bool isPowerOf2(int x)
+{
+  return (x & (x - 1)) == 0;
+}
 void TimePicture::rect(int x, int y, int width, int height, char const* icon, int inset)
 {
-  uint32 tex = 0;
+  ImageInfo* info = NULL;
   if (icon)
   {
     if (images.has(icon))
-      tex = images.get(icon);
+      info = &images.get(icon);
     else
     {
       Image* image = getApp()->getImageLibrary()->getImage(icon);
       if (image)
       {
-        if (inset == 0)
-          tex = gl->genTexture(image);
+        info = &images.create(icon);
+        if (inset == 0 && isPowerOf2(image->width()) && isPowerOf2(image->height()))
+        {
+          info->tex = gl->genTexture(image);
+          info->tx = 1;
+          info->ty = 1;
+        }
         else
         {
-          Image sub(image->width() - inset * 2, image->height() - inset * 2);
+          int iwidth = image->width() - inset * 2;
+          int iheight = image->height() - inset * 2;
+          int pwidth = 1;
+          while (pwidth < iwidth)
+            pwidth *= 2;
+          int pheight = 1;
+          while (pheight < iheight)
+            pheight *= 2;
+          Image sub(pwidth, pheight);
           sub.fill(0);
-          sub.blt(0, 0, image, inset, inset, sub.width(), sub.height());
-          tex = gl->genTexture(&sub);
-          images.set(icon, tex);
+          sub.blt(0, 0, image, inset, inset, image->width() - inset * 2, image->height() - inset * 2);
+          info->tex = gl->genTexture(&sub);
+          info->tx = double(iwidth) / double(pwidth);
+          info->ty = double(iheight) / double(pheight);
         }
       }
     }
   }
-  if (tex)
+  if (info)
   {
     glEnable(GL_TEXTURE_2D);
-    glBindTexture(GL_TEXTURE_2D, tex);
+    glBindTexture(GL_TEXTURE_2D, info->tex);
     glColor4d(1, 1, 1, 1);
     glBegin(GL_QUADS);
     glTexCoord2f(0, 0);
     glVertex2i(x, y);
-    glTexCoord2f(1, 0);
+    glTexCoord2f(info->tx, 0);
     glVertex2i(x + width, y);
-    glTexCoord2f(1, 1);
+    glTexCoord2f(info->tx, info->ty);
     glVertex2i(x + width, y + height);
-    glTexCoord2f(0, 1);
+    glTexCoord2f(0, info->ty);
     glVertex2i(x, y + height);
     glEnd();
     glDisable(GL_TEXTURE_2D);
@@ -407,7 +430,7 @@ void TimePicture::paint(HDC hDC)
 
     if (w3g && w3g->getDotaInfo())
     {
-      uint32 tex = images.get("dota_map");
+      uint32 tex = images.get("dota_map").tex;
       glEnable(GL_TEXTURE_2D);
       glBindTexture(GL_TEXTURE_2D, tex);
       glBegin(GL_QUADS);
