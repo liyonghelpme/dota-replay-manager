@@ -259,7 +259,6 @@ void ReplayTree::rebuild(bool addSearchRes)
   tvis.item.iImage = getApp()->getImageLibrary()->getListIndex("IconSettings");
   tvis.item.iSelectedImage = tvis.item.iImage;
   tvis.item.lParam = pos;
-
   items.push();
   items[pos].type = MAINWND_SETTINGS;
   items[pos].treeItem = treeView->insertItem(&tvis);
@@ -289,12 +288,21 @@ void ReplayTree::rebuild(bool addSearchRes)
   }
 
   pos++;
+  tvis.item.pszText = "Hero chart";
+  tvis.item.iImage = getApp()->getImageLibrary()->getListIndex("IconHeroChart");
+  tvis.item.iSelectedImage = tvis.item.iImage;
+  tvis.item.lParam = pos;
+  items.push();
+  items[pos].type = MAINWND_HEROCHART;
+  items[pos].treeItem = treeView->insertItem(&tvis);
+  items[pos].path = "#herochart";
+
+  pos++;
   tvis.item.pszText = rootName.getBuffer();
   tvis.item.iImage = getApp()->getImageLibrary()->getListIndex("IconClosedFolder");
   tvis.item.iSelectedImage = getApp()->getImageLibrary()->getListIndex("IconOpenFolder");
   tvis.item.lParam = pos;
   replayRoot = treeView->insertItem(&tvis);
-
   items.push();
   items[pos].type = MAINWND_FOLDER;
   items[pos].path = path;

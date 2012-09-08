@@ -1,9 +1,13 @@
-DotA Replay Manager 3.01
+DotA Replay Manager 3.02
 
 http://www.playdota.com/forums/showthread.php?p=110886
 http://rivsoft.narod.ru/dotareplay.html
 
 ============== Changelog ==================================
+**3.02**
+ - Added hero chart, and a few more features
+ - Fixed some more bugs
+ - I'm assuming its stable enough and removing the beta status
 **3.01**
  - Fixed host name detection
  - Added icon transparency, fixed recipe icon
@@ -11,7 +15,6 @@ http://rivsoft.narod.ru/dotareplay.html
  - Added chat filtering and search. Note that non-english search doesn't work yet.
  - Better support for unicode text
  - Added replay search
-
 **3.00**
  - Major remake!
  - Whole program re-written from scratch!

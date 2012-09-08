@@ -66,13 +66,13 @@ ReplayWindow::~ReplayWindow()
 
 void ReplayWindow::addFrame(int tab)
 {
-  for (int i = 0; i < REPLAY_NUM_TABS; i++)
-    frametab[i] = -1;
   frametab[tab] = tabs.length();
   addTab(tabNames[tab], frames[tab]);
 }
 void ReplayWindow::update()
 {
+  for (int i = 0; i < REPLAY_NUM_TABS; i++)
+    frametab[i] = -1;
   clear();
   if (replay)
   {
@@ -189,6 +189,20 @@ uint32 ReplayWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         viewItem->setPlayer(player->player_id);
     }
     return TRUE;
+  }
+  else if (message == WM_SETPLAYER)
+  {
+    W3GPlayer* player = (W3GPlayer*) wParam;
+    for (int i = 0; i < numTabs(); i++)
+      ((ReplayTab*) getTab(i))->setPlayer(player);
+    if (player && viewItem)
+      viewItem->setPlayer(player->player_id);
+    return 0;
+  }
+  else if (message == WM_SETTAB)
+  {
+    setTab(wParam);
+    return 0;
   }
   else if (message == WM_NOTIFY && viewItem)
   {

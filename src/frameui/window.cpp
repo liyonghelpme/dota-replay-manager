@@ -68,6 +68,7 @@ WNDCLASSEX* Window::createclass(String wndClass)
     wcx->lpfnWndProc = WindowProc;
     wcx->hInstance = hInstance;
     wcx->lpszClassName = regClass;
+    wcx->hCursor = LoadCursor(NULL, MAKEINTRESOURCE(IDC_ARROW));
     return wcx;
   }
   delete wcx;
@@ -84,6 +85,7 @@ void Window::create(int x, int y, int width, int height, String text, uint32 sty
     wcex.lpfnWndProc = WindowProc;
     wcex.hInstance = getInstance();
     wcex.lpszClassName = "WUTILSWINDOW";
+    wcex.hCursor = LoadCursor(NULL, MAKEINTRESOURCE(IDC_ARROW));
     windowClass = RegisterClassEx(&wcex);
   }
   hWnd = CreateWindowEx(exStyle, regClass.isEmpty() ? "WUTILSWINDOW" : regClass, text, style,
@@ -188,6 +190,12 @@ LRESULT CALLBACK Window::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
         if (wnd->ttData->hitCode >= 0)
           ShowWindow(wnd->ttData->hTip, SW_SHOWNA);
         send = false;
+      }
+      else if (uMsg == WM_LBUTTONDOWN || uMsg == WM_RBUTTONDOWN || uMsg == WM_MBUTTONDOWN ||
+          uMsg == WM_MOUSEWHEEL || uMsg == WM_MOUSEHWHEEL || uMsg == WM_KEYDOWN)
+      {
+        ShowWindow(wnd->ttData->hTip, SW_HIDE);
+        wnd->ttData->hitCode = -1;
       }
     }
     if (send)

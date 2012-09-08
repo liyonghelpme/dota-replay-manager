@@ -30,6 +30,7 @@ class ReplayGameInfoTab : public ReplayTab
   Image* mapCanvas;
   HBITMAP mapBitmap;
   int curImage;
+  HMENU ctxMenu;
   uint32 onMessage(uint32 message, uint32 wParam, uint32 lParam);
   void onSetReplay();
   void addLadderPlayer(W3GPlayer* player);

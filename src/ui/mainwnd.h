@@ -11,7 +11,8 @@
 #define MAINWND_FOLDER        2
 #define MAINWND_SEARCH        3
 #define MAINWND_SEARCHRES     4
-#define MAINWND_NUM_VIEWS     5
+#define MAINWND_HEROCHART     5
+#define MAINWND_NUM_VIEWS     6
 
 #define MAINWND_OPEN_REPLAY   1728
 

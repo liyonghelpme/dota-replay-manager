@@ -51,6 +51,8 @@ public:
   void addGame(W3GReplay* replay);
 
   void duplicate(String path, GameCache* game);
+
+  void enumCache(bool (*func)(String, GameCache*, void*), void* param);
 };
 
 #endif // __REPLAY_CACHE__

@@ -6,8 +6,47 @@
 #include "base/mpqfile.h"
 #include "dota/consts.h"
 #include "frameui/dragdrop.h"
+#include "ui/batchdlg.h"
+#include "ui/searchres.h"
+#include "ui/mainwnd.h"
+#include "replay/cache.h"
 
 #include "gameinfo.h"
+
+class PlayerFinder : public BatchFunc
+{
+  String player;
+  SearchResults* results;
+public:
+  PlayerFinder(String name);
+  void run();
+  void handle(String file, GameCache* gc);
+};
+PlayerFinder::PlayerFinder(String name)
+{
+  player = name;
+  results = (SearchResults*) SendMessage(getApp()->getMainWindow(), WM_GETVIEW, MAINWND_SEARCHRES, 0);
+  SendMessage(getApp()->getMainWindow(), WM_REBUILDTREE, 1, 0);
+  SendMessage(getApp()->getMainWindow(), WM_PUSHVIEW,
+    (uint32) new SearchResViewItem(), 0);
+}
+void PlayerFinder::run()
+{
+  BatchDialog* batch = new BatchDialog(BatchDialog::mFunc, this, "Searching");
+  batch->addFolder(cfg.replayPath);
+  results->doBatch(batch);
+}
+void PlayerFinder::handle(String file, GameCache* gc)
+{
+  for (int i = 0; i < gc->players; i++)
+  {
+    if (gc->pname[i].icompare(player) == 0)
+    {
+      results->addFile(file);
+      break;
+    }
+  }
+}
 
 #define IDC_MAPIMAGE          100
 #define IDC_WATCHREPLAY       101
@@ -44,6 +83,12 @@
 #define PL_TEAM           1
 #define PL_LAPM           2
 #define PL_LLEFT          3
+
+#define ID_PLAYER_SHOWBUILD         102
+#define ID_PLAYER_SHOWACTIONS       103
+#define ID_PLAYER_COPYNAME          104
+#define ID_PLAYER_COPYSTATS         105
+#define ID_PLAYER_FINDGAMES         106
 
 static char infoText[][64] = {
   "Patch version",
@@ -107,9 +152,45 @@ ReplayGameInfoTab::ReplayGameInfoTab(Frame* parent)
   info->setColumn(1, 150, LVCFMT_RIGHT);
   info->setColumn(2, 150, LVCFMT_LEFT);
   info->show();
+
+  ctxMenu = CreatePopupMenu();
+  MENUITEMINFO miiSep;
+  memset(&miiSep, 0, sizeof miiSep);
+  miiSep.cbSize = sizeof miiSep;
+  miiSep.fMask = MIIM_FTYPE;
+  miiSep.fType = MFT_SEPARATOR;
+  MENUITEMINFO mii;
+  memset(&mii, 0, sizeof mii);
+  mii.cbSize = sizeof mii;
+  mii.fMask = MIIM_FTYPE | MIIM_STRING | MIIM_STATE | MIIM_ID;
+  mii.fType = MFT_STRING;
+  mii.fState = MFS_DEFAULT;
+  mii.dwTypeData = "Show build";
+  mii.cch = strlen(mii.dwTypeData);
+  mii.wID = ID_PLAYER_SHOWBUILD;
+  InsertMenuItem(ctxMenu, 0, TRUE, &mii);
+  mii.fMask &= ~MIIM_STATE;
+  mii.dwTypeData = "Show actions";
+  mii.cch = strlen(mii.dwTypeData);
+  mii.wID = ID_PLAYER_SHOWACTIONS;
+  InsertMenuItem(ctxMenu, 1, TRUE, &mii);
+  InsertMenuItem(ctxMenu, 2, TRUE, &miiSep);
+  mii.dwTypeData = "Copy name";
+  mii.cch = strlen(mii.dwTypeData);
+  mii.wID = ID_PLAYER_COPYNAME;
+  InsertMenuItem(ctxMenu, 3, TRUE, &mii);
+  mii.dwTypeData = "Copy stats";
+  mii.cch = strlen(mii.dwTypeData);
+  mii.wID = ID_PLAYER_COPYSTATS;
+  InsertMenuItem(ctxMenu, 4, TRUE, &mii);
+  mii.dwTypeData = "Find games";
+  mii.cch = strlen(mii.dwTypeData);
+  mii.wID = ID_PLAYER_FINDGAMES;
+  InsertMenuItem(ctxMenu, 5, TRUE, &mii);
 }
 ReplayGameInfoTab::~ReplayGameInfoTab()
 {
+  DestroyMenu(ctxMenu);
   delete mapImages[0];
   delete mapImages[1];
   delete mapCanvas;
@@ -386,7 +467,56 @@ void ReplayGameInfoTab::addLadderPlayer(W3GPlayer* player)
 }
 uint32 ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
 {
-  if (message == WM_NOTIFY)
+  if (message == WM_CONTEXTMENU && (HWND) wParam == players->getHandle())
+  {
+    int sel = ListView_GetNextItem(players->getHandle(), -1, LVNI_SELECTED);
+    if (w3g && sel >= 0)
+    {
+      W3GPlayer* player = w3g->getPlayerById(players->getItemParam(sel) >> 24);
+      if (player)
+      {
+        POINT pt;
+        GetCursorPos(&pt);
+        int result = TrackPopupMenuEx(ctxMenu, TPM_HORIZONTAL | TPM_LEFTALIGN |
+          TPM_RETURNCMD | TPM_NONOTIFY, pt.x, pt.y, players->getHandle(), NULL);
+        switch (result)
+        {
+        case ID_PLAYER_SHOWBUILD:
+          notify(WM_SETPLAYER, (uint32) player, 0);
+          notify(WM_SETTAB, REPLAY_PLAYERINFO, 0);
+          break;
+        case ID_PLAYER_SHOWACTIONS:
+          notify(WM_SETPLAYER, (uint32) player, 0);
+          notify(WM_SETTAB, REPLAY_ACTIONS, 0);
+          break;
+        case ID_PLAYER_COPYNAME:
+          SetClipboard(CF_UNICODETEXT, CreateGlobalText(player->name));
+          break;
+        case ID_PLAYER_COPYSTATS:
+          if (w3g->getDotaInfo())
+          {
+            String text = String::format("%s (%s), level %d, build cost %d, KDA: %d-%d-%d, "
+              "CS: %d/%d/%d, lane: %s, APM: %d, left: %s", player->name,
+              player->hero ? player->hero->hero->name : "No Hero",
+              player->level, player->item_cost, player->stats[STAT_KILLS],
+              player->stats[STAT_DEATHS], player->stats[STAT_ASSISTS],
+              player->stats[STAT_CREEPS], player->stats[STAT_DENIES],
+              player->stats[STAT_NEUTRALS], getLaneName(player->lane),
+              player->apm(), w3g->formatTime(player->time));
+            SetClipboard(CF_UNICODETEXT, CreateGlobalText(text));
+          }
+          break;
+        case ID_PLAYER_FINDGAMES:
+          {
+            PlayerFinder* finder = new PlayerFinder(player->name);
+            finder->run();
+          }
+          break;
+        }
+      }
+    }
+  }
+  else if (message == WM_NOTIFY)
   {
     NMHDR* hdr = (NMHDR*) lParam;
     if (hdr->code == HDN_ENDTRACK)
@@ -399,6 +529,20 @@ uint32 ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam
           cfg.giColWidth[header->iItem] = header->pitem->cxy;
         else if (header->iItem <= PL_LLEFT)
           cfg.giLColWidth[header->iItem] = header->pitem->cxy;
+      }
+    }
+    else if (hdr->code == LVN_ITEMACTIVATE)
+    {
+      int sel = ListView_GetNextItem(players->getHandle(), -1, LVNI_SELECTED);
+      if (w3g && sel >= 0)
+      {
+        int data = players->getItemParam(sel) >> 24;
+        W3GPlayer* player = w3g->getPlayerById(data);
+        if (player)
+        {
+          notify(WM_SETPLAYER, (uint32) player, 0);
+          notify(WM_SETTAB, REPLAY_PLAYERINFO, 0);
+        }
       }
     }
   }
@@ -493,7 +637,7 @@ uint32 ReplayGameInfoTab::onMessage(uint32 message, uint32 wParam, uint32 lParam
           }
         }
         if (!result.isEmpty())
-          SetClipboard(CF_TEXT, CreateGlobalText(result));
+          SetClipboard(CF_UNICODETEXT, CreateGlobalText(result));
       }
       return 0;
     }

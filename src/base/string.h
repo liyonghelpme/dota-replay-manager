@@ -287,7 +287,9 @@ public:
   static bool isIdStart(unsigned char c);
   static bool isIdentifier(String str);
 
+  static String fromWide(wchar_t* ptr);
   wchar_t* toWide() const;
+  wchar_t* toWide(int& size) const;
   void toWide(wchar_t* ptr, int length) const;
 
   String& toAnsi();

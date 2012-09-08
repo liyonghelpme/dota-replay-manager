@@ -89,6 +89,8 @@ uint32 ReplayTree::onMessage(uint32 message, uint32 wParam, uint32 lParam)
               mainWnd->pushView(new SearchViewItem());
             else if (items[pos].type == MAINWND_SEARCHRES)
               mainWnd->pushView(new SearchResViewItem());
+            else if (items[pos].type == MAINWND_HEROCHART)
+              mainWnd->pushView(new HeroChartViewItem());
           }
         }
         return TRUE;

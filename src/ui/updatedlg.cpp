@@ -9,7 +9,7 @@
 
 static const char versionURL[] = "http://www.rivsoft.narod.ru/dotareplay_ver.txt";
 static const char logURL[] = "http://www.rivsoft.narod.ru/dotareplay.log";
-static const char projectURL[] = "http://www.rivsoft.narod.ru/dotareplay.html";
+static const char projectURL[] = "http://code.google.com/p/dota-replay-manager/";
 static const char forumURL[] = "http://www.playdota.com/forums/showthread.php?p=110886";
 
 HWND UpdateDialog::instance = NULL;

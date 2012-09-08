@@ -901,7 +901,7 @@ uint32 ReplayActionLogTab::onMessage(uint32 message, uint32 wParam, uint32 lPara
             result += String::format("<%s> ", actionList->actions[sel].player->name);
           result += actionList->transform(actionList->actions[sel].text);
         }
-        SetClipboard(CF_TEXT, CreateGlobalText(result));
+        SetClipboard(CF_UNICODETEXT, CreateGlobalText(result));
       }
     }
     break;

@@ -4,7 +4,7 @@
 #include "ui/updatedlg.h"
 #include "aboutdlg.h"
 
-static const char projectURL[] = "http://www.rivsoft.narod.ru/dotareplay.html";
+static const char projectURL[] = "http://code.google.com/p/dota-replay-manager/";
 HICON AboutDialog::hIcon = NULL;
 
 INT_PTR CALLBACK AboutDialog::DlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)

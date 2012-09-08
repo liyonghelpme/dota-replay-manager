@@ -48,7 +48,6 @@ struct W3GPlayer
   bool share[16];
   bool said_ff;
 
-  int num_actions;
   W3GActionList actions;
   int stats[16];
   int sdied;
@@ -71,7 +70,7 @@ struct W3GPlayer
   String format_full() const;
   int apm() const
   {
-    return time ? num_actions / time : 0;
+    return time ? actions.count() * 60000 / time : 0;
   }
 
   W3GPlayer(uint8 id, String name);

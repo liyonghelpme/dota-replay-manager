@@ -1001,7 +1001,7 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       if (abs >= sela && abs < selb)
       {
         dragop = 1;
-        if (DoDragDropEx(CF_TEXT, CreateGlobalText(unsanitize(getSelection())),
+        if (DoDragDropEx(CF_UNICODETEXT, CreateGlobalText(unsanitize(getSelection())),
             DROPEFFECT_MOVE | DROPEFFECT_COPY, hWnd) == DROPEFFECT_NONE)
           dragop = 0;
       }
@@ -1270,7 +1270,7 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       if (GetAsyncKeyState(VK_CONTROL) & 0x8000)
       {
         if (caret != selStart)
-          SetClipboard(CF_TEXT, CreateGlobalText(unsanitize(getSelection())));
+          SetClipboard(CF_UNICODETEXT, CreateGlobalText(unsanitize(getSelection())));
       }
       break;
     case 'X':
@@ -1278,7 +1278,7 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       {
         if (caret != selStart)
         {
-          SetClipboard(CF_TEXT, CreateGlobalText(unsanitize(getSelection())));
+          SetClipboard(CF_UNICODETEXT, CreateGlobalText(unsanitize(getSelection())));
           replace(selStart, caret, "");
         }
       }
@@ -1286,7 +1286,7 @@ uint32 ScriptEditor::onMessage(uint32 message, uint32 wParam, uint32 lParam)
     case 'V':
       if (GetAsyncKeyState(VK_CONTROL) & 0x8000)
       {
-        ClipboardReader reader(CF_TEXT);
+        ClipboardReader reader(CF_UNICODETEXT);
         if (reader.getData())
         {
           int pos = (selStart < caret ? selStart : caret);
@@ -1716,7 +1716,7 @@ ScriptEditor::ScriptEditor(Frame* parent, int id, HFONT hFont)
   create("", WS_CHILD | WS_TABSTOP | WS_HSCROLL | WS_VSCROLL, WS_EX_CLIENTEDGE);
   setId(id);
 
-  target = new DropTarget(this, CF_TEXT, DROPEFFECT_COPY | DROPEFFECT_MOVE);
+  target = new DropTarget(this, CF_UNICODETEXT, DROPEFFECT_COPY | DROPEFFECT_MOVE);
 }
 ScriptEditor::~ScriptEditor()
 {

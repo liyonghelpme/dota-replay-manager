@@ -5,6 +5,7 @@
 #include "ui/folderwnd.h"
 #include "ui/searchwnd.h"
 #include "ui/searchres.h"
+#include "ui/herochart.h"
 #include "frameui/controlframes.h"
 #include "graphics/imagelib.h"
 
@@ -83,6 +84,7 @@ MainWnd::MainWnd()
   views[MAINWND_FOLDER] = new FolderWindow(this, this);
   views[MAINWND_SEARCH] = new SearchWindow(this);
   views[MAINWND_SEARCHRES] = new SearchResults(this);
+  views[MAINWND_HEROCHART] = new HeroChartFrame(this);
   for (int i = 0; i < MAINWND_NUM_VIEWS; i++)
   {
     views[i]->setPoint(PT_TOPLEFT, addressBar, PT_BOTTOMLEFT, 0, 10);
@@ -340,6 +342,11 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
             pushView(new SearchResViewItem());
             return 0;
           }
+          else if (addressBar->getText().icompare("Hero chart") == 0)
+          {
+            pushView(new HeroChartViewItem());
+            return 0;
+          }
           path = String::fixPath(addressBar->getText());
         }
         if (cfg.enableUrl && File::isValidURL(path))
@@ -493,6 +500,11 @@ void MainWnd::setAddress(String text)
   {
     addressBar->setText("Search results");
     icon = "IconSearchResults";
+  }
+  else if (text == "#herochart")
+  {
+    addressBar->setText("Hero chart");
+    icon = "IconHeroChart";
   }
   else
   {

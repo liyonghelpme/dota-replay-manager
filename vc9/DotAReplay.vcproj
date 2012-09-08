@@ -550,6 +550,10 @@
 					>
 				</File>
 				<File
+					RelativePath="..\src\ui\herochart.h"
+					>
+				</File>
+				<File
 					RelativePath="..\src\ui\mainwnd.h"
 					>
 				</File>
@@ -648,6 +652,10 @@
 				</File>
 				<File
 					RelativePath="..\src\ui\folderwndfill.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\ui\herochart.cpp"
 					>
 				</File>
 				<File

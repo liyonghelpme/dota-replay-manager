@@ -310,6 +310,10 @@ Dota::Item* Dota::getItemByName(char const* name)
   return NULL;
 }
 
+void Dota::addRef()
+{
+  InterlockedIncrement((LONG*) &ref);
+}
 void Dota::release()
 {
   if (this && InterlockedDecrement((LONG*) &ref) <= 0)
@@ -545,7 +549,7 @@ Dota* DotaLibrary::getDota(uint32 version, char const* mapPath)
   EnterCriticalSection(&lock);
   Dota* dota = (Dota*) versions.get(version);
   if (dota)
-    InterlockedIncrement((LONG*) &dota->ref);
+    dota->addRef();
   if (dota == NULL)
   {
     String path = String::format("dota\\%s.txt", formatVersion(version));
@@ -608,11 +612,19 @@ Dota* DotaLibrary::getDota(uint32 version, char const* mapPath)
       if (latest)
         latest->release();
       latest = dota;
-      InterlockedIncrement((LONG*) &latest->ref);
+      latest->addRef();
     }
     versions.set(version, (uint32) dota);
-    InterlockedIncrement((LONG*) &dota->ref);
+    dota->addRef();
   }
+  LeaveCriticalSection(&lock);
+  return dota;
+}
+Dota* DotaLibrary::getDota()
+{
+  EnterCriticalSection(&lock);
+  Dota* dota = latest;
+  dota->addRef();
   LeaveCriticalSection(&lock);
   return dota;
 }

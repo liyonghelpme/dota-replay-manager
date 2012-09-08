@@ -51,7 +51,7 @@ regbasic(int, autoView, 1);
 regbasic(int, autoCopy, 0);
 regstring(copyFormat, "Autocopy\\replay<n>");
 //regbasic(int, showDetails, 0);
-regbasic(int, selColumns, 0);
+regbasic(int, selColumns, (COL_SAVED | COL_NAME | COL_RATIO));
 regarray(int, colOrder, 7);
 regarray(int, colWidth, 7);
 regarray(int, colSort, 7);

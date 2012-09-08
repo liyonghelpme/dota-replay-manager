@@ -20,6 +20,8 @@ enum {REPLAY_GAMEINFO,
       REPLAY_NUM_TABS
 };
 #define ID_PLAYERBOX            378
+#define WM_SETPLAYER            (WM_USER+1092)
+#define WM_SETTAB               (WM_USER+1093)
 
 class ReplayTab : public Frame
 {

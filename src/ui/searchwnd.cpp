@@ -172,6 +172,7 @@ void SearchWindow::fillHeroes(ComboFrameEx* cf)
       }
     }
   }
+  dota->release();
   cf->setCurSel(sel);
 }
 void SearchWindow::fillStringMode(ComboFrame* cf)
@@ -316,6 +317,9 @@ uint32 SearchWindow::onMessage(uint32 message, uint32 wParam, uint32 lParam)
   {
     if (LOWORD(wParam) == IDC_BROWSEPATH)
     {
+      String searchPath;
+      if (browseForFolder("Select search folder", searchPath))
+        path->setText(searchPath);
     }
     else if (LOWORD(wParam) == IDC_SEARCH)
     {

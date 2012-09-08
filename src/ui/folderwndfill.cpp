@@ -135,6 +135,8 @@ void FolderWindow::readCacheInfo(GameCache* cache, FolderFoundItem& item, int* c
     if (!count[0] && !count[1])
       item.lineup = "";
   }
+
+  dota->release();
 }
 void FolderWindow::rebuild()
 {

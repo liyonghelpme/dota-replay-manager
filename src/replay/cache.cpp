@@ -9,7 +9,7 @@ bool CacheManager::wantReplay(String path, uint64 ftime)
   path = String::fixPath(path);
   if (String::getExtension(path).icompare(".w3g"))
     return false;
-  if (path.substr(0, cfg.replayPath.length()).icompare((char const*) cfg.replayPath))
+  if (path.substr(0, cfg.replayPath.length()).icompare(cfg.replayPath))
     return false;
   FileInfo info;
   getFileInfo(path, info);
@@ -226,6 +226,15 @@ void CacheManager::duplicate(String path, GameCache* game)
   LeaveCriticalSection(&lock);
 }
 
+void CacheManager::enumCache(bool (*func)(String, GameCache*, void*), void* param)
+{
+  EnterCriticalSection(&lock);
+  for (uint32 cur = cache.enumStart(); cur; cur = cache.enumNext(cur))
+    if (!func(cache.enumGetKey(cur), &cache.enumGetValue(cur), param))
+      break;
+  LeaveCriticalSection(&lock);
+}
+
 ////////////////////////////////////////////////////
 
 String GameCache::format(char const* fmt, char const* dst, char const* src)
@@ -321,6 +330,7 @@ String GameCache::format(char const* fmt, char const* dst, char const* src)
             Dota::Hero* hero = dota->getHero(phero[id]);
             if (hero)
               result += hero->name;
+            dota->release();
           }
           else if (cmd == "win")
           {

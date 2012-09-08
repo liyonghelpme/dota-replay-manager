@@ -28,8 +28,6 @@ void W3GPlayer::init()
   leave_reason = 0;
   leave_result = 0;
 
-  num_actions = 0;
-
   hero = NULL;
   sel = NULL;
   heroId = 0;

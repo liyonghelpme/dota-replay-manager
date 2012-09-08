@@ -131,6 +131,7 @@ public:
     return &recipes[i];
   }
 
+  void addRef();
   void release();
 };
 
@@ -202,10 +203,7 @@ public:
     return itemPdTag.get(name);
   }
 
-  Dota* getDota()
-  {
-    return latest;
-  }
+  Dota* getDota();
   Dota* getDota(uint32 version, char const* mapPath = NULL);
 };
 

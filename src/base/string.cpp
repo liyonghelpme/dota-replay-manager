@@ -735,11 +735,28 @@ void String::parseString(String str, String& cmd, String& args)
   args = str.substr(pos);
 }
 
+String String::fromWide(wchar_t* ptr)
+{
+  int count = WideCharToMultiByte(CP_UTF8, 0, ptr, -1, NULL, 0, NULL, NULL);
+  char* buf = _new(count);
+  WideCharToMultiByte(CP_UTF8, 0, ptr, -1, buf, count, NULL, NULL);
+  buf[count - 1] = 0;
+  _len(buf) = count - 1;
+  _ref(buf) = 1;
+  return String::frombuf(buf);
+}
 wchar_t* String::toWide() const
 {
   int count = MultiByteToWideChar(CP_UTF8, 0, buf, _len(buf) + 1, NULL, 0);
   wchar_t* wide = new wchar_t[count];
   MultiByteToWideChar(CP_UTF8, 0, buf, _len(buf) + 1, wide, count);
+  return wide;
+}
+wchar_t* String::toWide(int& size) const
+{
+  size = MultiByteToWideChar(CP_UTF8, 0, buf, _len(buf) + 1, NULL, 0);
+  wchar_t* wide = new wchar_t[size];
+  MultiByteToWideChar(CP_UTF8, 0, buf, _len(buf) + 1, wide, size);
   return wide;
 }
 void String::toWide(wchar_t* ptr, int length) const

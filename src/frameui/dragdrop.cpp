@@ -573,22 +573,25 @@ HGLOBAL CreateFileDrop(String file)
 String GetGlobalText(HGLOBAL data)
 {
   String result;
-  char* ptr = (char*) GlobalLock(data);
+  wchar_t* ptr = (wchar_t*) GlobalLock(data);
   if (ptr)
   {
-    result = ptr;
+    result = String::fromWide(ptr);
     GlobalUnlock(data);
   }
   return result;
 }
 HGLOBAL CreateGlobalText(String text)
 {
-  HGLOBAL data = GlobalAlloc(GMEM_MOVEABLE, text.length() + 1);
-  char* ptr = (char*) GlobalLock(data);
+  int size;
+  wchar_t* wide = text.toWide(size);
+  HGLOBAL data = GlobalAlloc(GMEM_MOVEABLE, size * 2);
+  wchar_t* ptr = (wchar_t*) GlobalLock(data);
   if (ptr)
   {
-    strcpy(ptr, text.c_str());
+    wcscpy(ptr, wide);
     GlobalUnlock(data);
   }
+  delete[] wide;
   return data;
 }

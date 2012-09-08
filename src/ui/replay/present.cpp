@@ -247,7 +247,7 @@ uint32 ReplayPresentTab::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         File* f = File::open("test.txt", File::REWRITE);
         f->write(text.c_str(), text.length());
         delete f;
-        SetClipboard(CF_TEXT, CreateGlobalText(result->getText()));
+        SetClipboard(CF_UNICODETEXT, CreateGlobalText(result->getText()));
       }
       break;
     case IDC_GENERATE:

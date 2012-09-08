@@ -79,6 +79,23 @@ public:
   bool equal(ViewItem* item);
 };
 
+class HeroChartViewItem : public ViewItem
+{
+  int hero;
+public:
+  HeroChartViewItem()
+  {
+    hero = 0;
+  }
+  void apply(MainWnd* wnd);
+  bool equal(ViewItem* item);
+
+  void setHero(int h)
+  {
+    hero = h;
+  }
+};
+
 class FolderViewItem : public ViewItem
 {
   String path;

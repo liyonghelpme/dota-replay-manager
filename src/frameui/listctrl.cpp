@@ -466,8 +466,7 @@ void ListFrame::insertColumn(int i, String name, int fmt)
 }
 void ListFrame::setColumnWidth(int i, int width)
 {
-  if ((width == LVSCW_AUTOSIZE_USEHEADER || width == LVSCW_AUTOSIZE) &&
-      i != Header_GetItemCount(ListView_GetHeader(hWnd)) - 1)
+  if (width == LVSCW_AUTOSIZE_USEHEADER || width == LVSCW_AUTOSIZE)
   {
     char buf[MAX_PATH];
     LVCOLUMN lvc;

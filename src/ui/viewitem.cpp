@@ -6,6 +6,7 @@
 #include "ui/searchres.h"
 #include "ui/folderwnd.h"
 #include "ui/replaywnd.h"
+#include "ui/herochart.h"
 
 ViewItem* ViewItem::push(ViewItem* item)
 {
@@ -67,6 +68,7 @@ ViewItem* ViewItem::back()
 
 void SettingsViewItem::apply(MainWnd* wnd)
 {
+  wnd->setAddress("#settings");
   wnd->setView(MAINWND_SETTINGS);
 }
 bool SettingsViewItem::equal(ViewItem* item)
@@ -78,6 +80,7 @@ bool SettingsViewItem::equal(ViewItem* item)
 
 void SearchViewItem::apply(MainWnd* wnd)
 {
+  wnd->setAddress("#search");
   SearchWindow* search = (SearchWindow*) wnd->setView(MAINWND_SEARCH);
   search->setPath(((FolderWindow*) wnd->getView(MAINWND_FOLDER))->getPath());
 }
@@ -127,4 +130,17 @@ bool ReplayViewItem::equal(ViewItem* item)
 {
   ReplayViewItem* other = dynamic_cast<ReplayViewItem*>(item);
   return (other && path.icompare(other->path) == 0);
+}
+
+void HeroChartViewItem::apply(MainWnd* wnd)
+{
+  wnd->setAddress("#herochart");
+  HeroChartFrame* chart = (HeroChartFrame*) wnd->setView(MAINWND_HEROCHART);
+  chart->setViewItem(this);
+  chart->setHero(hero);
+}
+bool HeroChartViewItem::equal(ViewItem* item)
+{
+  HeroChartViewItem* other = dynamic_cast<HeroChartViewItem*>(item);
+  return (other != NULL);
 }
