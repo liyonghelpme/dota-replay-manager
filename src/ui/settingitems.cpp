@@ -390,6 +390,8 @@ void SettingsWindow::addAllItems()
   chatColors->setPoint(PT_LEFT, 60, 0);
   chatColors->setPoint(PT_TOP, btn1, PT_BOTTOM, 0, 5);
   chatColors->setSize(408, 50);
+
+  item1 = addBoolItem(1, &cfg.useLog);
   item1->setText("Log actions to log.txt");
   item1->setPoint(PT_TOPLEFT, chatColors, PT_BOTTOMLEFT, 0, 8);
   item1->setSize(180, 16);
