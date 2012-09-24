@@ -6,7 +6,7 @@ http://rivsoft.narod.ru/dotareplay.html
 ============== Changelog ==================================
 **3.02c**
  - Fixed renaming files in folder view
- - ??
+ - Fixed recipe items not being combined
  - Fixed a rare crash when opening certain replays
 **3.02b**
  - Fixed a small bug with icons in timeline mode not showing on certain computers
