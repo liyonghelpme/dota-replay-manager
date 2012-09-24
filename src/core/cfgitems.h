@@ -107,3 +107,7 @@ regbasic(uint64, fmtGenerator, 0);
 regbasic(uint32, chatFilters, 0xFFFFFFFF);
 
 regbasic(int, autoLoadMap, 0);
+
+// Dota 2
+
+regstring(d2ApiKey, "");

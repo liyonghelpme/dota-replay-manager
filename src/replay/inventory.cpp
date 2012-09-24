@@ -68,6 +68,7 @@ bool W3GInventory::hasRecipe(Dota::Recipe* recipe, uint32& time)
 W3GItem* W3GInventory::remRecipe(Dota::Recipe* recipe)
 {
   uint32 time = 0;
+  clearFlags(ITEM_FLAG_FOUND);
   if (!hasRecipe(recipe, time))
     return NULL;
   clearFlags(ITEM_FLAG_FOUND);

@@ -253,7 +253,7 @@ public:
 };
 class MemFile : public File
 {
-  char const* ptr;
+  unsigned char const* ptr;
   int pos;
   int length;
   bool feof;
@@ -261,7 +261,7 @@ class MemFile : public File
 public:
   MemFile(void const* mem, int len, bool isown = false)
   {
-    ptr = (char const*) mem;
+    ptr = (unsigned char const*) mem;
     pos = 0;
     length = len;
     feof = false;

@@ -19,6 +19,7 @@
 #define IDC_CHATFONT            109
 #define IDC_CHATCOLOR           110
 #define IDC_CHATCOLORMODE       111
+#define IDC_APIKEYHELP          112
 
 class ClickColor : public WindowFrame
 {
@@ -389,11 +390,22 @@ void SettingsWindow::addAllItems()
   chatColors->setPoint(PT_LEFT, 60, 0);
   chatColors->setPoint(PT_TOP, btn1, PT_BOTTOM, 0, 5);
   chatColors->setSize(408, 50);
-
-  item1 = addBoolItem(1, &cfg.useLog);
   item1->setText("Log actions to log.txt");
   item1->setPoint(PT_TOPLEFT, chatColors, PT_BOTTOMLEFT, 0, 8);
   item1->setSize(180, 16);
+
+  //////////////////////////////////////////////////////////////
+
+  //tab = tabs->addTab("Dota 2");
+
+  //tip = new StaticFrame("Api key:", tab);
+  //item1 = addStringItem(2, &cfg.d2ApiKey);
+  //item1->setPoint(PT_TOPLEFT, 140, 7);
+  //item1->setSize(228, 23);
+  //tip->setPoint(PT_BOTTOMRIGHT, item1, PT_BOTTOMLEFT, -4, -7);
+  //btn1 = new ButtonFrame("Help", tab, IDC_APIKEYHELP);
+  //btn1->setPoint(PT_BOTTOMLEFT, item1, PT_BOTTOMRIGHT, 4, 0);
+  //btn1->setSize(60, 23);
 }
 
 void SettingsWindow::updateExtra()
@@ -499,6 +511,19 @@ uint32 SettingsWindow::handleExtra(uint32 message, uint32 wParam, uint32 lParam)
             "<file> - original file title (e.g. \"LastReplay\")\n"
             "<path> - original file path (e.g. \"Dota\\IHL\\\")",
           "Help", MB_OK);
+      }
+      break;
+    case IDC_APIKEYHELP:
+      if (code == BN_CLICKED)
+      {
+        if (MessageBox(getApp()->getMainWindow(),
+            "In order to access Dota 2 web resources, you need a unique Api key. Do you want to visit "
+            "http://steamcommunity.com/dev/apikey now to generate one? You will need to log in with "
+            "your steam account and enter a random text as your domain name (such as your name).",
+            "Help", MB_YESNO | MB_ICONQUESTION) == IDYES)
+        {
+          OpenURL("http://steamcommunity.com/dev/apikey");
+        }
       }
       break;
     case IDC_OPENWITHTHIS:

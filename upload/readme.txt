@@ -1,9 +1,13 @@
-DotA Replay Manager 3.02b
+DotA Replay Manager 3.02c
 
 http://www.playdota.com/forums/showthread.php?p=110886
 http://rivsoft.narod.ru/dotareplay.html
 
 ============== Changelog ==================================
+**3.02c**
+ - Fixed renaming files in folder view
+ - ??
+ - Fixed a rare crash when opening certain replays
 **3.02b**
  - Fixed a small bug with icons in timeline mode not showing on certain computers
 **3.02**

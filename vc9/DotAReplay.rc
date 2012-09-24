@@ -75,8 +75,8 @@ IDI_PLAY                ICON                    "K:\\Progs\\DotAReplay\\res\\pla
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 3,0,2,1
- PRODUCTVERSION 3,0,2,1
+ FILEVERSION 3,0,2,2
+ PRODUCTVERSION 3,0,2,2
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -93,12 +93,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "RiV Soft"
             VALUE "FileDescription", "DotA Replay Manager"
-            VALUE "FileVersion", "3.02b"
+            VALUE "FileVersion", "3.02c"
             VALUE "InternalName", "DotAReplay"
-            VALUE "LegalCopyright", "d07.RiV, 07.09.2012. http://rivsoft.narod.ru/"
+            VALUE "LegalCopyright", "d07.RiV, 24.09.2012. http://rivsoft.narod.ru/"
             VALUE "OriginalFilename", "DotAReplay.exe"
             VALUE "ProductName", "DotA Replay Manager"
-            VALUE "ProductVersion", "3.02b"
+            VALUE "ProductVersion", "3.02c"
         END
     END
     BLOCK "VarFileInfo"

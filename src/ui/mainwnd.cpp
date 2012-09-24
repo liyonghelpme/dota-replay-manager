@@ -324,6 +324,8 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       hForward->enable(history && history->hasNext());
       return 0;
     case IDOK:
+      if ((HWND) lParam != addressBar->getHandle())
+        break;
     case IDC_OPEN:
     case IDC_BROWSE:
       {
@@ -337,17 +339,21 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         }
         else
         {
-          if (addressBar->getText().icompare("Search results") == 0)
-          {
+          String path = addressBar->getText();
+          bool isCmd = true;
+          if (path.icompare("Search results") == 0)
             pushView(new SearchResViewItem());
-            return 0;
-          }
-          else if (addressBar->getText().icompare("Hero chart") == 0)
-          {
+          else if (path.icompare("Search") == 0)
+            pushView(new SearchViewItem());
+          else if (path.icompare("Settings") == 0)
+            pushView(new SettingsViewItem());
+          else if (path.icompare("Hero chart") == 0)
             pushView(new HeroChartViewItem());
+          else
+            isCmd = false;
+          if (isCmd)
             return 0;
-          }
-          path = String::fixPath(addressBar->getText());
+          path = String::fixPath(path);
         }
         if (cfg.enableUrl && File::isValidURL(path))
           pushView(new ReplayViewItem(path));
@@ -362,7 +368,7 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       }
       return 0;
     }
-    break;
+    break;  
   case WM_UPDATEPATH:
     {
       FileInfo fi;
