@@ -10,7 +10,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 {
   HANDLE hMutex = CreateMutex(NULL, TRUE, mutexId);
 
-  bool alreadyExists = (GetLastError() == ERROR_ALREADY_EXISTS && lpCmdLine[0]);
+  String cmdLine(lpCmdLine);
+  cmdLine.trim();
+  if (cmdLine.substring(0, 4).icompare("-log") == 0)
+    cmdLine = "";
+  bool alreadyExists = (GetLastError() == ERROR_ALREADY_EXISTS && !cmdLine.isEmpty());
   if (alreadyExists && hMutex)
     WaitForSingleObject(hMutex, 2000);
 
@@ -26,8 +30,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
       {
         COPYDATASTRUCT cd;
         cd.dwData = MAINWND_OPEN_REPLAY;
-        cd.cbData = strlen(lpCmdLine) + 1;
-        cd.lpData = lpCmdLine;
+        cd.cbData = cmdLine.length() + 1;
+        cd.lpData = cmdLine.getBuffer();
         SendMessage(hWnd, WM_COPYDATA, NULL, (LPARAM) &cd);
         SetForegroundWindow(hWnd);
 
@@ -45,15 +49,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     *(HWND*) mapView = app.getMainWindow();
   if (hMutex)
     ReleaseMutex(hMutex);
-
-  if (lpCmdLine[0])
-  {
-    COPYDATASTRUCT cd;
-    cd.dwData = MAINWND_OPEN_REPLAY;
-    cd.cbData = strlen(lpCmdLine) + 1;
-    cd.lpData = lpCmdLine;
-    PostMessage(app.getMainWindow(), WM_COPYDATA_FAKE, NULL, (LPARAM) &cd);
-  }
 
   int result = app.run();
 

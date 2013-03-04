@@ -110,7 +110,7 @@ void W3GInventory::compute(uint32 time, Dota* dota, bool combine)
 
   if (!combine)
     return;
-
+  
   for (int i = 0; i < dota->getNumRecipes(); i++)
   {
     Dota::Recipe* recipe = dota->getRecipe(i);

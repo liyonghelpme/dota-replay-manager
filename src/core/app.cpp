@@ -13,6 +13,7 @@
 
 #include "replay/replay.h"
 #include "replay/cache.h"
+#include "replay/actiondump.h"
 
 #include "base/dictionary.h"
 
@@ -22,10 +23,49 @@
 
 Application* Application::instance = NULL;
 
+bool Application::logCommand(String cmd)
+{
+  Array<String> args;
+  if (cmd.split(args, " \t", SPLIT_NOEMPTY | SPLIT_QUOTES))
+  {
+    if (args.length() >= 2 && args[0].substr(0, 4).icompare("-log") == 0)
+    {
+      int detail = 0;
+      if (args[0][4] == '=')
+        detail = int(args[0][5] - '0');
+      if (detail < 0) detail = 0;
+      if (detail > 2) detail = 2;
+
+      File* log = File::open(args.length() > 2 ? args[2] : "log.txt", File::REWRITE);
+      if (log)
+      {
+        uint32 error;
+        W3GReplay* w3g = W3GReplay::load(args[1], 2, &error);
+        if (w3g)
+        {
+          FileActionLogger logger(log);
+          ActionDumper dumper(w3g);
+          dumper.dump(&logger, detail);
+          delete w3g;
+        }
+        else
+        {
+          if (error == W3GReplay::eNoFile)
+            log->printf("Failed to open %s\r\n", args[1]);
+          else if (error == W3GReplay::eBadFile)
+            log->printf("Failed to parse replay\r\n", args[1]);
+        }
+        delete log;
+      }
+
+      return true;
+    }
+  }
+  return false;
+}
 Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
   MPQInit();
-  ScriptType::initTypes();
   instance = this;
   resources = NULL;
   imageLibrary = NULL;
@@ -35,9 +75,20 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
   hInstance = _hInstance;
   _loaded = false;
 
-  UpdateDialog::init(hInstance);
-
   root = String::getPath(getAppPath());
+  cfg.read();
+
+  warLoader = new MPQLoader("Custom_V1");
+  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3.mpq"));
+  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3x.mpq"));
+  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3xlocal.mpq"));
+  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3patch.mpq"));
+
+  if (logCommand(lpCmdLine))
+    return;
+
+  ScriptType::initTypes();
+  UpdateDialog::init(hInstance);
 
   INITCOMMONCONTROLSEX iccex;
   iccex.dwSize = sizeof iccex;
@@ -47,8 +98,6 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
   InitCommonControlsEx(&iccex);
   LoadLibrary("Riched20.dll");
   OleInitialize(NULL);
-
-  cfg.read();
 
   String path = String::getPath(getAppPath());
   String resPath = String::buildFullName(path, "resources.mpq");
@@ -93,12 +142,6 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
     DeleteFile(patchPath);
   }
 
-  warLoader = new MPQLoader("Custom_V1");
-  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3.mpq"));
-  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3x.mpq"));
-  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3xlocal.mpq"));
-  warLoader->loadArchive(String::buildFullName(cfg.warPath, "war3patch.mpq"));
-
   imageLibrary = new ImageLibrary(resources);
 
   cache = new CacheManager();
@@ -137,6 +180,15 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
   
   mainWindow->postLoad();
   _loaded = true;
+
+  if (lpCmdLine[0])
+  {
+    COPYDATASTRUCT cd;
+    cd.dwData = MAINWND_OPEN_REPLAY;
+    cd.cbData = strlen(lpCmdLine) + 1;
+    cd.lpData = lpCmdLine;
+    PostMessage(getMainWindow(), WM_COPYDATA_FAKE, NULL, (LPARAM) &cd);
+  }
 }
 void Application::reloadWarData()
 {
@@ -151,7 +203,8 @@ void Application::reloadWarData()
 Application::~Application()
 {
   delete mainWindow;
-  resources->flush();
+  if (resources)
+    resources->flush();
   delete dotaLibrary;
   delete imageLibrary;
   delete resources;
@@ -165,18 +218,22 @@ Application::~Application()
   OleFlushClipboard();
   OleUninitialize();
 }
-void loadDotaData(MPQLoader* ldr, String path);
 
 int Application::run()
 {
-  MSG msg;
-  while (GetMessage(&msg, NULL, 0, 0))
+  if (mainWindow)
   {
-    TranslateMessage(&msg);
-    DispatchMessage(&msg);
-  }
+    MSG msg;
+    while (GetMessage(&msg, NULL, 0, 0))
+    {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+    }
 
-  return msg.wParam;
+    return msg.wParam;
+  }
+  else
+    return 0;
 }
 
 HWND Application::getMainWindow() const

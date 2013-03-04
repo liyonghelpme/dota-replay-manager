@@ -31,12 +31,12 @@ public:
 
   W3GActionParser* parser;
 
-  ParseState(bool quick);
+  ParseState(int quick);
   ~ParseState();
 
   void log(W3GPlayer* player);
 };
-ParseState::ParseState(bool quick)
+ParseState::ParseState(int quick)
 {
   memset(this, NULL, sizeof ParseState);
 
@@ -414,15 +414,18 @@ bool W3GReplay::parseActions(int length, void* arg)
           bool share = ((flags & 0x40) != 0);
           if (!quickLoad)
           {
-            W3GPlayer* other = getPlayerInSlot(slot);
-            if (share && !player->share[slot])
-              addMessage(CHAT_NOTIFY_CONTROL, id, state.time, "%s shares control with %s.",
-                player->format_full(), other->format_full());
-            else
-              addMessage(CHAT_NOTIFY_CONTROL, id, state.time, "%s disables control sharing with %s.",
-                player->format_full(), other->format_full());
+            W3GPlayer* other = players[slot];
+            if (other)
+            {
+              if (share && !player->share[other->slot.color])
+                addMessage(CHAT_NOTIFY_CONTROL, id, state.time, "%s shares control with %s.",
+                  player->format_full(), other->format_full());
+              else
+                addMessage(CHAT_NOTIFY_CONTROL, id, state.time, "%s disables control sharing with %s.",
+                  player->format_full(), other->format_full());
+              player->share[other->slot.color] = share;
+            }
           }
-          player->share[slot] = share;
         }
         break;
       // Transfer resources

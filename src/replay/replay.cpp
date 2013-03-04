@@ -122,7 +122,7 @@ File* W3GReplay::unpack(File* f, W3GHeader& hdr)
   delete[] source;
   return File::memfile(dest, dest_pos);
 }
-W3GReplay* W3GReplay::load(File* replay, bool quick, uint32* error)
+W3GReplay* W3GReplay::load(File* replay, int quick, uint32* error)
 {
   uint32 localError;
   if (error == NULL)
@@ -147,7 +147,7 @@ W3GReplay* W3GReplay::load(File* replay, bool quick, uint32* error)
     return NULL;
   }
 }
-W3GReplay* W3GReplay::load(char const* path, bool quick, uint32* error)
+W3GReplay* W3GReplay::load(char const* path, int quick, uint32* error)
 {
   uint32 localError;
   if (error == NULL)
@@ -174,9 +174,10 @@ void W3GReplay::setPath(char const* path)
   if (fileInfo == NULL)
     fileInfo = new FileInfo;
   ::getFileInfo(path, *fileInfo);
-  getApp()->getCache()->addGame(this);
+  if (getApp()->getCache())
+    getApp()->getCache()->addGame(this);
 }
-W3GReplay::W3GReplay(File* unpacked, W3GHeader const& header, bool quick, uint32* error)
+W3GReplay::W3GReplay(File* unpacked, W3GHeader const& header, int quick, uint32* error)
 {
   fileInfo = NULL;
   quickLoad = quick;
@@ -192,7 +193,7 @@ W3GReplay::W3GReplay(File* unpacked, W3GHeader const& header, bool quick, uint32
   plist[0]->initiator = true;
   loadGame();
 
-  if (validPlayers())
+  if (validPlayers() && quickLoad < 2)
     dotaInfo = DotaInfo::getDota(game->map);
   else
     dotaInfo = NULL;
@@ -212,13 +213,14 @@ W3GReplay::W3GReplay(File* unpacked, W3GHeader const& header, bool quick, uint32
     dota = NULL;
 
   blockPos = replay->tell();
-  if (!parseBlocks())
+  if (quickLoad < 2 && !parseBlocks())
   {
     *error = eBadFile;
     return;
   }
 
-  analyze();
+  if (quickLoad < 2)
+    analyze();
 }
 W3GReplay::~W3GReplay()
 {

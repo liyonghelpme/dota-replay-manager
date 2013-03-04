@@ -110,4 +110,5 @@ regbasic(int, autoLoadMap, 0);
 
 // Dota 2
 
+regbasic(int, d2ApiEnable, 0);
 regstring(d2ApiKey, "");

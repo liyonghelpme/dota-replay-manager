@@ -1,9 +1,17 @@
-DotA Replay Manager 3.02c
+DotA Replay Manager 3.02d
 
 http://www.playdota.com/forums/showthread.php?p=110886
 http://rivsoft.narod.ru/dotareplay.html
 
 ============== Changelog ==================================
+**3.02d**
+ - Fixed another crash (control sharing)
+ - Added -log command line option. To use, run DotaReplay.exe -log <replay> [<output>]
+  Detail level can be specified: -log=N, where N is 0 (normal log, only actions),
+  1 (same as Action Log tab, with unit IDs), or 2 (same as 1 but with unit names,
+  requires the map used in replay).
+  Note that this is not a console application, so running it in command line (batch file
+  or similar) immediately returns control, while the application runs in the background.
 **3.02c**
  - Fixed renaming files in folder view
  - Fixed recipe items not being combined

@@ -221,6 +221,8 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
       if (cd->dwData == MAINWND_OPEN_REPLAY)
       {
         String path((char*) cd->lpData);
+        if (getApp()->logCommand(path))
+          break;
         path.dequote();
         if (cfg.enableUrl && File::isValidURL(path))
           pushView(new ReplayViewItem(path));
@@ -339,7 +341,7 @@ uint32 MainWnd::onMessage(uint32 message, uint32 wParam, uint32 lParam)
         }
         else
         {
-          String path = addressBar->getText();
+          path = addressBar->getText();
           bool isCmd = true;
           if (path.icompare("Search results") == 0)
             pushView(new SearchResViewItem());

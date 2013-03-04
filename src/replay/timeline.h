@@ -10,7 +10,7 @@
 
 class W3GActionList
 {
-  bool quickLoad;
+  int quickLoad;
   uint32 spawn_time;
   Array<uint32> action_times;
   struct Movement
@@ -34,7 +34,7 @@ public:
   ~W3GActionList()
   {
   }
-  void start(bool quickLoad, int team);
+  void start(int quickLoad, int team);
   void setTeam(uint32 time, int team);
   void addEvent(uint32 time, int type, int arg = 0);
   void addPointEvent(uint32 time, uint32 id, float x, float y);

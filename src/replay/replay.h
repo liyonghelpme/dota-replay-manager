@@ -118,7 +118,7 @@ class W3GReplay
 {
   static File* unpack(File* replay, W3GHeader& hdr);
 
-  bool quickLoad;
+  int quickLoad;
   W3GHeader hdr;
   File* replay;
 
@@ -152,10 +152,10 @@ class W3GReplay
 
   void parseMode(W3GPlayer* player, char const* text);
 
-  W3GReplay(File* unpacked, W3GHeader const& header, bool quick, uint32* error);
+  W3GReplay(File* unpacked, W3GHeader const& header, int quick, uint32* error);
 public:
-  static W3GReplay* load(File* replay, bool quick = false, uint32* error = NULL);
-  static W3GReplay* load(char const* path, bool quick = false, uint32* error = NULL);
+  static W3GReplay* load(File* replay, int quick = 0, uint32* error = NULL);
+  static W3GReplay* load(char const* path, int quick = 0, uint32* error = NULL);
   void setPath(char const* path);
   ~W3GReplay();
 

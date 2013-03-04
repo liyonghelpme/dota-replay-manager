@@ -1,6 +1,8 @@
 #ifndef __DOTA_MAPDATA__
 #define __DOTA_MAPDATA__
 
+#include "core/app.h"
+
 #include "dota/load/datafile.h"
 #include "base/mpqfile.h"
 

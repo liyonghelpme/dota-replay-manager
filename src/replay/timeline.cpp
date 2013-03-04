@@ -5,7 +5,7 @@
 W3GActionList::W3GActionList()
 {
   memset(acounter, 0, sizeof acounter);
-  quickLoad = true;
+  quickLoad = 1;
   spawn_time = 0x80000000;
   lane_count = 0;
   lane_x = 0;
@@ -19,7 +19,7 @@ W3GActionList::W3GActionList()
 static float team_x[] = {-6864, 6400};
 static float team_y[] = {-6784, 6096};
 
-void W3GActionList::start(bool quick, int team)
+void W3GActionList::start(int quick, int team)
 {
   float x = team_x[team];
   float y = team_y[team];

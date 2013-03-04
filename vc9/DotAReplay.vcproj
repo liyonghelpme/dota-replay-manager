@@ -838,6 +838,10 @@
 					>
 				</File>
 				<File
+					RelativePath="..\src\replay\actiondump.h"
+					>
+				</File>
+				<File
 					RelativePath="..\src\replay\cache.h"
 					>
 				</File>
@@ -880,6 +884,10 @@
 				>
 				<File
 					RelativePath="..\src\replay\action.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\replay\actiondump.cpp"
 					>
 				</File>
 				<File
@@ -3379,6 +3387,36 @@
 				</File>
 				<File
 					RelativePath="..\src\script\scriptparser.cpp"
+					>
+				</File>
+			</Filter>
+		</Filter>
+		<Filter
+			Name="Dota2"
+			>
+			<Filter
+				Name="Headers"
+				Filter="h;hpp;hxx;hm;inl;inc;xsd"
+				>
+				<File
+					RelativePath="..\src\dota2\d2cache.h"
+					>
+				</File>
+				<File
+					RelativePath="..\src\dota2\json.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Source"
+				Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
+				>
+				<File
+					RelativePath="..\src\dota2\d2cache.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\src\dota2\json.cpp"
 					>
 				</File>
 			</Filter>

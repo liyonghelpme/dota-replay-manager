@@ -72,6 +72,8 @@ public:
     return _loaded;
   }
 
+  bool logCommand(String cmd);
+
   int run();
 };
 inline Application* getApp()
