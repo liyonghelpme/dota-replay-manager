@@ -147,34 +147,81 @@ Application::Application(HINSTANCE _hInstance, HINSTANCE hPrevInstance, LPSTR lp
   cache = new CacheManager();
   dotaLibrary = new DotaLibrary();
 
-  //dotaLibrary->getDota(parseVersion("6.74c"),
-  //  "K:\\Progs\\DotAReplay\\docs\\maps\\DotA v6.74c.w3x");
-  //WIN32_FIND_DATA data;
-  //String enumPath = "K:\\Progs\\DotAReplay\\docs\\maps";
-  //HANDLE hFind = FindFirstFile(String::buildFullName(enumPath, "*"), &data);
-  //BOOL success = (hFind != INVALID_HANDLE_VALUE);
-  //while (success)
-  //{
-  //  String file(data.cFileName);
-  //  if (String::getExtension(file).icompare(".w3x") == 0)
-  //  {
-  //    file.toLower();
-  //    Array<String> sub;
-  //    if (file.rfind("dota{{_| }allstars}?{_| }v(\\d)\\.(\\d\\d)([b-z]?)[^b-z]", 0, &sub) >= 0)
-  //    {
-  //      int major = sub[1].toInt();
-  //      int minor = sub[2].toInt();
-  //      int build = 0;
-  //      if (!sub[3].isEmpty())
-  //        build = int(sub[3][0] - 'a');
-  //      uint32 version = makeVersion(major, minor, build);
+#if 0
+  File* dlog = File::open("diff.txt", File::REWRITE);
+  for (int pt = 0; pt < 120; pt++)
+  {
+    String prev = "";
+    bool different = false;
+    for (int ver = 1; ver <= 80 && !different; ver++)
+    {
+      Dota* dota = dotaLibrary->getDota(makeVersion(6, ver));
+      if (dota)
+      {
+        Dota::Hero* hero = dota->getHero(pt);
+        if (hero)
+        {
+          if (prev == "")
+            prev = hero->name;
+          else if (prev.icompare(hero->name))
+            different = true;
+        }
+      }
+    }
+    if (different)
+    {
+      dlog->printf("  Pt=%d\r\n", pt);
+      prev = "";
+      for (int ver = 1; ver <= 80; ver++)
+      {
+        Dota* dota = dotaLibrary->getDota(makeVersion(6, ver));
+        if (dota)
+        {
+          Dota::Hero* hero = dota->getHero(pt);
+          if (hero)
+          {
+            if (prev.icompare(hero->name))
+            {
+              dlog->printf("6.%02d = %s\r\n", ver, hero->name);
+              prev = hero->name;
+            }
+          }
+        }
+      }
+    }
+  }
+  delete dlog;
+#endif
+#if 0
+  dotaLibrary->getDota(parseVersion("6.79e"),
+    "K:\\Progs\\DotAReplay\\maps\\DotA v6.79e.w3x");
+  WIN32_FIND_DATA data;
+  String enumPath = "K:\\Progs\\DotAReplay\\maps";
+  HANDLE hFind = FindFirstFile(String::buildFullName(enumPath, "*"), &data);
+  BOOL success = (hFind != INVALID_HANDLE_VALUE);
+  while (success)
+  {
+    String file(data.cFileName);
+    if (String::getExtension(file).icompare(".w3x") == 0)
+    {
+      file.toLower();
+      Array<String> sub;
+      if (file.rfind("dota{{_| }allstars}?{_| }v(\\d)\\.(\\d\\d)([b-z]?)[^b-z]", 0, &sub) >= 0)
+      {
+        int major = sub[1].toInt();
+        int minor = sub[2].toInt();
+        int build = 0;
+        if (!sub[3].isEmpty())
+          build = int(sub[3][0] - 'a');
+        uint32 version = makeVersion(major, minor, build);
 
-  //      dotaLibrary->getDota(version, String::buildFullName(enumPath, file));
-  //    }
-  //  }
-  //  success = FindNextFile(hFind, &data);
-  //}
-  //FindClose(hFind);
+        dotaLibrary->getDota(version, String::buildFullName(enumPath, file));
+      }
+    }
+    success = FindNextFile(hFind, &data);
+  }
+  FindClose(hFind);
+#endif
 
   mainWindow = new MainWnd();
   

@@ -480,7 +480,6 @@ INT_PTR CALLBACK DotaLibrary::NoDataDlgProc(HWND hDlg, UINT message, WPARAM wPar
       EnableWindow(GetDlgItem(hDlg, IDC_ALWAYSLOAD), nd->result == IDC_LOADMAPAUTO);
 
       MPQArchive* res = getApp()->getResources();
-      int sel = -1;
       int count = 0;
       for (int i = 0; i < res->getHashSize(); i++)
       {
@@ -492,12 +491,21 @@ INT_PTR CALLBACK DotaLibrary::NoDataDlgProc(HWND hDlg, UINT message, WPARAM wPar
           {
             uint32 ver = parseVersion(match[1]);
             SendMessage(GetDlgItem(hDlg, IDC_VERSIONLIST), CB_ADDSTRING, 0, (LPARAM) match[1].c_str());
-            if (sel < 0 || ver <= nd->version)
-              sel = count;
             count++;
           }
         }
       }
+      int sel = 0;
+      while (sel < count)
+      {
+        char buf[256];
+        SendMessage(GetDlgItem(hDlg, IDC_VERSIONLIST), CB_GETLBTEXT, sel, (LPARAM) buf);
+        uint32 ver = parseVersion(buf);
+        if (ver >= nd->version)
+          break;
+        sel++;
+      }
+      if (sel >= count) sel = count - 1;
       SendMessage(GetDlgItem(hDlg, IDC_VERSIONLIST), CB_SETCURSEL, sel, 0);
       if (count == 0)
       {
@@ -546,7 +554,7 @@ INT_PTR CALLBACK DotaLibrary::NoDataDlgProc(HWND hDlg, UINT message, WPARAM wPar
 }
 Dota* DotaLibrary::getDota(uint32 version, char const* mapPath)
 {
-  EnterCriticalSection(&lock);
+  Locker locker(lock);
   Dota* dota = (Dota*) versions.get(version);
   if (dota)
     dota->addRef();
@@ -556,7 +564,7 @@ Dota* DotaLibrary::getDota(uint32 version, char const* mapPath)
     File* file = getApp()->getResources()->openFile(path, File::READ);
     if (file == NULL && cfg.autoLoadMap && mapPath)
     {
-      if (loadMap(mapPath, path))
+      if (loadMap(mapPath, path, version))
         file = getApp()->getResources()->openFile(path, File::READ);
     }
     if (file == NULL)
@@ -572,12 +580,12 @@ Dota* DotaLibrary::getDota(uint32 version, char const* mapPath)
           path = "dota\\temp.txt";
         if (nd.result == IDC_LOADMAPAUTO && mapPath)
         {
-          loadMap(mapPath, path);
+          loadMap(mapPath, path, version);
           file = getApp()->getResources()->openFile(path, File::READ);
         }
         else if (nd.result == IDC_LOADMAP)
         {
-          loadMap(nd.path, path);
+          loadMap(nd.path, path, version);
           file = getApp()->getResources()->openFile(path, File::READ);
         }
         else if (nd.result == IDC_COPYVERSION)
@@ -617,14 +625,12 @@ Dota* DotaLibrary::getDota(uint32 version, char const* mapPath)
     versions.set(version, (uint32) dota);
     dota->addRef();
   }
-  LeaveCriticalSection(&lock);
   return dota;
 }
 Dota* DotaLibrary::getDota()
 {
-  EnterCriticalSection(&lock);
+  Locker locker(lock);
   Dota* dota = latest;
   dota->addRef();
-  LeaveCriticalSection(&lock);
   return dota;
 }

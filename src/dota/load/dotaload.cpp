@@ -3,6 +3,7 @@
 #include "base/dictionary.h"
 #include "base/file.h"
 #include "base/mpqfile.h"
+#include "base/version.h"
 #include "dota/dotadata.h"
 #include "dota/load/datafile.h"
 #include "graphics/image.h"
@@ -32,6 +33,8 @@ static char oldTaverns[numOldTaverns][256] = {
 class DotaLoader
 {
   MPQLoader loader;
+  uint32 version;
+  int vMinor;
   MPQArchive* map;
   void addNewImage(String path, bool big = false)
   {
@@ -328,6 +331,44 @@ class DotaLoader
   Array<Hero> heroes;
   IntDictionary hdir;
 
+  int pointPatch[128];
+
+  void readPointPatch()
+  {
+    for (int i = 0; i < 128; i++)
+      pointPatch[i] = i;
+    File* file = getApp()->getResources()->openFile("dota\\points.txt", File::READ);
+    if (file)
+    {
+      String line;
+      int pt = 0;
+      while (file->gets(line))
+      {
+        if (line.substring(0, 5) == "  Pt=")
+          pt = line.substring(5).toInt();
+        else if (line[0] == '6' && line[1] == '.')
+        {
+          int version = int(line[2] - '0') * 10 + int(line[3] - '0');
+          if (version <= vMinor)
+          {
+            pointPatch[pt] = pt;
+            int gt = line.indexOf('>');
+            if (gt >= 0)
+              pointPatch[pt] = line.substring(gt + 1).toInt();
+          }
+        }
+      }
+      delete file;
+    }
+  }
+
+  int patchPoint(int pt)
+  {
+    if (pt >= 0 && pt < 128)
+      return pointPatch[pt];
+    return pt;
+  }
+
   void addHero(ObjectData* data, UnitData* hero, int tavern)
   {
     Hero& h = heroes.push();
@@ -336,7 +377,7 @@ class DotaLoader
     h.numIds = 1;
     h.slot = hero->getStringData("Buttonpos", 0).toInt() +
          4 * hero->getStringData("Buttonpos", 1).toInt();
-    h.point = hero->getStringData("points").toInt();
+    h.point = patchPoint(hero->getStringData("points").toInt());
     h.name = hero->getStringData("Name");
     h.properName = hero->getStringData("Propernames", 0);
     String art = hero->getStringData("Art");
@@ -363,12 +404,15 @@ class DotaLoader
   }
 
 public:
-  DotaLoader()
+  DotaLoader(uint32 ver)
     : iname(DictionaryMap::alNumNoCase)
     , loader(*getApp()->getWarLoader())
+    , version(ver)
+    , vMinor(vGetMinor(ver))
   {
     map = NULL;
     curid = 'Xx00';
+    readPointPatch();
   }
   ~DotaLoader()
   {
@@ -434,8 +478,8 @@ public:
                     addSoldItem(item);
                 }
               }
-              break;
             }
+            break;
           }
         }
       }
@@ -737,17 +781,16 @@ public:
   }
 };
 
-bool DotaLibrary::loadMap(String map, String dest)
+bool DotaLibrary::loadMap(String map, String dest, uint32 version)
 {
-  EnterCriticalSection(&lock);
+  Locker locker(lock);
   MPQArchive* res = getApp()->getResources();
-  DotaLoader loader;
+  DotaLoader loader(version);
   if (!loader.load(map))
     return false;
   File* file = res->openFile(dest, File::REWRITE);
   loader.write(file);
   delete file;
   res->flushListFile();
-  LeaveCriticalSection(&lock);
   return true;
 }

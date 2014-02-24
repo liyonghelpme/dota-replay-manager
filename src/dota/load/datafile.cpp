@@ -200,6 +200,8 @@ WTSData::WTSData(File* file)
   int mx = 256;
   count = 0;
   strings = new IdString[mx];
+
+  if (file == NULL) return;
   file->seek(0, SEEK_SET);
   uint8 chr[3];
   if (file->read(chr, 3) != 3 || chr[0] != 0xEF || chr[1] != 0xBB || chr[2] != 0xBF)

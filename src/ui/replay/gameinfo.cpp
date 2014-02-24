@@ -430,16 +430,16 @@ void ReplayGameInfoTab::addPlayer(W3GPlayer* player)
         players->setItemText(i, PL_NEUTRALS, String(player->stats[STAT_NEUTRALS]));
       }
       players->setItemText(i, PL_LANE, getLaneName(player->lane));
-      String items = "";
-      for (int it = 0; it < 6; it++)
-      {
-        if (player->inv.final[it])
-          items.printf("$%d$", ilib->getListIndex(player->inv.final[it]->icon, "Unknown"));
-        else if (cfg.showEmptySlots)
-          items.printf("$%d$", ilib->getListIndex("EmptySlot"));
-      }
-      players->setItemText(i, PL_ITEMBUILD, items);
     }
+    String items = "";
+    for (int it = 0; it < 6; it++)
+    {
+      if (player->inv.final[it])
+        items.printf("$%d$", ilib->getListIndex(player->inv.final[it]->icon, "Unknown"));
+      else if (cfg.showEmptySlots)
+        items.printf("$%d$", ilib->getListIndex("EmptySlot"));
+    }
+    players->setItemText(i, PL_ITEMBUILD, items);
   }
   else
     i = players->addItem(player->name, ilib->getListIndex("Empty"),

@@ -7,6 +7,8 @@ int MPQArchive::addRef()
 }
 int MPQArchive::release()
 {
+  if (this == NULL)
+    return 0;
   int count = InterlockedDecrement((LONG*) &ref);
   if (count == 0)
     delete this;

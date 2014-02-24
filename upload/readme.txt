@@ -1,9 +1,13 @@
-DotA Replay Manager 3.02d
+DotA Replay Manager 3.03
 
 http://www.playdota.com/forums/showthread.php?p=110886
 http://rivsoft.narod.ru/dotareplay.html
 
 ============== Changelog ==================================
+**3.03**
+ - Fixed items in older dota versions
+ - Fixed incorrect heroes appearing in folder view (might need to delete gamecache.dat)
+ - Moved to a new website
 **3.02d**
  - Fixed another crash (control sharing)
  - Added -log command line option. To use, run DotaReplay.exe -log <replay> [<output>]

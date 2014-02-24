@@ -156,7 +156,7 @@ class DotaLibrary
   String heroPdTagWide[256];
   Dota* latest;
   Dictionary<String> itemPdTag;
-  bool loadMap(String map, String dest);
+  bool loadMap(String map, String dest, uint32 version);
   static INT_PTR CALLBACK NoDataDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam);
 public:
   DotaLibrary();

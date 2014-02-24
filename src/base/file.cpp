@@ -372,7 +372,7 @@ bool File::isValidURL(char const* url)
 
 File* File::memfile (void const* data, int length)
 {
-  return new MemFile (data, length);
+  return new MemFile (data, length, true);
 }
 
 static SystemLoader sysLoader ("");
