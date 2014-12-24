@@ -40,7 +40,7 @@ bool createPath(String path);
 
 int SHFileOperationEx(SHFILEOPSTRUCT* pFileOp);
 
-String getOpenReplayName(HWND hWnd);
+String getOpenReplayName(HWND hWnd, char const* filter = NULL);
 
 class Locker
 {

@@ -525,7 +525,7 @@ INT_PTR CALLBACK DotaLibrary::NoDataDlgProc(HWND hDlg, UINT message, WPARAM wPar
       return TRUE;
     case IDC_MAPBROWSE:
       {
-        String file = getOpenReplayName(NULL);
+      String file = getOpenReplayName(NULL, "Warcraft III Map Files (*.w3x)\0*.w3x\0All Files\0*\0\0");
         if (file)
           SetDlgItemText(hDlg, IDC_MAPTOLOAD, file);
       }

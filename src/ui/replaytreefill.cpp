@@ -318,6 +318,7 @@ void ReplayTree::rebuild(bool addSearchRes)
     int cur = 0;
     while (cur < files.length())
     {
+      int pos = cur;
       tvis.hParent = replayRoot;
       tvis.item.pszText = "";
       tvis.item.lParam = items.length();
@@ -327,7 +328,7 @@ void ReplayTree::rebuild(bool addSearchRes)
       HTREEITEM hItem = (ti.treeItem = treeView->insertItem(&tvis));
       int cnt = fillyear(files, cur, hItem, tvis);
       treeView->setItemText(hItem, String::format("%s (%d)",
-        format_systime(files[cur].ftime, "%Y"), cnt));
+        format_systime(files[pos].ftime, "%Y"), cnt));
       count += cnt;
     }
   }

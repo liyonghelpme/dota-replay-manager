@@ -4,6 +4,8 @@ http://www.playdota.com/forums/showthread.php?p=110886
 http://rivsoft.narod.ru/dotareplay.html
 
 ============== Changelog ==================================
+**3.03b**
+ - Fixed year in "By Date" tree view
 **3.03**
  - Fixed items in older dota versions
  - Fixed incorrect heroes appearing in folder view (might need to delete gamecache.dat)

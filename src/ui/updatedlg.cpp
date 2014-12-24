@@ -133,16 +133,22 @@ void UpdateDialog::init(HINSTANCE hInstance)
   HGLOBAL hGlobal = LoadResource(hInstance, hVersion);
   if (hGlobal == NULL)
     return;
+  DWORD dwSize = SizeofResource(hInstance, hVersion);
   void* versionInfo = LockResource(hGlobal);
+  void* temp = LocalAlloc(LMEM_FIXED, dwSize);
+  CopyMemory(temp, versionInfo, dwSize);
+  FreeResource(hGlobal);
+  versionInfo = temp;
+
   if (versionInfo)
   {
     UINT vLen;
     void* buf;
     String entry = "\\StringFileInfo\\";
     if (VerQueryValue(versionInfo, "\\VarFileInfo\\Translation", &buf, &vLen) && vLen == 4)
-      entry.printf("%04X%04X\\", *(int*) buf & 0xFFFF, (*(int*) buf >> 16) & 0xFFFF);
+      entry.printf("%04x%04x\\", *(int*) buf & 0xFFFF, (*(int*) buf >> 16) & 0xFFFF);
     else
-      entry.printf("%04X04B0\\", GetUserDefaultLangID());
+      entry.printf("%04x04b0\\", GetUserDefaultLangID());
 
     if (VerQueryValue(versionInfo, entry + "ProductVersion", &buf, &vLen))
     {
@@ -150,7 +156,8 @@ void UpdateDialog::init(HINSTANCE hInstance)
       lastVersion = thisVersion;
     }
   }
-  FreeResource(hGlobal);
+
+  LocalFree(temp);
 }
 void UpdateDialog::check(bool force)
 {

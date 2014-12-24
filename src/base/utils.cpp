@@ -209,7 +209,7 @@ int SHFileOperationEx(SHFILEOPSTRUCT* pFileOp)
   return result;
 }
 
-String getOpenReplayName(HWND hWnd)
+String getOpenReplayName(HWND hWnd, char const* filter)
 {
   if (hWnd == NULL)
     hWnd = getApp()->getMainWindow();
@@ -218,7 +218,7 @@ String getOpenReplayName(HWND hWnd)
   memset(&ofn, 0, sizeof ofn);
   ofn.lStructSize = sizeof ofn;
   ofn.hwndOwner = hWnd;
-  ofn.lpstrFilter = "Warcraft III Replay Files (*.w3g)\0*.w3g\0All Files\0*\0\0";
+  ofn.lpstrFilter = (filter ? filter : "Warcraft III Replay Files (*.w3g)\0*.w3g\0All Files\0*\0\0");
   char buf[512] = "";
   ofn.lpstrFile = buf;
   ofn.nMaxFile = sizeof buf;
